@@ -18,10 +18,10 @@ const MainLayout = () => {
     const inApp = segment[0] === '(app)';
 
     if (isAuthenticated && !inApp) {
-      // redirect to home
+     
       router.replace('/home');
     } else if (isAuthenticated === false) {
-      // redirect to signIn
+    
       router.replace('/signIn');
     }
   }, [isAuthenticated]);
