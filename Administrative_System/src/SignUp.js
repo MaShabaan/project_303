@@ -9,7 +9,7 @@ const theme = {
             fontFamily: 'sans-serif' },
     loginBox: { backgroundColor: 'white', padding: '40px', 
                 borderRadius: '12px', 
-                width: '100%', maxWidth: '400px',borderTop: '5px solid #FFD700' 
+                width: '100%', maxWidth: '400px', borderTop: '5px solid #FFD700' 
                 },
     logo: { width: '150px', height: 'auto', marginBottom: '10px' },
     divider: { height: '3px', width: '60px', backgroundColor: '#FFD700', 
@@ -24,13 +24,17 @@ const theme = {
               fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }
 };
 
-export default function SignIn() {
+export default function SignUp() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState(''); 
     const navigate = useNavigate();
     const checkUser = (e) => {
         e.preventDefault();
-        console.log("Form submitted:", email);
+        if(password !== confirmPassword) {
+            alert("Passwords do not match :(");
+            return;
+        }
         navigate('/home'); 
     };
 
@@ -39,8 +43,8 @@ export default function SignIn() {
             <div style={theme.loginBox}>
                 <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <img src={facultyLogo} alt="Faculty Logo" style={theme.logo} />
-                    <h1 style={{ color: '#228B22', fontSize: '24px', margin: '10px 0 0 0' }}>Faculty of Science</h1>
-                    <p style={{ color: '#B22222', fontWeight: 'bold', margin: '5px 0' }}>Cairo University</p>
+                    <h1 style={{ color: '#228B22', fontSize: '24px', margin: '10px 0 0 0' }}>Create Account</h1>
+                    <p style={{ color: '#B22222', fontWeight: 'bold', margin: '5px 0' }}>Faculty of Science</p>
                     <div style={theme.divider} />
                 </div>
                 <form onSubmit={checkUser} style={theme.form}>
@@ -62,12 +66,19 @@ export default function SignIn() {
                         placeholder="••••••••"
                         required
                     />
-                    <button type="submit" style={theme.button}>Sign In</button>
+                    <label style={theme.label}>Confirm Password</label>
+                    <input 
+                        type="password" 
+                        value={confirmPassword} 
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        style={theme.input}
+                        placeholder="••••••••"
+                        required
+                    />
+                    <button type="submit" style={theme.button}>Register</button>
                 </form>
                 <p style={{ textAlign: 'center', marginTop: '15px', color: '#666' }}>
-                    Don't have an account? <span 
-                    onClick={() => navigate('/signup')}
-                    style={{ color: '#B22222', cursor: 'pointer', fontWeight: 'bold' }}>Register</span>
+                    Already have an account? <span onClick={() => navigate('/')} style={{ color: '#B22222', cursor: 'pointer', fontWeight: 'bold' }}>Sign In</span>
                 </p>
             </div>
         </div>
