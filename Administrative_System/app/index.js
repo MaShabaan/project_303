@@ -1,3 +1,4 @@
+import LoginScreen from './signIn';
 import{view,text} from 'react-native'
 import Reactfr from 'react' 
 export default function Startpage(){
@@ -5,6 +6,6 @@ export default function Startpage(){
         <view className='flex-1 justify-center items-center'>
          <text>Home</text>
 
-        </view>
-    )
+export default function Startpage() {
+    return <LoginScreen />;
 }

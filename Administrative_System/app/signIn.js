@@ -1,54 +1,55 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, Button, StyleSheet, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
-import { doSignInWithEmailAndPassword } from "../firebase/auth";
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 
 export default function SignIn() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleSignIn = async () => {
-    setLoading(true);
-    try {
-      await doSignInWithEmailAndPassword(email, password);
-      router.replace("/app/home");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+ const handleLogin = () => {
+    if (email === "student@uni.edu" && password === "1234") {
+      Alert.alert("Success", "Welcome Student!");
+      router.replace('/home');
+    } else if (email === "admin@uni.edu" && password === "admin") {
+      Alert.alert("Success", "Welcome Admin!");
+      router.replace('/admin');
+    } else {
+      Alert.alert("Error", "Wrong Email or Password");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Sign In</Text>
+      <Text style={styles.title}>تسجيل الدخول - نظام الشكاوى</Text>
+
       <TextInput
-        placeholder="Email"
+        style={styles.input}
+        placeholder="البريد الإلكتروني أو الرقم الجامعي"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
-        keyboardType="email-address"
-        style={styles.input}
       />
+
       <TextInput
-        placeholder="Password"
+        style={styles.input}
+        placeholder="كلمة المرور"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
+        secureTextEntry={true} 
       />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {loading ? <ActivityIndicator size="large" /> : <Button title="Sign In" onPress={handleSignIn} />}
+
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+        <Text style={styles.buttonText}>دخول</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", padding: 20 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: "center" },
-  input: { borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 5 },
-  error: { color: "red", marginBottom: 10 },
+  container: { flex: 1, justifyContent: 'center', padding: 20, backgroundColor: '#f5f5f5' },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 30, color: '#333' },
+  input: { backgroundColor: '#fff', padding: 15, borderRadius: 8, marginBottom: 15, borderWidth: 1, borderColor: '#ddd', textAlign: 'right' },
+  button: { backgroundColor: '#007bff', padding: 15, borderRadius: 8, alignItems: 'center' },
+  buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });
