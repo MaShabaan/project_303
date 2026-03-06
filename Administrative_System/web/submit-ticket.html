@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" />
+    <title>Submit Ticket - Complaints & Course Rating System</title>
+    <style>
+        .dashboard-container {
+            position: relative;
+            z-index: 2;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 800px;
+            width: 90%;
+            margin: 20px;
+        }
+        
+        .welcome-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .user-role {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .ticket-form-container {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            background: #f8f9ff;
+            border: 1px solid #e0e4ff;
+        }
+        
+        .ticket-form-container h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #d0d4e4;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .alert-message {
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .back-link {
+            margin-top: 15px;
+            display: inline-block;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <div class="dashboard-container" id="dashboardContent" style="display: none;">
+        <div class="welcome-header">
+            <h1>Submit Support Ticket</h1>
+            <div class="user-role" id="userRole">USER</div>
+        </div>
+
+        <a class="back-link" onclick="window.location.href='user-dashboard.html'">&larr; Back to Dashboard</a>
+        
+        <div class="ticket-form-container">
+            <h2>Ticket Submission</h2>
+            <form id="ticketForm">
+                <div class="form-group">
+                    <label for="ticketCategory">Category</label>
+                    <select id="ticketCategory">
+                        <option value="">Select a category</option>
+                        <option value="Harrasment or Bullying">Harrasment or Bullying</option>
+                        <option value="Building issues">Building issues</option>
+                       
+                        <option value="Registration">Registration</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ticketSubjectGroup">
+                    <label for="ticketSubject">Subject (required for Registration)</label>
+                    <input type="text" id="ticketSubject" placeholder="Enter ticket subject" />
+                </div>
+                <div class="form-group">
+                    <label for="ticketDescription">Description</label>
+                    <textarea id="ticketDescription" placeholder="Describe your issue in detail"></textarea>
+                </div>
+                <button type="submit" id="ticketSubmitButton" class="action-button">SUBMIT TICKET</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+    
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
+            authDomain: "myproject-68794.firebaseapp.com",
+            databaseURL: "https://myproject-68794-default-rtdb.firebaseio.com",
+            projectId: "myproject-68794",
+            storageBucket: "myproject-68794.firebasestorage.app",
+            messagingSenderId: "252117852002",
+            appId: "1:252117852002:web:39eb53c016abfac4fe963b"
+        };
+
+        function getFirebaseApp() {
+            if (getApps().length > 0) return getApp();
+            if (!firebaseConfig?.apiKey) throw new Error('Firebase config is missing (apiKey).');
+            return initializeApp(firebaseConfig);
+        }
+
+        const app = getFirebaseApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const dashboardContent = document.getElementById('dashboardContent');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const userRoleSpan = document.getElementById('userRole');
+        const ticketForm = document.getElementById('ticketForm');
+        const ticketCategorySelect = document.getElementById('ticketCategory');
+        const ticketSubjectGroup = document.getElementById('ticketSubjectGroup');
+        const ticketSubjectInput = document.getElementById('ticketSubject');
+        const ticketDescriptionInput = document.getElementById('ticketDescription');
+        const ticketSubmitButton = document.getElementById('ticketSubmitButton');
+
+        function showMessage(message, type = 'info') {
+            const existingMessage = dashboardContent.querySelector('.alert-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert-message ${type}-message`;
+            messageDiv.textContent = message;
+
+            const colors = {
+                error: { bg: '#ff4444', text: 'white' },
+                success: { bg: '#00C851', text: 'white' },
+                warning: { bg: '#ffbb33', text: 'black' },
+                info: { bg: '#33b5e5', text: 'white' }
+            };
+
+            messageDiv.style.backgroundColor = colors[type]?.bg || colors.info.bg;
+            messageDiv.style.color = colors[type]?.text || colors.info.text;
+
+            dashboardContent.insertBefore(messageDiv, dashboardContent.firstChild);
+
+            setTimeout(() => {
+                if (messageDiv && messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function setLoadingState(button, isLoading) {
+            if (!button) return;
+
+            if (isLoading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> SUBMITTING...';
+            } else {
+                button.disabled = false;
+                button.innerHTML = 'SUBMIT TICKET';
+            }
+        }
+
+        async function submitTicket(userId, ticketData) {
+            const ticketsRef = collection(db, 'tickets');
+            await addDoc(ticketsRef, {
+                studentId: userId,
+                studentEmail: ticketData.studentEmail,
+                subject: ticketData.subject,
+                category: ticketData.category,
+                description: ticketData.description,
+                status: 'open',
+                timestamp: Timestamp.now()
+            });
+        }
+
+        if (ticketCategorySelect && ticketSubjectGroup) {
+            ticketCategorySelect.addEventListener('change', () => {
+                const selected = ticketCategorySelect.value;
+                if (selected === 'Registration') {
+                    ticketSubjectGroup.style.display = 'block';
+                } else {
+                    ticketSubjectGroup.style.display = 'none';
+                    if (ticketSubjectInput) {
+                        ticketSubjectInput.value = '';
+                    }
+                }
+            });
+
+            ticketSubjectGroup.style.display = 'none';
+        }
+
+        if (ticketForm) {
+            ticketForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const user = auth.currentUser;
+                if (!user) {
+                    showMessage('You must be logged in to submit a ticket.', 'error');
+                    return;
+                }
+
+                const category = ticketCategorySelect.value;
+                const subject = ticketSubjectInput ? ticketSubjectInput.value.trim() : '';
+                const description = ticketDescriptionInput.value.trim();
+                
+                if (!category || !description) {
+                    showMessage('Please select a category and enter a description before submitting.', 'error');
+                    return;
+                }
+
+                if (category === 'Registration' && !subject) {
+                    showMessage('Please enter a subject for Registration tickets.', 'error');
+                    return;
+                }
+
+                setLoadingState(ticketSubmitButton, true);
+
+                try {
+                    await submitTicket(user.uid, {
+                        studentEmail: user.email,
+                        subject,
+                        category,
+                        description
+                    });
+
+                    ticketForm.reset();
+                    ticketSubjectGroup.style.display = 'none';
+                    showMessage('✅ Your support ticket has been submitted successfully.', 'success');
+                } catch (error) {
+                    console.error('Error submitting ticket:', error);
+                    showMessage('There was an error submitting your ticket. Please try again.', 'error');
+                } finally {
+                    setLoadingState(ticketSubmitButton, false);
+                }
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userRoleSpan.textContent = 'USER';
+                loadingSpinner.style.display = 'none';
+                dashboardContent.style.display = 'block';
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
+

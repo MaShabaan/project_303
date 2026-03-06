@@ -106,6 +106,54 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .ticket-form-container {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 15px;
+            background: #f8f9ff;
+            border: 1px solid #e0e4ff;
+        }
+        
+        .ticket-form-container h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #d0d4e4;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .alert-message {
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -135,7 +183,13 @@
                 <h3>My Complaints</h3>
                 <p>Track your submitted complaints</p>
             </div>
-            
+
+            <div class="card" onclick="window.location.href='submit-ticket.html'">
+                <div class="card-icon">🎫</div>
+                <h3>Submit Ticket</h3>
+                <p>Contact support for help</p>
+            </div>
+
             <div class="card" onclick="window.location.href='my-ratings.html'">
                 <div class="card-icon">📊</div>
                 <h3>My Ratings</h3>
