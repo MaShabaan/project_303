@@ -5,7 +5,7 @@
  * Use this file for all Firebase-related initialization.
  */
 
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import {
   getAuth,
   Auth,
@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail,
   User,
   UserCredential,
-} from 'firebase/auth';
+} from "firebase/auth";
 import {
   initializeFirestore,
   getFirestore,
@@ -25,8 +25,8 @@ import {
   setDoc,
   getDoc,
   Timestamp,
-} from 'firebase/firestore';
-import { firebaseConfig } from '@/config/firebase';
+} from "firebase/firestore";
+import { firebaseConfig } from "@/config/firebase";
 
 // Required when not deployed to Firebase Hosting (e.g. React Native/Expo)
 const getFirebaseApp = (): FirebaseApp => {
@@ -36,7 +36,7 @@ const getFirebaseApp = (): FirebaseApp => {
   }
   if (!firebaseConfig?.apiKey) {
     throw new Error(
-      'Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts'
+      "Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts",
     );
   }
   return initializeApp(firebaseConfig);
@@ -61,26 +61,27 @@ export const db: Firestore = (() => {
 enableNetwork(db).catch(() => {});
 
 // User role type
-export type UserRole = 'admin' | 'user';
+export type UserRole = "admin" | "user";
 
 // User profile stored in Firestore
 export interface UserProfile {
   email: string;
   displayName?: string | null;
   role: UserRole;
+  isApproved?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
 // Collection names
 export const COLLECTIONS = {
-  USERS: 'users',
-  TICKETS: 'tickets',
-  TICKET_MESSAGES: 'messages',
-  TICKET_CATEGORIES: 'ticketCategories',
-  COURSES: 'courses',
-  FEEDBACK: 'feedback',
-  ENROLLMENTS: 'enrollments',
+  USERS: "users",
+  TICKETS: "tickets",
+  TICKET_MESSAGES: "messages",
+  TICKET_CATEGORIES: "ticketCategories",
+  COURSES: "courses",
+  FEEDBACK: "feedback",
+  ENROLLMENTS: "enrollments",
 } as const;
 
 /**
@@ -105,9 +106,13 @@ export async function signUpUser(
   email: string,
   password: string,
   role: UserRole,
-  userData?: { displayName?: string }
+  userData?: { displayName?: string },
 ): Promise<UserCredential> {
-  const credential = await createUserWithEmailAndPassword(auth, email, password);
+  const credential = await createUserWithEmailAndPassword(
+    auth,
+    email,
+    password,
+  );
   const { uid } = credential.user;
   const now = Timestamp.now();
 
@@ -115,6 +120,7 @@ export async function signUpUser(
     email,
     displayName: userData?.displayName ?? null,
     role,
+    isApproved: role === "admin" ? false : true,
     createdAt: now,
     updatedAt: now,
   });
@@ -127,7 +133,7 @@ export async function signUpUser(
  */
 export async function loginUser(
   email: string,
-  password: string
+  password: string,
 ): Promise<UserCredential> {
   return signInWithEmailAndPassword(auth, email, password);
 }

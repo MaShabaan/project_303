@@ -33,6 +33,9 @@ export default function AdminLayout() {
     return <Redirect href="/(app)/(user)" />;
   }
 
+  const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com']; 
+    const isSuperAdmin = SUPER_ADMINS.includes(profile.email || '');
+
   return (
     <Tabs
       screenOptions={{
@@ -58,6 +61,29 @@ export default function AdminLayout() {
           title: 'Dashboard',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
+          ),
+        }}
+      />
+      
+      {isSuperAdmin && (
+        <Tabs.Screen
+          name="approvals"
+          options={{
+            title: 'Approvals',
+            tabBarIcon: ({ color }) => (
+              <IconSymbol size={28} name="person.badge.clock.fill" color={color} />
+            ),
+          }}
+        />
+      )}
+
+      {/* تبويب Users للجميع */}
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Users',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="person.2.fill" color={color} />
           ),
         }}
       />
