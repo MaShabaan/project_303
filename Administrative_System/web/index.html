@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" />
+    <title>Complaints & Course Rating System</title>
+</head>
+<body> 
+    <!-- Background overlay -->
+    <div class="background-overlay"></div>
+    
+    <div class="content-wrapper">
+        <div class="image-container">
+            <img src="/Administrative_System/assets/images/logo.png" alt="Logo" class="center-image">
+            <p class="feedback-text">LETS SHARE FEEDBACK, RESOLVE ISSUES</p>
+          
+        </div>  
+        
+        <!-- Login Form -->
+        <div class="fieldcontainer" id="loginContainer">
+            <form id="loginForm">
+                <h2 class="form-title">LOGIN</h2>
+                
+                <label for="loginEmail" class="labels">EMAIL</label> <br>
+                <input 
+                    type="email" 
+                    id="loginEmail"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR EMAIL"
+                    required
+                > <br>
+                
+                <label for="loginPassword" class="labels">PASSWORD</label> <br>
+                <input 
+                    type="password" 
+                    id="loginPassword"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR PASSWORD"
+                    required
+                ><br>
+                
+                <div class="form-links">
+                    <a href="#" id="showSignup" class="link">Create New Account</a>
+                    <a href="#" id="showForgotPassword" class="link">Forgot Password?</a>
+                </div>
+                
+                <button type="submit" id="loginButton" class="action-button">LOGIN</button>
+            </form>
+        </div>
+
+        <!-- Signup Form with Role Selection -->
+        <div class="fieldcontainer" id="signupContainer" style="display: none;">
+            <form id="signupForm">
+                <h2 class="form-title">CREATE ACCOUNT</h2>
+                
+                <label for="signupName" class="labels">FULL NAME</label> <br>
+                <input 
+                    type="text" 
+                    id="signupName"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR FULL NAME"
+                    required
+                > <br>
+                
+                <label for="signupEmail" class="labels">EMAIL</label> <br>
+                <input 
+                    type="email" 
+                    id="signupEmail"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR EMAIL"
+                    required
+                > <br>
+                
+                <label for="signupPassword" class="labels">PASSWORD</label> <br>
+                <input 
+                    type="password" 
+                    id="signupPassword"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR PASSWORD (min 6 characters)"
+                    required
+                    minlength="6"
+                ><br>
+                
+                <label for="confirmPassword" class="labels">CONFIRM PASSWORD</label> <br>
+                <input 
+                    type="password" 
+                    id="confirmPassword"  
+                    class="inputs" 
+                    placeholder="CONFIRM YOUR PASSWORD"
+                    required
+                ><br>
+                
+                <!-- Role Selection -->
+                <label class="labels">SELECT ROLE</label> <br>
+                <div class="role-container">
+                    <label class="role-option">
+                        <input type="radio" name="role" value="user" checked>
+                        <span class="role-label">User</span>
+                        <span class="role-desc">Can submit complaints and rate courses</span>
+                    </label>
+                    
+                    <label class="role-option">
+                        <input type="radio" name="role" value="admin">
+                        <span class="role-label">Admin</span>
+                        <span class="role-desc">Can manage complaints, courses, and users</span>
+                    </label>
+                </div>
+                <br>
+                
+                <div class="form-links">
+                    <a href="#" id="showLoginFromSignup" class="link">Already have an account? Login</a>
+                </div>
+                
+                <button type="submit" id="signupButton" class="action-button">SIGN UP</button>
+            </form>
+        </div>
+
+        <!-- Forgot Password Form -->
+        <div class="fieldcontainer" id="forgotContainer" style="display: none;">
+            <form id="forgotForm">
+                <h2 class="form-title">RESET PASSWORD</h2>
+                
+                <p class="info-text">Enter your email address and we'll send you a link to reset your password.</p>
+                
+                <label for="forgotEmail" class="labels">EMAIL</label> <br>
+                <input 
+                    type="email" 
+                    id="forgotEmail"  
+                    class="inputs" 
+                    placeholder="ENTER YOUR EMAIL"
+                    required
+                > <br>
+                
+                <div class="form-links">
+                    <a href="#" id="showLoginFromForgot" class="link">Back to Login</a>
+                </div>
+                
+                <button type="submit" id="forgotButton" class="action-button">SEND RESET LINK</button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

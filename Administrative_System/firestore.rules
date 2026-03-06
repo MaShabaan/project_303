@@ -1,0 +1,73 @@
+rules_version = '2';
+
+// Firestore Security Rules for Ticketing & Course Feedback App
+// Deploy with: firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Check if user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: Check if user has admin role
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users collection: Users can read/update their own document
+    // Only admins can read all users; users created via signUp (backend/Auth)
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      allow read: if isAdmin();
+    }
+
+    // Tickets: Users create their own; admins can read/update all
+    match /tickets/{ticketId} {
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() &&
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Ticket messages (subcollection under tickets)
+    match /tickets/{ticketId}/messages/{messageId} {
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated();
+    }
+
+    // Ticket categories: Admins manage; all can read
+    match /ticketCategories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Courses: Admins manage; all authenticated can read
+    match /courses/{courseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Feedback: Users submit for courses they're enrolled in
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow update, delete: if isOwner(resource.data.userId) || isAdmin();
+    }
+
+    // Enrollments: Admins manage; users can read their own
+    match /enrollments/{enrollmentId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+  }
+}

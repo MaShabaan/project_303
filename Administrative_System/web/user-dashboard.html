@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" />
+    <title>User Dashboard - Complaints & Course Rating System</title>
+    <style>
+        .dashboard-container {
+            position: relative;
+            z-index: 2;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 800px;
+            width: 90%;
+            margin: 20px;
+        }
+        
+        .welcome-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .user-role {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 10px 25px rgba(102,126,234,0.2);
+        }
+        
+        .card-icon {
+            font-size: 40px;
+            margin-bottom: 15px;
+        }
+        
+        .card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .card p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .logout-btn {
+            background: #ff4444;
+            width: 200px;
+            margin: 20px auto 0;
+            display: block;
+        }
+        
+        .user-info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .loading-spinner {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: 50px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <div class="dashboard-container" id="dashboardContent" style="display: none;">
+        <div class="welcome-header">
+            <h1>Welcome, <span id="userName">User</span>!</h1>
+            <div class="user-role" id="userRole">USER</div>
+        </div>
+        
+        <div class="dashboard-cards">
+            <div class="card" onclick="window.location.href='submit-complaint.html'">
+                <div class="card-icon">📝</div>
+                <h3>Submit Complaint</h3>
+                <p>Share your concerns and issues</p>
+            </div>
+            
+            <div class="card" onclick="window.location.href='rate-course.html'">
+                <div class="card-icon">⭐</div>
+                <h3>Rate Courses</h3>
+                <p>Evaluate your courses</p>
+            </div>
+            
+            <div class="card" onclick="window.location.href='my-complaints.html'">
+                <div class="card-icon">📋</div>
+                <h3>My Complaints</h3>
+                <p>Track your submitted complaints</p>
+            </div>
+            
+            <div class="card" onclick="window.location.href='my-ratings.html'">
+                <div class="card-icon">📊</div>
+                <h3>My Ratings</h3>
+                <p>View your course ratings</p>
+            </div>
+        </div>
+        
+        <div class="user-info" id="userInfo">
+            Loading user information...
+        </div>
+        
+        <button onclick="logoutUser()" class="action-button logout-btn">LOGOUT</button>
+    </div>
+    
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading your dashboard...</p>
+    </div>
+    
+    <script type="module">
+        //الربط ب الفاير بيز
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        // Firebase configuration 
+        const firebaseConfig = {
+            apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
+            authDomain: "myproject-68794.firebaseapp.com",
+            databaseURL: "https://myproject-68794-default-rtdb.firebaseio.com",
+            projectId: "myproject-68794",
+            storageBucket: "myproject-68794.firebasestorage.app",
+            messagingSenderId: "252117852002",
+            appId: "1:252117852002:web:39eb53c016abfac4fe963b"
+        };
+        
+        // Initialize Firebase 
+        function getFirebaseApp() {
+            if (getApps().length > 0) return getApp();
+            if (!firebaseConfig?.apiKey) throw new Error('Firebase config is missing (apiKey).');
+            return initializeApp(firebaseConfig);
+        }
+        const app = getFirebaseApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Elements
+        const dashboardContent = document.getElementById('dashboardContent');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const userNameSpan = document.getElementById('userName');
+        const userRoleSpan = document.getElementById('userRole');
+        const userInfoDiv = document.getElementById('userInfo');
+        //  بتتحقق من دور المستخدم من الفاير بيز
+        async function getUserRole(userId) {
+            try {
+                const userDocRef = doc(db, 'users', userId);
+                const userSnap = await getDoc(userDocRef);
+                if (userSnap.exists()) {
+                    return userSnap.data().role || 'user';
+                }
+                return 'user';
+            } catch (error) {
+                console.error('Error getting user role:', error);
+                return 'user';
+            }
+        }
+        
+        // داله زرار تسجيل الخروج
+        window.logoutUser = async function() {
+            try {
+                await signOut(auth);
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Error logging out. Please try again.');
+            }
+        };
+        
+        // بيتشك الرول بتاع كل واحد
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                
+                    const role = await getUserRole(user.uid);
+                    
+                    // لو ادمن وديه ل داش بورد الادمن
+                    if (role === 'admin') {
+                        window.location.replace('admin-dashboard.html');
+                        return;
+                    }
+                    
+                    // عرض الاسم
+                    userNameSpan.textContent = user.displayName || user.email.split('@')[0];
+                    userRoleSpan.textContent = role.toUpperCase();
+                    
+                    // بيجيب بيانات من الفاير بيز
+                    const usersRef = collection(db, 'users');
+                    const q = query(usersRef, where('userId', '==', user.uid));
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (!querySnapshot.empty) {
+                        const userData = querySnapshot.docs[0].data();
+                        
+                        // تنسيق التاريخ
+                        let createdAt = 'Not available';
+                        let lastLogin = 'Not available';
+                        
+                        if (userData.createdAt) {
+                            createdAt = new Date(userData.createdAt.toDate()).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                            });
+                        }
+                        
+                        if (userData.lastLogin) {
+                            lastLogin = new Date(userData.lastLogin.toDate()).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                        
+                        userInfoDiv.innerHTML = `
+                            <strong>Email:</strong> ${userData.email || user.email}<br>
+                            <strong>Account Type:</strong> ${userData.role === 'admin' ? 'Administrator' : 'Regular User'}<br>
+                            <strong>Account Created:</strong> ${createdAt}<br>
+                            <strong>Last Login:</strong> ${lastLogin}
+                        `;
+                    } else {
+                     
+                        userInfoDiv.innerHTML = `
+                            <strong>Email:</strong> ${user.email}<br>
+                            <strong>User ID:</strong> ${user.uid.substring(0, 8)}...<br>
+                            <strong>Email Verified:</strong> ${user.emailVerified ? 'Yes' : 'No'}
+                        `;
+                    }
+                    
+             
+                    loadingSpinner.style.display = 'none';
+                    dashboardContent.style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error loading user data:', error);
+                    userInfoDiv.innerHTML = '';
+                    loadingSpinner.style.display = 'none';
+                    dashboardContent.style.display = 'block';
+                }
+            } else {
+            
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
