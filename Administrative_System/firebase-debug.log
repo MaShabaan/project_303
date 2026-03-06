@@ -1,0 +1,48 @@
+[debug] [2026-03-06T21:43:07.158Z] ----------------------------------------------------------------------
+[debug] [2026-03-06T21:43:07.160Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Shabaan\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js login
+[debug] [2026-03-06T21:43:07.160Z] CLI Version:   15.9.0
+[debug] [2026-03-06T21:43:07.160Z] Platform:      win32
+[debug] [2026-03-06T21:43:07.161Z] Node Version:  v22.14.0
+[debug] [2026-03-06T21:43:07.161Z] Time:          Fri Mar 06 2026 23:43:07 GMT+0200 (Eastern European Standard Time)
+[debug] [2026-03-06T21:43:07.161Z] ----------------------------------------------------------------------
+[debug] 
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
+[info] 
+[info] i  To change your preferences at any time, run `firebase logout` and `firebase login` again. 
+[info] 
+[info] Visit this URL on this device to log in:
+[info] https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=390987555&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] 
+[info] Waiting for authentication...
+[debug] [2026-03-06T21:43:20.258Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
+[debug] [2026-03-06T21:43:20.258Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"97cdd1c9-2c8c-47aa-9351-0b94bd409cda"}
+[debug] [2026-03-06T21:43:21.119Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
+[debug] [2026-03-06T21:43:21.120Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"dXCDCyxT-5IOy3eINJljAV-5vGMViM7Y7bIvlb0sVxA"}
+[info] 
+[info] To sign in to the Firebase CLI:
+[info] 
+[info] 1. Take note of your session ID:
+[info] 
+[info]    97CDD
+[info] 
+[info] 2. Visit the URL below on any device and follow the instructions to get your code:
+[info] 
+[info]    https://auth.firebase.tools/login?code_challenge=2BJweDUNa658x2e0Or5d0Y7-a-Z869hRU1jobrtUucU&session=97cdd1c9-2c8c-47aa-9351-0b94bd409cda&attest=dXCDCyxT-5IOy3eINJljAV-5vGMViM7Y7bIvlb0sVxA
+[info] 
+[info] 3. Paste or enter the authorization code below once you have it:
+[info] 
+[debug] [2026-03-06T21:44:28.713Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (C:\Users\Shabaan\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\@inquirer\core\dist\commonjs\lib\create-prompt.js:101:37)
+    at Interface.emit (node:events:518:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1124:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:263:20)
+    at ReadStream.emit (node:events:530:35)
+    at emitKeys (node:internal/readline/utils:370:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+[error] 
+[error] Error: An unexpected error has occurred.
