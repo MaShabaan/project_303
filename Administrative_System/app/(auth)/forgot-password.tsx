@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen() {
               />
 
               <View style={styles.formLinks}>
-                <Link href="/(auth)/login" asChild>
+             <Link href="/(auth)/login" asChild>
                   <TouchableOpacity>
                     <Text style={styles.link}>Back to Login</Text>
                   </TouchableOpacity>
