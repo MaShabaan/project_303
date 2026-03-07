@@ -34,25 +34,25 @@ export default function AdminDashboardScreen() {
       icon: "📋",
       title: "Manage Complaints",
       subtitle: "View and resolve user complaints",
-      route: "/complaints",
+      route: "./complaints",
     },
     {
       icon: "📚",
       title: "Manage Courses",
       subtitle: "Add, edit, and manage courses",
-      route: "/courses",
+      route: "./courses",
     },
     {
       icon: "👥",
       title: "Manage Users",
       subtitle: "View and manage user accounts",
-      route: "/users",
+      route: "./users",
     },
     {
       icon: "📊",
-      title: "View Reports",
-      subtitle: "Activity logs and analytics",
-      route: "/reports",
+      title: "Course Ratings",
+      subtitle: "View user course feedback and ratings",
+      route: "./feedback",
     },
   ];
 
@@ -107,8 +107,12 @@ export default function AdminDashboardScreen() {
                 style={styles.card}
                 activeOpacity={0.8}
                 onPress={() => {
-                  if (item.route === "/users") {
+                  if (item.route === "./users") {
                     router.push("./users");
+                  } else if (item.route === "./complaints") {
+                    router.push("./complaints");
+                  } else if (item.route === "./feedback") {
+                    router.push("./feedback");
                   } else {
                     Alert.alert(
                       "Coming Soon",

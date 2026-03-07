@@ -6,16 +6,11 @@
  */
 
 import { TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { Redirect, Tabs, router } from 'expo-router';
+import { Redirect, Stack, router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function UserLayout() {
   const { user, profile, isInitialized, signOut } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
 
   const handleBackToLogin = () => {
     signOut();
@@ -28,40 +23,51 @@ export default function UserLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  // Admins should use admin dashboard
   if (profile.role === 'admin') {
     return <Redirect href="/(app)/(admin)" />;
   }
 
   return (
-    <Tabs
+    <Stack
       screenOptions={{
-        tabBarActiveTintColor: colors.tint,
         headerShown: true,
         headerTitle: 'Dashboard',
         headerStyle: { backgroundColor: '#FFFFFF' },
         headerTintColor: '#333333',
-        headerLeft: () => (
-          <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
-            <Image
-              source={require('@/assets/images/back-arrow.png')}
-              style={styles.backArrow}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        ),
       }}
     >
-      <Tabs.Screen
+      <Stack.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
+          headerLeft: () => (
+            <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
+              <Image
+                source={require('@/assets/images/back-arrow.png')}
+                style={styles.backArrow}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
           ),
         }}
       />
-    </Tabs>
+      <Stack.Screen
+        name="rate-courses"
+        options={{ title: 'Rate Courses' }}
+      />
+      <Stack.Screen
+        name="submit-complaint"
+        options={{ title: 'Submit Complaint' }}
+      />
+      <Stack.Screen
+        name="my-complaints"
+        options={{ title: 'My Complaints' }}
+      />
+      <Stack.Screen
+        name="my-ratings"
+        options={{ title: 'My Ratings' }}
+      />
+    </Stack>
   );
 }
 
