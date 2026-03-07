@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" />
+    <title>Rate Course - Complaints & Course Rating System</title>
+    <style>
+        .dashboard-container {
+            position: relative;
+            z-index: 2;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 800px;
+            width: 90%;
+            margin: 20px;
+        }
+        
+        .welcome-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .rating-form-container {
+            margin-top: 10px;
+            padding: 20px;
+            border-radius: 15px;
+            background: #f8f9ff;
+            border: 1px solid #e0e4ff;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #d0d4e4;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .rating-select {
+            max-width: 150px;
+        }
+
+        .alert-message {
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .back-link {
+            margin-top: 15px;
+            display: inline-block;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <div class="dashboard-container" id="dashboardContent" style="display: none;">
+        <div class="welcome-header">
+            <h1>Rate a Course</h1>
+        </div>
+
+        <a class="back-link" onclick="window.location.href='user-dashboard.html'">&larr; Back to Dashboard</a>
+
+        <div class="rating-form-container">
+            <form id="ratingForm">
+                <div class="form-group">
+                    <label for="courseName">Course Name</label>
+                    <input type="text" id="courseName" placeholder="Enter course name" />
+                </div>
+                <div class="form-group">
+                    <label for="instructorName">Instructor Name</label>
+                    <input type="text" id="instructorName" placeholder="Enter instructor name" />
+                </div>
+                <div class="form-group">
+                    <label for="courseRating">Course Rating (1-5)</label>
+                    <select id="courseRating" class="rating-select">
+                        <option value="">Select rating</option>
+                        <option value="1">1 - Very Poor</option>
+                        <option value="2">2 - Poor</option>
+                        <option value="3">3 - Average</option>
+                        <option value="4">4 - Good</option>
+                        <option value="5">5 - Excellent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="instructorRating">Instructor Rating (1-5)</label>
+                    <select id="instructorRating" class="rating-select">
+                        <option value="">Select rating</option>
+                        <option value="1">1 - Very Poor</option>
+                        <option value="2">2 - Poor</option>
+                        <option value="3">3 - Average</option>
+                        <option value="4">4 - Good</option>
+                        <option value="5">5 - Excellent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ratingComment">Optional Comment</label>
+                    <textarea id="ratingComment" placeholder="Share any additional feedback (optional)"></textarea>
+                </div>
+                <button type="submit" id="ratingSubmitButton" class="action-button">SUBMIT RATING</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
+            authDomain: "myproject-68794.firebaseapp.com",
+            databaseURL: "https://myproject-68794-default-rtdb.firebaseio.com",
+            projectId: "myproject-68794",
+            storageBucket: "myproject-68794.firebasestorage.app",
+            messagingSenderId: "252117852002",
+            appId: "1:252117852002:web:39eb53c016abfac4fe963b"
+        };
+
+        function getFirebaseApp() {
+            if (getApps().length > 0) return getApp();
+            if (!firebaseConfig?.apiKey) throw new Error('Firebase config is missing (apiKey).');
+            return initializeApp(firebaseConfig);
+        }
+
+        const app = getFirebaseApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const dashboardContent = document.getElementById('dashboardContent');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const ratingForm = document.getElementById('ratingForm');
+        const courseNameInput = document.getElementById('courseName');
+        const instructorNameInput = document.getElementById('instructorName');
+        const courseRatingSelect = document.getElementById('courseRating');
+        const instructorRatingSelect = document.getElementById('instructorRating');
+        const ratingCommentInput = document.getElementById('ratingComment');
+        const ratingSubmitButton = document.getElementById('ratingSubmitButton');
+
+        function showMessage(message, type = 'info') {
+            const existingMessage = dashboardContent.querySelector('.alert-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert-message ${type}-message`;
+            messageDiv.textContent = message;
+
+            const colors = {
+                error: { bg: '#ff4444', text: 'white' },
+                success: { bg: '#00C851', text: 'white' },
+                warning: { bg: '#ffbb33', text: 'black' },
+                info: { bg: '#33b5e5', text: 'white' }
+            };
+
+            messageDiv.style.backgroundColor = colors[type]?.bg || colors.info.bg;
+            messageDiv.style.color = colors[type]?.text || colors.info.text;
+
+            dashboardContent.insertBefore(messageDiv, dashboardContent.firstChild);
+
+            setTimeout(() => {
+                if (messageDiv && messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        function setLoadingState(button, isLoading) {
+            if (!button) return;
+
+            if (isLoading) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> SUBMITTING...';
+            } else {
+                button.disabled = false;
+                button.innerHTML = 'SUBMIT RATING';
+            }
+        }
+
+        async function submitCourseRating(userId, ratingData) {
+            const ratingsRef = collection(db, 'course-ratings');
+            await addDoc(ratingsRef, {
+                studentId: userId,
+                courseName: ratingData.courseName,
+                instructorName: ratingData.instructorName,
+                courseRating: ratingData.courseRating,
+                instructorRating: ratingData.instructorRating,
+                comment: ratingData.comment,
+                timestamp: Timestamp.now()
+            });
+        }
+
+        if (ratingForm) {
+            ratingForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const user = auth.currentUser;
+                if (!user) {
+                    showMessage('You must be logged in to submit a rating.', 'error');
+                    return;
+                }
+
+                const courseName = courseNameInput.value.trim();
+                const instructorName = instructorNameInput.value.trim();
+                const courseRating = courseRatingSelect.value;
+                const instructorRating = instructorRatingSelect.value;
+                const comment = ratingCommentInput.value.trim();
+
+                if (!courseName || !instructorName || !courseRating || !instructorRating) {
+                    showMessage('Please fill in course, instructor, and both ratings.', 'error');
+                    return;
+                }
+
+                setLoadingState(ratingSubmitButton, true);
+
+                try {
+                    await submitCourseRating(user.uid, {
+                        courseName,
+                        instructorName,
+                        courseRating: Number(courseRating),
+                        instructorRating: Number(instructorRating),
+                        comment
+                    });
+
+                    ratingForm.reset();
+                    showMessage('✅ Your course rating has been submitted successfully.', 'success');
+                } catch (error) {
+                    console.error('Error submitting rating:', error);
+                    showMessage('There was an error submitting your rating. Please try again.', 'error');
+                } finally {
+                    setLoadingState(ratingSubmitButton, false);
+                }
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                loadingSpinner.style.display = 'none';
+                dashboardContent.style.display = 'block';
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
+
