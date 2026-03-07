@@ -77,7 +77,27 @@ export default function AdminLayout() {
         />
       )}
 
-\      <Tabs.Screen
+      <Tabs.Screen
+        name="complaints"
+        options={{
+          title: 'Complaints',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="text.bubble.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="feedback"
+        options={{
+          title: 'Ratings',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="star.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="users"
         options={{
           title: 'Users',

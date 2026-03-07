@@ -33,7 +33,7 @@ service cloud.firestore {
     match /tickets/{ticketId} {
       allow create: if isAuthenticated();
       allow read, update: if isAuthenticated() &&
-        (resource.data.createdBy == request.auth.uid || isAdmin());
+        (resource.data.userId == request.auth.uid || isAdmin());
       allow delete: if isAdmin();
     }
 

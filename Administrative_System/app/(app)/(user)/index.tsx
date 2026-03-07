@@ -21,10 +21,10 @@ export default function UserDashboardScreen() {
   const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
 
   const cards = [
-    { icon: '📝', title: 'Submit Complaint', subtitle: 'Share your concerns and issues' },
-    { icon: '⭐', title: 'Rate Courses', subtitle: 'Evaluate your courses' },
-    { icon: '📋', title: 'My Complaints', subtitle: 'Track your submitted complaints' },
-    { icon: '📊', title: 'My Ratings', subtitle: 'View your course ratings' },
+    { icon: '📝', title: 'Submit Complaint', subtitle: 'Share your concerns and issues', route: './submit-complaint' as const },
+    { icon: '⭐', title: 'Rate Courses', subtitle: 'Evaluate your courses', route: './rate-courses' as const },
+    { icon: '📋', title: 'My Complaints', subtitle: 'Track your submitted complaints', route: './my-complaints' as const },
+    { icon: '📊', title: 'My Ratings', subtitle: 'View your course ratings', route: './my-ratings' as const },
   ];
 
   return (
@@ -47,6 +47,7 @@ export default function UserDashboardScreen() {
                 key={index}
                 style={styles.card}
                 activeOpacity={0.8}
+                onPress={() => item.route && router.push(item.route)}
               >
                 <Text style={styles.cardIcon}>{item.icon}</Text>
                 <Text style={styles.cardTitle}>{item.title}</Text>

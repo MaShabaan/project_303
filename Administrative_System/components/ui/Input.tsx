@@ -7,7 +7,6 @@ import {
   TextInputProps,
   ViewStyle,
 } from 'react-native';
-import { useThemeColor } from '@/hooks/use-theme-color';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -22,12 +21,7 @@ export function Input({
   style,
   ...props
 }: InputProps) {
-  const textColor = useThemeColor({}, 'text');
-  const backgroundColor = useThemeColor(
-    { light: '#FFFFFF', dark: 'f5f5f5' },
-    'background'
-  );
-  const borderColor = error ? '#007AFF' : 'transparent';
+  const borderColor = error ? '#e74c3c' : '#d1d5db';
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -38,13 +32,12 @@ export function Input({
         style={[
           styles.input,
           {
-            color: textColor,
-            backgroundColor,
             borderColor,
           },
           style,
         ]}
-        placeholderTextColor="#000000"
+        placeholderTextColor="#9ca3af"
+        selectionColor="#667eea"
         {...props}
       />
       {error && <Text style={styles.error}>{error}</Text>}
@@ -64,12 +57,14 @@ const styles = StyleSheet.create({
     
   },
   input: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    
+    minHeight: 48,
+    color: '#1f2937',
+    backgroundColor: '#f9fafb',
   },
   error: {
     color: '#e74c3c',
