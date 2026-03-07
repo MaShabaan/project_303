@@ -1,3 +1,4 @@
+import { collection, getDocs, Timestamp, query, where } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -8,7 +9,6 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -37,16 +37,21 @@ export default function MyRatingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadRatings = async () => {
+    const loadRatings = async () => {
     if (!user?.uid) return;
     try {
       const ref = collection(db, COLLECTIONS.FEEDBACK);
-      const snapshot = await getDocs(ref);
-      const mapped = snapshot.docs.map((docSnap) => ({
+      
+      // NEW: Tell Firebase to ONLY give us ratings created by this user
+      const q = query(ref, where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
+      
+      const list = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
       })) as FeedbackDoc[];
-      const list = mapped.filter((f) => f.userId === user.uid);
+      
+      // Sort them by date
       list.sort((a, b) => {
         const tA = a.createdAt && typeof (a.createdAt as Timestamp).toDate === 'function' ? (a.createdAt as Timestamp).toDate().getTime() : 0;
         const tB = b.createdAt && typeof (b.createdAt as Timestamp).toDate === 'function' ? (b.createdAt as Timestamp).toDate().getTime() : 0;

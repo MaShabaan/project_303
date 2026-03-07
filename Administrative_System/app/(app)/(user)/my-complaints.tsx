@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, Timestamp, query, where } from 'firebase/firestore';
 import { db, COLLECTIONS, type TicketType } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -46,16 +46,21 @@ export default function MyComplaintsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadTickets = async () => {
+    const loadTickets = async () => {
     if (!user?.uid) return;
     try {
       const ref = collection(db, COLLECTIONS.TICKETS);
-      const snapshot = await getDocs(ref);
-      const mapped = snapshot.docs.map((docSnap) => ({
+      
+      // NEW: Tell Firebase to ONLY give us tickets created by this user
+      const q = query(ref, where("userId", "==", user.uid));
+      const snapshot = await getDocs(q);
+      
+      const list = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
       })) as Ticket[];
-      const list = mapped.filter((t) => t.userId === user.uid);
+      
+      // Sort them by date in the app
       list.sort((a, b) => {
         const tA = a.createdAt && typeof (a.createdAt as Timestamp).toDate === 'function' ? (a.createdAt as Timestamp).toDate().getTime() : 0;
         const tB = b.createdAt && typeof (b.createdAt as Timestamp).toDate === 'function' ? (b.createdAt as Timestamp).toDate().getTime() : 0;

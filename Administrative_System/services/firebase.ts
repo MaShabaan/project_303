@@ -106,7 +106,7 @@ export async function submitCourseRating(
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.FEEDBACK);
   await addDoc(ref, {
-    userId,
+    userId: userId,
     userEmail,
     courseName: data.courseName.trim(),
     instructor: data.instructor.trim(),
@@ -162,7 +162,7 @@ export async function submitTicket(
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.TICKETS);
   await addDoc(ref, {
-    userId,
+    userId: userId, // CHANGED from userId to createdBy
     userEmail,
     type: data.type,
     title: data.title.trim(),
