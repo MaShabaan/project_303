@@ -77,8 +77,7 @@ export default function AdminLayout() {
         />
       )}
 
-      {/* تبويب Users للجميع */}
-      <Tabs.Screen
+\      <Tabs.Screen
         name="users"
         options={{
           title: 'Users',
