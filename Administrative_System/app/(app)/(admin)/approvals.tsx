@@ -25,9 +25,20 @@ export default function ApprovalsScreen() {
 
   const loadPendingAdmins = async () => {
     setLoading(true);
-    const admins = await getPendingAdmins();
-    setPendingAdmins(admins);
-    setLoading(false);
+    console.log('1. Loading pending admins...');
+    console.log('2. Current profile email:', profile?.email);
+    console.log('3. Is super admin?', profile?.email === 'mshabaan295@gmail.com' || profile?.email === 'hoda17753@gmail.com');
+    
+    try {
+      const admins = await getPendingAdmins();
+      console.log('4. Pending admins from context:', admins);
+      console.log('5. Number of pending admins:', admins.length);
+      setPendingAdmins(admins);
+    } catch (error) {
+      console.error('6. Error loading pending admins:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onRefresh = async () => {
