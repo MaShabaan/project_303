@@ -18,6 +18,7 @@ import {
   UserProfile,
   UserRole,
 } from '@/services/firebase';
+import { Timestamp } from 'firebase/firestore';
 
 // Storage keys for persistence
 const USER_PROFILE_KEY = '@auth_user_profile';
@@ -42,6 +43,8 @@ interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   clearError: () => void;
+  approveAdmin: (adminId: string) => Promise<void>;
+  getPendingAdmins: () => Promise<(UserProfile & { id: string })[]>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -52,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com'];
 
   // Load profile from Firestore when user changes
   const loadUserProfile = useCallback(async (firebaseUser: User | null) => {
@@ -132,9 +137,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const credential = await loginUser(email, password);
       const userProfile = await getUserProfile(credential.user.uid);
+      
       if (!userProfile) {
         throw new Error('User profile not found. Please contact support.');
       }
+
+      if (userProfile.role === 'admin' && userProfile.isApproved === false) {
+        await logoutUser(); 
+        throw new Error('Your admin account is pending approval. Please wait for super admin confirmation.');
+      }
+
       setProfile(userProfile);
       await AsyncStorage.setItem(
         USER_PROFILE_KEY,
@@ -183,6 +195,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const approveAdmin = useCallback(async (adminId: string) => {
+    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+      throw new Error('Only super admins can approve admins');
+    }
+
+    setIsLoading(true);
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('@/services/firebase');
+      
+      await updateDoc(doc(db, 'users', adminId), {
+        isApproved: true,
+        approvedBy: profile.email,
+        approvedAt: Timestamp.now()
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to approve admin';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profile]);
+
+  const getPendingAdmins = useCallback(async () => {
+    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+      return [];
+    }
+
+    try {
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const { db } = await import('@/services/firebase');
+      
+      const q = query(
+        collection(db, 'users'),
+        where('role', '==', 'admin'),
+        where('isApproved', '==', false)
+      );
+      
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as (UserProfile & { id: string })[];
+    } catch (err) {
+      console.error('Error fetching pending admins:', err);
+      return [];
+    }
+  }, [profile]);
+
   const clearError = useCallback(() => setError(null), []);
 
   const value = useMemo<AuthContextValue>(
@@ -197,6 +259,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       sendPasswordReset,
       clearError,
+      approveAdmin,
+      getPendingAdmins,
     }),
     [
       user,
@@ -209,6 +273,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut,
       sendPasswordReset,
       clearError,
+      approveAdmin,
+      getPendingAdmins,
     ]
   );
 

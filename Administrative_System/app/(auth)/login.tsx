@@ -211,6 +211,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#764ba2',
     height: 55,
     borderRadius: 12,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorBanner: {
     backgroundColor: '#ff4444',

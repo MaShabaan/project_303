@@ -18,6 +18,10 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  'person.badge.clock.fill': 'admin-panel-settings',
+  'person.2.fill': 'people',
+  'text.bubble.fill': 'chat-bubble',
+  'star.fill': 'star',
 } as IconMapping;
 
 /**
