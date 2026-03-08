@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css" />
+    <title>My Tickets - Complaints & Course Rating System</title>
+    <style>
+        .dashboard-container {
+            position: relative;
+            z-index: 2;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 900px;
+            width: 90%;
+            margin: 20px;
+        }
+        
+        .welcome-header {
+            margin-bottom: 20px;
+        }
+
+        .tickets-list {
+            margin-top: 20px;
+        }
+
+        .ticket-card {
+            background: #f8f9ff;
+            border-radius: 12px;
+            padding: 15px 18px;
+            margin-bottom: 12px;
+            border: 1px solid #e0e4ff;
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .ticket-category {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .ticket-status {
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .status-open {
+            background: #ffe082;
+            color: #8d6e00;
+        }
+
+        .status-closed {
+            background: #c8e6c9;
+            color: #1b5e20;
+        }
+
+        .ticket-meta {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 6px;
+        }
+
+        .ticket-description {
+            font-size: 14px;
+            color: #333;
+            white-space: pre-wrap;
+        }
+
+        .alert-message {
+            margin-bottom: 15px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .back-link {
+            margin-top: 15px;
+            display: inline-block;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="background-overlay"></div>
+    
+    <div class="dashboard-container" id="dashboardContent" style="display: none;">
+        <div class="welcome-header">
+            <h1>My Tickets</h1>
+            <p>All support tickets you have submitted.</p>
+        </div>
+
+        <a class="back-link" onclick="window.location.href='user-dashboard.html'">&larr; Back to Dashboard</a>
+
+        <div id="ticketsContainer" class="tickets-list">
+            <!-- Tickets will be rendered here -->
+        </div>
+    </div>
+
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner"></div>
+        <p>Loading your tickets...</p>
+    </div>
+
+    <script type="module">
+        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
+            authDomain: "myproject-68794.firebaseapp.com",
+            databaseURL: "https://myproject-68794-default-rtdb.firebaseio.com",
+            projectId: "myproject-68794",
+            storageBucket: "myproject-68794.firebasestorage.app",
+            messagingSenderId: "252117852002",
+            appId: "1:252117852002:web:39eb53c016abfac4fe963b"
+        };
+
+        function getFirebaseApp() {
+            if (getApps().length > 0) return getApp();
+            if (!firebaseConfig?.apiKey) throw new Error('Firebase config is missing (apiKey).');
+            return initializeApp(firebaseConfig);
+        }
+
+        const app = getFirebaseApp();
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const dashboardContent = document.getElementById('dashboardContent');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const ticketsContainer = document.getElementById('ticketsContainer');
+
+        function showMessage(message, type = 'info') {
+            const existingMessage = dashboardContent.querySelector('.alert-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `alert-message ${type}-message`;
+            messageDiv.textContent = message;
+
+            const colors = {
+                error: { bg: '#ff4444', text: 'white' },
+                success: { bg: '#00C851', text: 'white' },
+                warning: { bg: '#ffbb33', text: 'black' },
+                info: { bg: '#33b5e5', text: 'white' }
+            };
+
+            messageDiv.style.backgroundColor = colors[type]?.bg || colors.info.bg;
+            messageDiv.style.color = colors[type]?.text || colors.info.text;
+
+            dashboardContent.insertBefore(messageDiv, dashboardContent.firstChild);
+
+            setTimeout(() => {
+                if (messageDiv && messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 5000);
+        }
+
+        async function loadTicketsForUser(userId) {
+            const ticketsRef = collection(db, 'tickets');
+            const q = query(ticketsRef, where('studentId', '==', userId));
+            const snapshot = await getDocs(q);
+
+            ticketsContainer.innerHTML = '';
+
+            if (snapshot.empty) {
+                ticketsContainer.innerHTML = '<p>You have not submitted any tickets yet.</p>';
+                return;
+            }
+
+            snapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                const createdAt = data.timestamp?.toDate
+                    ? data.timestamp.toDate().toLocaleString()
+                    : 'N/A';
+
+                const status = (data.status || 'open').toLowerCase();
+                const statusClass = status === 'closed' ? 'status-closed' : 'status-open';
+
+                const card = document.createElement('div');
+                card.className = 'ticket-card';
+                card.innerHTML = `
+                    <div class="ticket-header">
+                        <span class="ticket-category">${data.category || 'Ticket'}</span>
+                        <span class="ticket-status ${statusClass}">${status}</span>
+                    </div>
+                    <div class="ticket-meta">
+                        Submitted: ${createdAt}
+                    </div>
+                    <div class="ticket-description">
+                        ${data.subject ? `<strong>${data.subject}</strong><br>` : ''}
+                        ${data.description || ''}
+                    </div>
+                `;
+
+                ticketsContainer.appendChild(card);
+            });
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            try {
+                await loadTicketsForUser(user.uid);
+            } catch (err) {
+                console.error('Error loading tickets:', err);
+                showMessage('Failed to load tickets. Please try again later.', 'error');
+            } finally {
+                loadingSpinner.style.display = 'none';
+                dashboardContent.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
+
