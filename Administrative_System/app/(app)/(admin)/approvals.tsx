@@ -10,11 +10,10 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { router } from 'expo-router';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function ApprovalsScreen() {
-  const { profile, getPendingAdmins, approveAdmin } = useAuth();
+  const { profile, getPendingAdmins, approveAdmin, rejectAdmin } = useAuth();
   const [pendingAdmins, setPendingAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -25,17 +24,11 @@ export default function ApprovalsScreen() {
 
   const loadPendingAdmins = async () => {
     setLoading(true);
-    console.log('1. Loading pending admins...');
-    console.log('2. Current profile email:', profile?.email);
-    console.log('3. Is super admin?', profile?.email === 'mshabaan295@gmail.com' || profile?.email === 'hoda17753@gmail.com');
-    
     try {
       const admins = await getPendingAdmins();
-      console.log('4. Pending admins from context:', admins);
-      console.log('5. Number of pending admins:', admins.length);
       setPendingAdmins(admins);
     } catch (error) {
-      console.error('6. Error loading pending admins:', error);
+      console.error('Error loading pending admins:', error);
     } finally {
       setLoading(false);
     }
@@ -69,17 +62,23 @@ export default function ApprovalsScreen() {
     );
   };
 
-  const handleReject = (adminId: string, adminEmail: string) => {
+  const handleReject = (adminId: string, adminEmail: string, adminName: string) => {
     Alert.alert(
       'Reject Admin',
-      `Are you sure you want to reject ${adminEmail}?`,
+      `Are you sure you want to reject ${adminName || adminEmail}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Info', 'You can add delete functionality here');
+          onPress: async () => {
+            try {
+              await rejectAdmin(adminId);
+              Alert.alert('Success', 'Admin rejected and removed');
+              loadPendingAdmins();
+            } catch (error: any) {
+              Alert.alert('Error', error.message);
+            }
           },
         },
       ]
@@ -144,7 +143,7 @@ export default function ApprovalsScreen() {
 
         <TouchableOpacity
           style={[styles.button, styles.rejectButton]}
-          onPress={() => handleReject(item.id, item.email)}
+          onPress={() => handleReject(item.id, item.email, item.displayName)}
         >
           <IconSymbol size={20} name="xmark" color="#fff" />
           <Text style={styles.buttonText}>Reject</Text>

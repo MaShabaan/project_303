@@ -20,10 +20,8 @@ import {
 } from '@/services/firebase';
 import { Timestamp } from 'firebase/firestore';
 
-// Storage keys for persistence
 const USER_PROFILE_KEY = '@auth_user_profile';
 
-// Auth state types
 interface AuthState {
   user: User | null;
   profile: UserProfile | null;
@@ -44,6 +42,7 @@ interface AuthContextValue extends AuthState {
   sendPasswordReset: (email: string) => Promise<void>;
   clearError: () => void;
   approveAdmin: (adminId: string) => Promise<void>;
+  rejectAdmin: (adminId: string) => Promise<void>;
   getPendingAdmins: () => Promise<(UserProfile & { id: string })[]>;
 }
 
@@ -58,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com'];
 
-  // Load profile from Firestore when user changes
   const loadUserProfile = useCallback(async (firebaseUser: User | null) => {
     if (!firebaseUser) {
       setProfile(null);
@@ -83,7 +81,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Restore profile from AsyncStorage on init (for quick initial render)
   useEffect(() => {
     AsyncStorage.getItem(USER_PROFILE_KEY).then((stored) => {
       if (stored) {
@@ -96,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  // Listen to auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -118,7 +114,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       try {
         await signUpUser(email, password, role, userData);
-        // onAuthStateChanged will handle profile load
       } catch (err: unknown) {
         const message =
           err instanceof Error ? err.message : 'Sign up failed. Please try again.';
@@ -219,6 +214,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [profile]);
 
+  const rejectAdmin = useCallback(async (adminId: string) => {
+    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+      throw new Error('Only super admins can reject admins');
+    }
+
+    setIsLoading(true);
+    try {
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      const { db } = await import('@/services/firebase');
+      
+      await deleteDoc(doc(db, 'users', adminId));
+      
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to reject admin';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [profile]);
+
   const getPendingAdmins = useCallback(async () => {
     if (!profile || !SUPER_ADMINS.includes(profile.email)) {
       return [];
@@ -260,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       clearError,
       approveAdmin,
+      rejectAdmin,
       getPendingAdmins,
     }),
     [
@@ -274,6 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       clearError,
       approveAdmin,
+      rejectAdmin,
       getPendingAdmins,
     ]
   );
