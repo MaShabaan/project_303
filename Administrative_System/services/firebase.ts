@@ -1,20 +1,12 @@
-/**
- * Firebase Initialization & Services
- *
- * Initializes Firebase Auth, Firestore, and (optionally) Storage.
- * Use this file for all Firebase-related initialization.
- */
-
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import {
-  getAuth,
-  Auth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  sendPasswordResetEmail,
-  User,
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut, 
+  sendPasswordResetEmail, 
   UserCredential,
+  Auth
 } from "firebase/auth";
 import {
   initializeFirestore,
@@ -31,7 +23,6 @@ import {
 } from "firebase/firestore";
 import { firebaseConfig } from "@/config/firebase";
 
-// Required when not deployed to Firebase Hosting (e.g. React Native/Expo)
 const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
   if (existingApps.length > 0) {
@@ -47,9 +38,8 @@ const getFirebaseApp = (): FirebaseApp => {
 
 const app: FirebaseApp = getFirebaseApp();
 
-// Initialize services
 export const auth: Auth = getAuth(app);
-// Use initializeFirestore with long polling for React Native (fixes "client is offline")
+
 export const db: Firestore = (() => {
   try {
     return initializeFirestore(app, {
@@ -60,13 +50,10 @@ export const db: Firestore = (() => {
   }
 })();
 
-// Force Firestore online (fixes "client is offline" in React Native/Expo)
 enableNetwork(db).catch(() => {});
 
-// User role type
 export type UserRole = "admin" | "user";
 
-// User profile stored in Firestore
 export interface UserProfile {
   email: string;
   displayName?: string | null;
@@ -76,7 +63,6 @@ export interface UserProfile {
   updatedAt: Timestamp;
 }
 
-// Collection names
 export const COLLECTIONS = {
   USERS: "users",
   TICKETS: "tickets",
@@ -87,14 +73,13 @@ export const COLLECTIONS = {
   ENROLLMENTS: "enrollments",
 } as const;
 
-// --- Course rating (feedback) ---
 export type CourseRatingPayload = {
   userId: string;
   userEmail: string;
   courseName: string;
   instructor: string;
-  courseRating: number; // 1-5
-  instructorRating: number; // 1-5
+  courseRating: number;
+  instructorRating: number;
   comments: string;
   createdAt: Timestamp;
 };
@@ -117,7 +102,6 @@ export async function submitCourseRating(
   });
 }
 
-// --- Tickets (complaints) ---
 export const TICKET_TYPES = [
   { value: "technical_issue", label: "Technical issue" },
   { value: "complaint", label: "Complaint" },
@@ -162,7 +146,7 @@ export async function submitTicket(
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.TICKETS);
   await addDoc(ref, {
-    userId: userId, // CHANGED from userId to createdBy
+    userId: userId,
     userEmail,
     type: data.type,
     title: data.title.trim(),
@@ -173,24 +157,15 @@ export async function submitTicket(
   });
 }
 
-/**
- * Get user profile document reference
- */
 export function getUserDocRef(uid: string) {
   return doc(db, COLLECTIONS.USERS, uid);
 }
 
-/**
- * Fetch user profile (including role) from Firestore
- */
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const userDoc = await getDoc(getUserDocRef(uid));
   return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
 }
 
-/**
- * Sign up a new user with email/password and save profile to Firestore
- */
 export async function signUpUser(
   email: string,
   password: string,
@@ -217,9 +192,6 @@ export async function signUpUser(
   return credential;
 }
 
-/**
- * Sign in with email and password
- */
 export async function loginUser(
   email: string,
   password: string,
@@ -227,16 +199,10 @@ export async function loginUser(
   return signInWithEmailAndPassword(auth, email, password);
 }
 
-/**
- * Sign out the current user
- */
 export async function logoutUser(): Promise<void> {
   await firebaseSignOut(auth);
 }
 
-/**
- * Send password reset email
- */
 export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
