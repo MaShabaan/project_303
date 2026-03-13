@@ -54,11 +54,14 @@ enableNetwork(db).catch(() => {});
 
 export type UserRole = "admin" | "user";
 
+// ✅ أضفنا department و division هنا
 export interface UserProfile {
   email: string;
   displayName?: string | null;
   role: UserRole;
   isApproved?: boolean;
+  department?: string;
+  division?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -91,7 +94,7 @@ export async function submitCourseRating(
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.FEEDBACK);
   await addDoc(ref, {
-    userId: userId,
+    userId,
     userEmail,
     courseName: data.courseName.trim(),
     instructor: data.instructor.trim(),
@@ -146,7 +149,7 @@ export async function submitTicket(
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.TICKETS);
   await addDoc(ref, {
-    userId: userId,
+    userId,
     userEmail,
     type: data.type,
     title: data.title.trim(),
@@ -166,17 +169,18 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
 }
 
+// ✅ أضفنا department و division في signUpUser
 export async function signUpUser(
   email: string,
   password: string,
   role: UserRole,
-  userData?: { displayName?: string },
+  userData?: {
+    displayName?: string;
+    department?: string;
+    division?: string;
+  },
 ): Promise<UserCredential> {
-  const credential = await createUserWithEmailAndPassword(
-    auth,
-    email,
-    password,
-  );
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
   const { uid } = credential.user;
   const now = Timestamp.now();
 
@@ -185,6 +189,13 @@ export async function signUpUser(
     displayName: userData?.displayName ?? null,
     role,
     isApproved: role === "admin" ? false : true,
+    // ✅ بيتخزنوا في Firestore بس لو role === "user"
+    ...(role === "user" && userData?.department
+      ? { department: userData.department }
+      : {}),
+    ...(role === "user" && userData?.division
+      ? { division: userData.division }
+      : {}),
     createdAt: now,
     updatedAt: now,
   });

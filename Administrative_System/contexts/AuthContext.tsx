@@ -35,7 +35,7 @@ interface AuthContextValue extends AuthState {
     email: string,
     password: string,
     role: UserRole,
-    userData?: { displayName?: string }
+    userData?: { displayName?: string; department?: string; division?: string }
   ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -68,10 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userProfile = await getUserProfile(firebaseUser.uid);
       setProfile(userProfile ?? null);
       if (userProfile) {
-        await AsyncStorage.setItem(
-          USER_PROFILE_KEY,
-          JSON.stringify(userProfile)
-        );
+        await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
       } else {
         await AsyncStorage.removeItem(USER_PROFILE_KEY);
       }
@@ -99,7 +96,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await loadUserProfile(firebaseUser);
       setIsInitialized(true);
     });
-
     return unsubscribe;
   }, [loadUserProfile]);
 
@@ -108,15 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       role: UserRole,
-      userData?: { displayName?: string }
+      userData?: { displayName?: string; department?: string; division?: string }
     ) => {
       setIsLoading(true);
       setError(null);
       try {
         await signUpUser(email, password, role, userData);
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : 'Sign up failed. Please try again.';
+        const message = err instanceof Error ? err.message : 'Sign up failed. Please try again.';
         setError(message);
         throw err;
       } finally {
@@ -132,24 +127,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const credential = await loginUser(email, password);
       const userProfile = await getUserProfile(credential.user.uid);
-      
+
       if (!userProfile) {
         throw new Error('User profile not found. Please contact support.');
       }
 
       if (userProfile.role === 'admin' && userProfile.isApproved === false) {
-        await logoutUser(); 
+        await logoutUser();
         throw new Error('Your admin account is pending approval. Please wait for super admin confirmation.');
       }
 
       setProfile(userProfile);
-      await AsyncStorage.setItem(
-        USER_PROFILE_KEY,
-        JSON.stringify(userProfile)
-      );
+      await AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(userProfile));
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Login failed. Please try again.';
+      const message = err instanceof Error ? err.message : 'Login failed. Please try again.';
       setError(message);
       throw err;
     } finally {
@@ -165,8 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       await AsyncStorage.removeItem(USER_PROFILE_KEY);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : 'Logout failed. Please try again.';
+      const message = err instanceof Error ? err.message : 'Logout failed. Please try again.';
       setError(message);
     } finally {
       setIsLoading(false);
@@ -179,10 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await resetPassword(email);
     } catch (err: unknown) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Password reset failed. Please try again.';
+      const message = err instanceof Error ? err.message : 'Password reset failed. Please try again.';
       setError(message);
       throw err;
     } finally {
@@ -194,16 +181,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!profile || !SUPER_ADMINS.includes(profile.email)) {
       throw new Error('Only super admins can approve admins');
     }
-
     setIsLoading(true);
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('@/services/firebase');
-      
       await updateDoc(doc(db, 'users', adminId), {
         isApproved: true,
         approvedBy: profile.email,
-        approvedAt: Timestamp.now()
+        approvedAt: Timestamp.now(),
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to approve admin';
@@ -218,14 +203,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!profile || !SUPER_ADMINS.includes(profile.email)) {
       throw new Error('Only super admins can reject admins');
     }
-
     setIsLoading(true);
     try {
       const { doc, deleteDoc } = await import('firebase/firestore');
       const { db } = await import('@/services/firebase');
-      
       await deleteDoc(doc(db, 'users', adminId));
-      
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to reject admin';
       setError(message);
@@ -239,21 +221,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!profile || !SUPER_ADMINS.includes(profile.email)) {
       return [];
     }
-
     try {
       const { collection, query, where, getDocs } = await import('firebase/firestore');
       const { db } = await import('@/services/firebase');
-      
       const q = query(
         collection(db, 'users'),
         where('role', '==', 'admin'),
         where('isApproved', '==', false)
       );
-      
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       })) as (UserProfile & { id: string })[];
     } catch (err) {
       console.error('Error fetching pending admins:', err);
