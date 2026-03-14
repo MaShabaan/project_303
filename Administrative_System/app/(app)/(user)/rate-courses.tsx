@@ -135,7 +135,7 @@ export default function RateCoursesScreen() {
       if (!selectedCourse) { Alert.alert('Required', 'Please select a course.'); return; }
       if (!instructor.trim()) { Alert.alert('Required', 'Please enter the instructor name.'); return; }
 
-      // ✅ Check duplicate قبل ما يكمل
+      //  Check duplicate قبل ما يكمل
       setCheckingDuplicate(true);
       try {
         const q = query(

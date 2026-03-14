@@ -70,7 +70,6 @@ export default function MyRatingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Edit modal
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState<FeedbackDoc | null>(null);
   const [editInstructor, setEditInstructor] = useState('');
@@ -153,31 +152,38 @@ export default function MyRatingsScreen() {
     }
   };
 
-  // ── Delete ────────────────────────────────────────────────
+  // ── Delete — button 
   const handleDelete = (item: FeedbackDoc) => {
     Alert.alert(
-      '🗑️ Delete Rating',
-      `Are you sure you want to delete your rating for\n"${item.courseName}"?\n\nThis action cannot be undone.`,
+      'Delete Rating',
+      `Delete your rating for "${item.courseName}"?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {},
+        },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
+          onPress: () => {
             setDeleteLoading(item.id);
-            try {
-              await deleteCourseRating(item.id);
-              await loadRatings();
-              Alert.alert('Deleted ✅', 'Rating deleted successfully.');
-            } catch (e) {
-              console.error(e);
-              Alert.alert('Error', 'Failed to delete. Please try again.');
-            } finally {
-              setDeleteLoading(null);
-            }
+            deleteCourseRating(item.id)
+              .then(() => loadRatings())
+              .then(() => {
+                Alert.alert('Deleted ✅', 'Rating deleted successfully.');
+              })
+              .catch((e) => {
+                console.error(e);
+                Alert.alert('Error', 'Failed to delete. Please try again.');
+              })
+              .finally(() => {
+                setDeleteLoading(null);
+              });
           },
         },
-      ]
+      ],
+      { cancelable: true }
     );
   };
 
@@ -263,8 +269,6 @@ export default function MyRatingsScreen() {
           return (
             <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
               <View style={[styles.card, isDeleting && { opacity: 0.5 }]}>
-
-                {/* Header */}
                 <View style={styles.cardHeader}>
                   <View style={[styles.courseAvatar, { backgroundColor: avatarColor }]}>
                     <Text style={styles.courseAvatarText}>{item.courseName.charAt(0).toUpperCase()}</Text>
@@ -276,29 +280,16 @@ export default function MyRatingsScreen() {
                   <View style={styles.cardActions}>
                     <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
                     <View style={styles.actionBtns}>
-                      <TouchableOpacity
-                        style={styles.editBtn}
-                        onPress={() => openEdit(item)}
-                        activeOpacity={0.8}
-                        disabled={isDeleting}
-                      >
+                      <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)} activeOpacity={0.8} disabled={isDeleting}>
                         <Text style={styles.editBtnText}>✏️</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => handleDelete(item)}
-                        activeOpacity={0.8}
-                        disabled={isDeleting}
-                      >
-                        <Text style={styles.deleteBtnText}>
-                          {isDeleting ? '...' : '🗑️'}
-                        </Text>
+                      <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)} activeOpacity={0.8} disabled={isDeleting}>
+                        <Text style={styles.deleteBtnText}>{isDeleting ? '...' : '🗑️'}</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
                 </View>
 
-                {/* Tags */}
                 {hasTags && (
                   <View style={styles.tagsRow}>
                     {divInfo && <View style={styles.tagDiv}><Text style={styles.tagDivText}>{divInfo.icon} {divInfo.label}</Text></View>}
@@ -307,7 +298,6 @@ export default function MyRatingsScreen() {
                   </View>
                 )}
 
-                {/* Ratings */}
                 <View style={styles.ratingsRow}>
                   <View style={[styles.ratingBadge, { backgroundColor: courseColors.bg, borderColor: courseColors.border }]}>
                     <Text style={styles.ratingBadgeLabel}>COURSE</Text>
@@ -326,13 +316,11 @@ export default function MyRatingsScreen() {
                   </View>
                 </View>
 
-                {/* Comments */}
                 {item.comments ? (
                   <View style={styles.commentsBox}>
                     <Text style={styles.commentsText}>"{item.comments}"</Text>
                   </View>
                 ) : null}
-
               </View>
             </Animated.View>
           );
@@ -357,14 +345,8 @@ export default function MyRatingsScreen() {
               </View>
 
               <Text style={styles.modalLabel}>INSTRUCTOR</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editInstructor}
-                onChangeText={setEditInstructor}
-                placeholder="Instructor name"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="words"
-              />
+              <TextInput style={styles.modalInput} value={editInstructor} onChangeText={setEditInstructor}
+                placeholder="Instructor name" placeholderTextColor="#94a3b8" autoCapitalize="words" />
 
               <Text style={styles.modalLabel}>COURSE RATING</Text>
               <View style={styles.npsGrid}>
@@ -403,26 +385,13 @@ export default function MyRatingsScreen() {
               </View>
 
               <Text style={styles.modalLabel}>COMMENTS</Text>
-              <TextInput
-                style={[styles.modalInput, styles.modalTextArea]}
-                value={editComments}
-                onChangeText={setEditComments}
-                placeholder="Any additional feedback..."
-                placeholderTextColor="#94a3b8"
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-              />
+              <TextInput style={[styles.modalInput, styles.modalTextArea]} value={editComments}
+                onChangeText={setEditComments} placeholder="Any additional feedback..."
+                placeholderTextColor="#94a3b8" multiline numberOfLines={4} textAlignVertical="top" />
 
-              <TouchableOpacity
-                style={[styles.saveBtn, editLoading && styles.saveBtnDisabled]}
-                onPress={handleUpdate}
-                disabled={editLoading}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.saveBtnText}>
-                  {editLoading ? 'Saving...' : 'Save Changes ✅'}
-                </Text>
+              <TouchableOpacity style={[styles.saveBtn, editLoading && styles.saveBtnDisabled]}
+                onPress={handleUpdate} disabled={editLoading} activeOpacity={0.85}>
+                <Text style={styles.saveBtnText}>{editLoading ? 'Saving...' : 'Save Changes ✅'}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
