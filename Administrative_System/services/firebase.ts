@@ -18,6 +18,7 @@ import {
   getDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   collection,
   Timestamp,
 } from "firebase/firestore";
@@ -25,26 +26,19 @@ import { firebaseConfig } from "@/config/firebase";
 
 const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
-  if (existingApps.length > 0) {
-    return getApp();
-  }
+  if (existingApps.length > 0) return getApp();
   if (!firebaseConfig?.apiKey) {
-    throw new Error(
-      "Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts",
-    );
+    throw new Error("Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts");
   }
   return initializeApp(firebaseConfig);
 };
 
 const app: FirebaseApp = getFirebaseApp();
-
 export const auth: Auth = getAuth(app);
 
 export const db: Firestore = (() => {
   try {
-    return initializeFirestore(app, {
-      experimentalForceLongPolling: true,
-    });
+    return initializeFirestore(app, { experimentalForceLongPolling: true });
   } catch {
     return getFirestore(app);
   }
@@ -54,7 +48,6 @@ enableNetwork(db).catch(() => {});
 
 export type UserRole = "admin" | "user";
 
-// ✅ أضفنا department و division هنا
 export interface UserProfile {
   email: string;
   displayName?: string | null;
@@ -84,13 +77,26 @@ export type CourseRatingPayload = {
   courseRating: number;
   instructorRating: number;
   comments: string;
+  year?: number;
+  term?: number;
+  division?: string;
   createdAt: Timestamp;
 };
 
+// ── Submit new rating ─────────────────────────────────────────
 export async function submitCourseRating(
   userId: string,
   userEmail: string,
-  data: { courseName: string; instructor: string; courseRating: number; instructorRating: number; comments: string }
+  data: {
+    courseName: string;
+    instructor: string;
+    courseRating: number;
+    instructorRating: number;
+    comments: string;
+    year?: number;
+    term?: number;
+    division?: string;
+  }
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.FEEDBACK);
   await addDoc(ref, {
@@ -101,8 +107,37 @@ export async function submitCourseRating(
     courseRating: data.courseRating,
     instructorRating: data.instructorRating,
     comments: (data.comments || "").trim(),
+    year: data.year ?? null,
+    term: data.term ?? null,
+    division: data.division ?? null,
     createdAt: Timestamp.now(),
   });
+}
+
+// ── Update existing rating ────────────────────────────────────
+export async function updateCourseRating(
+  feedbackId: string,
+  data: {
+    instructor: string;
+    courseRating: number;
+    instructorRating: number;
+    comments: string;
+  }
+): Promise<void> {
+  const ref = doc(db, COLLECTIONS.FEEDBACK, feedbackId);
+  await updateDoc(ref, {
+    instructor: data.instructor.trim(),
+    courseRating: data.courseRating,
+    instructorRating: data.instructorRating,
+    comments: (data.comments || "").trim(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// ── Delete rating ─────────────────────────────────────────────
+export async function deleteCourseRating(feedbackId: string): Promise<void> {
+  const ref = doc(db, COLLECTIONS.FEEDBACK, feedbackId);
+  await deleteDoc(ref);
 }
 
 export const TICKET_TYPES = [
@@ -169,7 +204,6 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
 }
 
-// ✅ أضفنا department و division في signUpUser
 export async function signUpUser(
   email: string,
   password: string,
@@ -189,13 +223,8 @@ export async function signUpUser(
     displayName: userData?.displayName ?? null,
     role,
     isApproved: role === "admin" ? false : true,
-    // ✅ بيتخزنوا في Firestore بس لو role === "user"
-    ...(role === "user" && userData?.department
-      ? { department: userData.department }
-      : {}),
-    ...(role === "user" && userData?.division
-      ? { division: userData.division }
-      : {}),
+    ...(role === "user" && userData?.department ? { department: userData.department } : {}),
+    ...(role === "user" && userData?.division ? { division: userData.division } : {}),
     createdAt: now,
     updatedAt: now,
   });
@@ -203,10 +232,7 @@ export async function signUpUser(
   return credential;
 }
 
-export async function loginUser(
-  email: string,
-  password: string,
-): Promise<UserCredential> {
+export async function loginUser(email: string, password: string): Promise<UserCredential> {
   return signInWithEmailAndPassword(auth, email, password);
 }
 
