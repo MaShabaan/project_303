@@ -1,36 +1,54 @@
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../../../config/firebase";
 import { useLocalSearchParams, router } from "expo-router";
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
 
 export default function EditCourse() {
   const params = useLocalSearchParams();
-  const [name, setName] = useState(String(params.name));
+  const [courseName, setCourseName] = useState(String(params.name));
   const [instructor, setInstructor] = useState(String(params.instructor));
 
-  const handleSave = () => {
-    if (!name || !instructor) {
+  const handleSave = async () => {
+    if (!courseName || !instructor) {
       Alert.alert("Error", "Please fill all fields");
       return;
     }
 
-    // ترجع لصفحة ManageCourses مع التعديل
-router.replace({
-  pathname: "./courses",
-  params: {
-    id: params.id,               // نفس الـ id للكورس القديم
-    name,
-    instructor,
-    edited: "true",              // string عشان expo-router يقبلها
-  },
-});
+    try {
+      // تحديث الكورس في Firestore
+      const courseRef = doc(db, "courses", String(params.id));
+      await updateDoc(courseRef, {
+        name: courseName,
+        instructor,
+      });
+
+      Alert.alert("Success", "Course updated successfully!");
+
+      // العودة لصفحة Manage Courses
+      router.replace("./courses");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to update course");
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Edit Course</Text>
 
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Course Name" />
-      <TextInput style={styles.input} value={instructor} onChangeText={setInstructor} placeholder="Instructor Name" />
+      <TextInput
+        style={styles.input}
+        value={courseName}
+        onChangeText={setCourseName}
+        placeholder="Course Name"
+      />
+      <TextInput
+        style={styles.input}
+        value={instructor}
+        onChangeText={setInstructor}
+        placeholder="Instructor Name"
+      />
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
         <Text style={styles.saveText}>Save Changes</Text>

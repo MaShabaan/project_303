@@ -1,8 +1,7 @@
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../../config/firebase";
-import { useLocalSearchParams, router } from "expo-router";
-import { useEffect, useState } from "react";
-import React from "react";
+import { router } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,35 +12,41 @@ import {
 } from "react-native";
 
 export default function ManageCourses() {
-  const params = useLocalSearchParams();
   const [courses, setCourses] = useState<any[]>([]);
-  
 
+  // جلب كل الكورسات من Firebase عند فتح الصفحة
+  const fetchCourses = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "courses"));
+      const list: any[] = [];
+      querySnapshot.forEach((docItem) => {
+        list.push({
+          id: docItem.id,
+          ...docItem.data(),
+        });
+      });
+      setCourses(list);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to fetch courses");
+    }
+  };
 
+  useEffect(() => {
+    fetchCourses();
+  }, []);
 
-   useEffect(() => {
-  fetchCourses();
-}, []);
-
-const fetchCourses = async () => {
-  const querySnapshot = await getDocs(collection(db, "courses"));
-  const list: any[] = [];
-
-  querySnapshot.forEach((docItem) => {
-    list.push({
-      id: docItem.id,
-      ...docItem.data(),
-    });
-  });
-
-  setCourses(list);
-};
-  
-
-  // حذف كورس نهائي
-  const deleteCourse = (id: string) => {
-    setCourses((prev) => prev.filter((course) => course.id !== id));
-    Alert.alert("Deleted", "The course has been deleted successfully.");
+  // حذف كورس
+  const deleteCourse = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "courses", id));
+      // إعادة تحميل الكورسات بعد الحذف
+      fetchCourses();
+      Alert.alert("Deleted", "The course has been deleted successfully.");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Failed to delete course");
+    }
   };
 
   // render لكل كورس
@@ -104,7 +109,13 @@ const fetchCourses = async () => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: "#f5f5f5" },
   title: { fontSize: 26, fontWeight: "bold", marginBottom: 20 },
-  addButton: { backgroundColor: "#667eea", padding: 12, borderRadius: 8, alignItems: "center", marginBottom: 20 },
+  addButton: {
+    backgroundColor: "#667eea",
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 20,
+  },
   addText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   courseCard: { backgroundColor: "#fff", padding: 15, borderRadius: 10, marginBottom: 10 },
   courseTitle: { fontSize: 18, fontWeight: "bold" },
