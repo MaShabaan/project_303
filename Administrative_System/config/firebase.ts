@@ -1,3 +1,6 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+
 const firebaseConfig = {
   apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
   authDomain: "myproject-68794.firebaseapp.com",
@@ -8,4 +11,8 @@ const firebaseConfig = {
   appId: "1:252117852002:web:de5be22989ed8852fe963b",
 };
 
-export { firebaseConfig };
+// 🔥 تشغيل Firebase
+const app = initializeApp(firebaseConfig);
+
+// 🔥 تشغيل Firestore
+export const db = getFirestore(app);

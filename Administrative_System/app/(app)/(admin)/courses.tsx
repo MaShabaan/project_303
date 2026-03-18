@@ -1,3 +1,5 @@
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db } from "../../../config/firebase";
 import { useLocalSearchParams, router } from "expo-router";
 import { useEffect, useState } from "react";
 import React from "react";
@@ -13,43 +15,32 @@ import {
 export default function ManageCourses() {
   const params = useLocalSearchParams();
   const [courses, setCourses] = useState<any[]>([]);
-  const [addedCoursesIds, setAddedCoursesIds] = useState<string[]>([]);
+  
 
-  // إضافة كورسات جديدة من أي صفحة مرة واحدة فقط
-  useEffect(() => {
-    if (params.edited === "true") return;
 
-    if (params.name && params.instructor) {
-      const tempId = String(params.name) + String(params.instructor);
-      if (!addedCoursesIds.includes(tempId)) {
-        const newCourse = {
-          id: tempId,
-          name: String(params.name),
-          instructor: String(params.instructor),
-        };
-        setCourses((prev) => [...prev, newCourse]);
-        setAddedCoursesIds((prev) => [...prev, tempId]);
-      }
-    }
-  }, [params]);
 
-  // تعديل كورس موجود بعد التعديل
-  useEffect(() => {
-    if (params.edited === "true" && params.id) {
-      setCourses((prev) =>
-        prev.map((c) =>
-          c.id === String(params.id)
-            ? { ...c, name: String(params.name), instructor: String(params.instructor) }
-            : c
-        )
-      );
-    }
-  }, [params]);
+   useEffect(() => {
+  fetchCourses();
+}, []);
+
+const fetchCourses = async () => {
+  const querySnapshot = await getDocs(collection(db, "courses"));
+  const list: any[] = [];
+
+  querySnapshot.forEach((docItem) => {
+    list.push({
+      id: docItem.id,
+      ...docItem.data(),
+    });
+  });
+
+  setCourses(list);
+};
+  
 
   // حذف كورس نهائي
   const deleteCourse = (id: string) => {
     setCourses((prev) => prev.filter((course) => course.id !== id));
-    setAddedCoursesIds((prev) => prev.filter((courseId) => courseId !== id));
     Alert.alert("Deleted", "The course has been deleted successfully.");
   };
 
