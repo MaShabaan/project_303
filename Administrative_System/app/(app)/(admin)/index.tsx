@@ -106,20 +106,22 @@ export default function AdminDashboardScreen() {
                 key={index}
                 style={styles.card}
                 activeOpacity={0.8}
-                onPress={() => {
-                  if (item.route === "./users") {
-                    router.push("./users");
-                  } else if (item.route === "./complaints") {
-                    router.push("./complaints");
-                  } else if (item.route === "./feedback") {
-                    router.push("./feedback");
-                  } else {
-                    Alert.alert(
-                      "Coming Soon",
-                      `${item.title} page coming soon!`,
-                    );
-                  }
-                }}
+onPress={() => {
+  if (item.route === "./users") {
+    router.push("./users");
+  } else if (item.route === "./complaints") {
+    router.push("./complaints");
+  } else if (item.route === "./feedback") {
+    router.push("./feedback");
+  } else if (item.route === "./courses") {
+    router.push("./courses");
+  } else {
+    Alert.alert(
+      "Coming Soon",
+      `${item.title} page coming soon!`,
+    );
+  }
+}}
               >
                 <Text style={styles.cardIcon}>{item.icon}</Text>
                 <Text style={styles.cardTitle}>{item.title}</Text>
