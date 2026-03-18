@@ -14,7 +14,7 @@ import {
 export default function ManageCourses() {
   const [courses, setCourses] = useState<any[]>([]);
 
-  // جلب كل الكورسات من Firebase عند فتح الصفحة
+
   const fetchCourses = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "courses"));
@@ -36,11 +36,11 @@ export default function ManageCourses() {
     fetchCourses();
   }, []);
 
-  // حذف كورس
+
   const deleteCourse = async (id: string) => {
     try {
       await deleteDoc(doc(db, "courses", id));
-      // إعادة تحميل الكورسات بعد الحذف
+    
       fetchCourses();
       Alert.alert("Deleted", "The course has been deleted successfully.");
     } catch (error) {
@@ -49,14 +49,14 @@ export default function ManageCourses() {
     }
   };
 
-  // render لكل كورس
+
   const renderCourse = ({ item }: any) => (
     <View style={styles.courseCard}>
       <Text style={styles.courseTitle}>{item.name}</Text>
       <Text style={styles.courseInstructor}>Instructor: {item.instructor}</Text>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {/* زر Edit */}
+    
         <TouchableOpacity
           style={styles.editButton}
           onPress={() =>
@@ -73,7 +73,7 @@ export default function ManageCourses() {
           <Text style={styles.editText}>Edit</Text>
         </TouchableOpacity>
 
-        {/* زر Delete */}
+      
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => deleteCourse(item.id)}
@@ -88,7 +88,6 @@ export default function ManageCourses() {
     <View style={styles.container}>
       <Text style={styles.title}>Manage Courses</Text>
 
-      {/* زر فتح صفحة Add Course */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => router.push("./add-course")}
@@ -96,7 +95,6 @@ export default function ManageCourses() {
         <Text style={styles.addText}>+ Add Course</Text>
       </TouchableOpacity>
 
-      {/* قائمة الكورسات */}
       <FlatList
         data={courses}
         keyExtractor={(item) => item.id}

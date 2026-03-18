@@ -16,7 +16,7 @@ export default function EditCourse() {
     }
 
     try {
-      // تحديث الكورس في Firestore
+  
       const courseRef = doc(db, "courses", String(params.id));
       await updateDoc(courseRef, {
         name: courseName,
@@ -25,7 +25,6 @@ export default function EditCourse() {
 
       Alert.alert("Success", "Course updated successfully!");
 
-      // العودة لصفحة Manage Courses
       router.replace("./courses");
     } catch (error) {
       console.log(error);

@@ -15,7 +15,6 @@ export default function AddCourse() {
     }
 
     try {
-      // إضافة الكورس مباشرة في Firestore
       await addDoc(collection(db, "courses"), {
         name: courseName,
         instructor,
@@ -23,7 +22,6 @@ export default function AddCourse() {
 
       Alert.alert("Success", "Course added successfully!");
 
-      // إعادة التوجيه لصفحة Manage Courses
       router.replace("./courses");
     } catch (error) {
       console.log(error);
