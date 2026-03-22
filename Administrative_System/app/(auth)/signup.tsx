@@ -45,33 +45,62 @@ export default function SignUpScreen() {
   }, []);
 
   const handleSignUp = async () => {
+    clearError();
+
+    if (!fullName.trim()) {
+      Alert.alert("Error", "Please enter your full name.");
+      return;
+    }
+
     if (!email.trim() || !password.trim()) {
       Alert.alert("Error", "Please enter email and password.");
       return;
     }
+
     if (password.length < 6) {
       Alert.alert("Error", "Password must be at least 6 characters.");
       return;
     }
+
     if (password !== confirmPassword) {
       Alert.alert("Error", "Passwords do not match.");
       return;
     }
+
     if (role === "user" && !division) {
       Alert.alert("Required", "Please select your division.");
       return;
     }
+
     try {
       await signUp(email.trim(), password, role, {
-        displayName: fullName.trim() || undefined,
+        displayName: fullName.trim(),
         department: role === "user" ? "Mathematics Department" : undefined,
         division: role === "user" ? division ?? undefined : undefined,
       });
-      await signOut();
-      Alert.alert("Success", "Registration successful. Please log in.", [
-        { text: "OK", onPress: () => router.replace("/(auth)/login") },
-      ]);
-    } catch {}
+
+      if (role === "admin") {
+        Alert.alert(
+          "Account Pending Approval",
+          "Your admin account is pending approval. You will be notified once approved.",
+          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
+        );
+      } else {
+        Alert.alert("Success", "Registration successful. Please log in.", [
+          { text: "OK", onPress: () => router.replace("/(auth)/login") },
+        ]);
+      }
+
+      try {
+        await signOut();
+      } catch (logoutErr) {
+        console.warn("Sign out after signup failed", logoutErr);
+      }
+
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Sign up failed. Please try again.";
+      Alert.alert("Error", message);
+    }
   };
 
   const isFocused = (field: string) => focusedField === field;
@@ -362,7 +391,6 @@ const styles = StyleSheet.create({
   roleLabelSelected: { color: "#a78bfa" },
   roleDesc: { fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 16 },
 
-  // Department
   departmentBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: "rgba(124,58,237,0.12)",
@@ -384,7 +412,6 @@ const styles = StyleSheet.create({
   },
   departmentCheckText: { fontSize: 12, color: "#a78bfa", fontWeight: "700" },
 
-  // Division
   divisionContainer: { flexDirection: "row", gap: 12, marginBottom: 24 },
   divisionOption: {
     flex: 1, backgroundColor: "rgba(255,255,255,0.07)",
