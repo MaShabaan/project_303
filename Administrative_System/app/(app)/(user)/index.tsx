@@ -78,7 +78,6 @@ export default function UserDashboardScreen() {
         const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
         setAvgRating(avg.toFixed(1));
 
-        // ── Course Satisfaction — من التقييمات الحقيقية ──
         const courseMap: Record<string, number[]> = {};
         feedbackSnap.docs.forEach(doc => {
           const d = doc.data();

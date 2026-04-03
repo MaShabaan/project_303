@@ -1,9 +1,4 @@
-/**
- * Main App Layout - Role-Based Routing
- *
- * Protects routes: only authenticated users can access.
- * Renders Stack for (admin), (user), and index (redirects based on role).
- */
+
 
 import { Redirect, Stack } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
