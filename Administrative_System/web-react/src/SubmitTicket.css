@@ -1,0 +1,57 @@
+.submit-ticket-container {
+    position: relative;
+    z-index: 2;
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+    max-width: 800px;
+    width: 90%;
+    margin: 20px auto;
+}
+
+.user-role-badge {
+    background: #667eea;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    display: inline-block;
+    font-size: 14px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.ticket-form-container {
+    padding: 20px;
+    border-radius: 15px;
+    background: #f8f9ff;
+    border: 1px solid #e0e4ff;
+}
+
+.form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: #444;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #d0d4e4;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    min-height: 120px;
+    resize: vertical;
+}

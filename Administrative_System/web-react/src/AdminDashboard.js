@@ -1,0 +1,80 @@
+import { useEffect, useState } from 'react';
+import './AdminDashboard.css';
+
+function AdminDashboard({ user, onLogout }) {
+  const [adminData, setAdminData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  
+  useEffect(() => {
+    if (user) {
+      setAdminData({
+        name: user.displayName || "Admin",
+        email: user.email,
+        role: "ADMIN",
+        createdAt: "March 20, 2026",
+        lastLogin: new Date().toLocaleString()
+      });
+      setLoading(false);
+    }
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="loading-spinner">
+        <div className="spinner"></div>
+        <p>Loading admin dashboard...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-page">
+      <div className="background-overlay"></div>
+      
+      <div className="dashboard-container">
+        <div className="welcome-header">
+          <h1>Welcome Mr. <span>{adminData.name}</span>!</h1>
+          <div className="user-role">{adminData.role}</div>
+        </div>
+        
+        <div className="dashboard-cards">
+          <div className="card" onClick={() => console.log("Navigate to Manage Complaints")}>
+            <div className="card-icon">📋</div>
+            <h3>Manage Complaints</h3>
+            <p>View and resolve user complaints</p>
+          </div>
+          
+          <div className="card" onClick={() => console.log("Navigate to Manage Courses")}>
+            <div className="card-icon">📚</div>
+            <h3>Manage Courses</h3>
+            <p>Add, edit, and manage courses</p>
+          </div>
+          
+          <div className="card" onClick={() => console.log("Navigate to Manage Users")}>
+            <div className="card-icon">👥</div>
+            <h3>Manage Users</h3>
+            <p>View and manage user accounts</p>
+          </div>
+          
+          <div className="card" onClick={() => console.log("Navigate to View Reports")}>
+            <div className="card-icon">📊</div>
+            <h3>View Reports</h3>
+            <p>Activity logs and analytics</p>
+          </div>
+        </div>
+        
+        <div className="user-info">
+          <strong>Email:</strong> {adminData.email}<br />
+          <strong>Account Type:</strong> Administrator<br />
+          <strong>Account Created:</strong> {adminData.createdAt}<br />
+          <strong>Last Login:</strong> {adminData.lastLogin}
+        </div>
+        
+        <button onClick={onLogout} className="action-button logout-btn">LOGOUT</button>
+      </div>
+    </div>
+  );
+}
+
+export default AdminDashboard;
