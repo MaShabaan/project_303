@@ -1,18 +1,35 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
   Alert,
 } from "react-native";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { router } from "expo-router";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db, COLLECTIONS } from "@/services/firebase";
+import { Ionicons } from "@expo/vector-icons";
+
+const ACCENT = "#764ba2";
+const ACCENT_LIGHT = "#667eea";
+
+type StatKey = "users" | "admins" | "complaints" | "courses";
 
 export default function AdminDashboardScreen() {
   const { user, profile, signOut } = useAuth();
+  const [stats, setStats] = useState<Record<StatKey, number>>({
+    users: 0,
+    admins: 0,
+    complaints: 0,
+    courses: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+  const statsReady = useRef(0);
 
   const handleLogout = async () => {
     await signOut();
@@ -25,35 +42,96 @@ export default function AdminDashboardScreen() {
   const SUPER_ADMINS = ["mshabaan295@gmail.com", "hoda17753@gmail.com"];
   const isSuperAdmin = SUPER_ADMINS.includes(profile?.email || "");
 
+  useEffect(() => {
+    statsReady.current = 0;
+    setStatsLoading(true);
+
+    const markReady = () => {
+      statsReady.current += 1;
+      if (statsReady.current >= 3) setStatsLoading(false);
+    };
+
+    const unsubUsers = onSnapshot(
+      collection(db, COLLECTIONS.USERS),
+      (snap) => {
+        let regular = 0;
+        let admins = 0;
+        snap.forEach((d) => {
+          const role = d.data()?.role;
+          if (role === "admin") admins += 1;
+          else regular += 1;
+        });
+        setStats((s) => ({ ...s, users: regular, admins }));
+        markReady();
+      },
+      () => markReady(),
+    );
+
+    const unsubComplaints = onSnapshot(
+      collection(db, COLLECTIONS.TICKETS),
+      (snap) => {
+        setStats((s) => ({ ...s, complaints: snap.size }));
+        markReady();
+      },
+      () => markReady(),
+    );
+
+    const unsubCourses = onSnapshot(
+      collection(db, COLLECTIONS.COURSES),
+      (snap) => {
+        setStats((s) => ({ ...s, courses: snap.size }));
+        markReady();
+      },
+      () => markReady(),
+    );
+
+    return () => {
+      unsubUsers();
+      unsubComplaints();
+      unsubCourses();
+    };
+  }, []);
+
   const handleApprovalsPress = () => {
     router.push("./approvals");
   };
 
-  const cards = [
+  const actionCards = [
     {
-      icon: "📋",
+      icon: "chatbubbles-outline" as const,
       title: "Manage Complaints",
-      subtitle: "View and resolve user complaints",
-      route: "./complaints",
+      subtitle: "Review and respond to user complaints",
+      onPress: () => router.push("./complaints"),
     },
     {
-      icon: "📚",
+      icon: "library-outline" as const,
       title: "Manage Courses",
-      subtitle: "Add, edit, and manage courses",
-      route: "./courses",
+      subtitle: "Add, edit, and organize courses",
+      onPress: () =>
+        Alert.alert(
+          "Coming Soon",
+          "Course management will be available in a future update.",
+        ),
     },
     {
-      icon: "👥",
+      icon: "people-outline" as const,
       title: "Manage Users",
       subtitle: "View and manage user accounts",
-      route: "./users",
+      onPress: () => router.push("./users"),
     },
     {
-      icon: "📊",
+      icon: "star-outline" as const,
       title: "Course Ratings",
-      subtitle: "View user course feedback and ratings",
-      route: "./feedback",
+      subtitle: "Browse feedback and course ratings",
+      onPress: () => router.push("./feedback"),
     },
+  ];
+
+  const statItems: { key: StatKey; label: string; icon: keyof typeof Ionicons.glyphMap; tint: string }[] = [
+    { key: "users", label: "Users", icon: "person-outline", tint: "#3b82f6" },
+    { key: "admins", label: "Admins", icon: "shield-checkmark-outline", tint: ACCENT },
+    { key: "complaints", label: "Complaints", icon: "document-text-outline", tint: "#f59e0b" },
+    { key: "courses", label: "Courses", icon: "school-outline", tint: "#10b981" },
   ];
 
   return (
@@ -64,7 +142,7 @@ export default function AdminDashboardScreen() {
       >
         <View style={styles.dashboardCard}>
           <View style={styles.welcomeHeader}>
-            <Text style={styles.title}>Welcome Mr. {displayName}!</Text>
+            <Text style={styles.title}>Welcome, {displayName}</Text>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>ADMIN</Text>
             </View>
@@ -75,53 +153,61 @@ export default function AdminDashboardScreen() {
             )}
           </View>
 
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionLabel}>Overview</Text>
+            {statsLoading ? (
+              <View style={styles.statsLoading}>
+                <ActivityIndicator size="small" color={ACCENT} />
+                <Text style={styles.statsLoadingText}>Loading stats…</Text>
+              </View>
+            ) : (
+              <View style={styles.statsRow}>
+                {statItems.map((item) => (
+                  <View key={item.key} style={styles.statCard}>
+                    <View style={[styles.statIconWrap, { backgroundColor: `${item.tint}18` }]}>
+                      <Ionicons name={item.icon} size={22} color={item.tint} />
+                    </View>
+                    <Text style={styles.statValue}>{stats[item.key]}</Text>
+                    <Text style={styles.statLabel}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+
           {isSuperAdmin && (
             <TouchableOpacity
               style={styles.approvalsCard}
               onPress={handleApprovalsPress}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <View style={styles.approvalsCardContent}>
                 <View style={styles.approvalsIconContainer}>
-                  <Text style={styles.approvalsIcon}>⏳</Text>
+                  <Ionicons name="hourglass-outline" size={26} color="#fff" />
                 </View>
                 <View style={styles.approvalsTextContainer}>
-                  <Text style={styles.approvalsTitle}>
-                    Pending Admin Approvals
-                  </Text>
+                  <Text style={styles.approvalsTitle}>Pending Admin Approvals</Text>
                   <Text style={styles.approvalsSubtitle}>
                     Approve or reject new admin registrations
                   </Text>
                 </View>
-                <View style={styles.approvalsArrow}>
-                  <Text style={styles.arrowText}>→</Text>
-                </View>
+                <Ionicons name="chevron-forward" size={22} color={ACCENT} />
               </View>
             </TouchableOpacity>
           )}
 
+          <Text style={[styles.sectionLabel, { marginTop: 8 }]}>Quick actions</Text>
           <View style={styles.cardsGrid}>
-            {cards.map((item, index) => (
+            {actionCards.map((item) => (
               <TouchableOpacity
-                key={index}
-                style={styles.card}
-                activeOpacity={0.8}
-                onPress={() => {
-                  if (item.route === "./users") {
-                    router.push("./users");
-                  } else if (item.route === "./complaints") {
-                    router.push("./complaints");
-                  } else if (item.route === "./feedback") {
-                    router.push("./feedback");
-                  } else {
-                    Alert.alert(
-                      "Coming Soon",
-                      `${item.title} page coming soon!`,
-                    );
-                  }
-                }}
+                key={item.title}
+                style={styles.actionCard}
+                activeOpacity={0.88}
+                onPress={item.onPress}
               >
-                <Text style={styles.cardIcon}>{item.icon}</Text>
+                <View style={styles.actionIconCircle}>
+                  <Ionicons name={item.icon} size={26} color={ACCENT} />
+                </View>
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardSubtitle}>{item.subtitle}</Text>
               </TouchableOpacity>
@@ -154,7 +240,7 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#667eea",
+    backgroundColor: ACCENT_LIGHT,
   },
   scrollContent: {
     flexGrow: 1,
@@ -167,168 +253,214 @@ const styles = StyleSheet.create({
     maxWidth: 800,
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    padding: 40,
+    padding: 24,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.2,
-    shadowRadius: 35,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 28,
     elevation: 10,
   },
   welcomeHeader: {
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1f2937",
     textAlign: "center",
     marginBottom: 10,
   },
   roleBadge: {
-    backgroundColor: "#764ba2",
-    paddingVertical: 5,
-    paddingHorizontal: 15,
+    backgroundColor: ACCENT,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
     borderRadius: 20,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   roleText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
   superAdminBadge: {
-    backgroundColor: "#ffc107",
+    backgroundColor: "#fbbf24",
     paddingVertical: 5,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     borderRadius: 20,
   },
   superAdminText: {
-    color: "#000",
+    color: "#1f2937",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#94a3b8",
+    letterSpacing: 1,
+    marginBottom: 12,
+    alignSelf: "flex-start",
+  },
+  statsSection: {
+    marginBottom: 20,
+  },
+  statsLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 16,
+  },
+  statsLoadingText: {
     fontSize: 14,
+    color: "#64748b",
+  },
+  statsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    justifyContent: "space-between",
+  },
+  statCard: {
+    width: "47%",
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#64748b",
     fontWeight: "600",
+    marginTop: 2,
   },
   approvalsCard: {
-    backgroundColor: "#e8f0fe",
-    borderRadius: 15,
-    padding: 20,
-    marginBottom: 30,
-    borderWidth: 2,
-    borderColor: "#764ba2",
-    borderStyle: "dashed",
+    backgroundColor: "#eef2ff",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: "#c7d2fe",
   },
   approvalsCardContent: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 15,
+    gap: 14,
   },
   approvalsIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#764ba2",
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: ACCENT,
     justifyContent: "center",
     alignItems: "center",
-  },
-  approvalsIcon: {
-    fontSize: 24,
   },
   approvalsTextContainer: {
     flex: 1,
   },
   approvalsTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1e293b",
     marginBottom: 4,
   },
   approvalsSubtitle: {
-    fontSize: 14,
-    color: "#666",
-  },
-  approvalsArrow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#764ba2",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  arrowText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 13,
+    color: "#64748b",
+    lineHeight: 18,
   },
   cardsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 20,
-    marginBottom: 30,
+    gap: 14,
+    marginBottom: 24,
     justifyContent: "space-between",
   },
-  card: {
+  actionCard: {
     flex: 1,
     minWidth: "45%",
-    backgroundColor: "#f8f9fa",
-    borderRadius: 15,
-    padding: 25,
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "transparent",
+    backgroundColor: "#fafafa",
+    borderRadius: 16,
+    padding: 18,
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
+    elevation: 3,
   },
-  cardIcon: {
-    fontSize: 40,
-    marginBottom: 15,
+  actionIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: "#f3e8ff",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-    textAlign: "center",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 6,
   },
   cardSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "center",
+    fontSize: 12,
+    color: "#6b7280",
+    lineHeight: 17,
   },
   userInfo: {
     backgroundColor: "#f0f4ff",
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 10,
+    padding: 16,
+    borderRadius: 14,
+    marginTop: 4,
   },
   userInfoText: {
     fontSize: 14,
-    color: "#333",
-    marginBottom: 4,
+    color: "#334155",
+    marginBottom: 6,
   },
   bold: {
-    fontWeight: "600",
+    fontWeight: "700",
   },
   logoutButton: {
-    backgroundColor: "#764ba2",
+    backgroundColor: ACCENT,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     minWidth: 120,
-    shadowColor: "#764ba2",
+    shadowColor: ACCENT,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
   },
-  logoutButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-
   logoutWrapper: {
-    marginTop: 30,
+    marginTop: 24,
     alignSelf: "center",
     width: "auto",
   },
