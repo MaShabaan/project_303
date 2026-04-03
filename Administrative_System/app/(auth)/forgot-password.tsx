@@ -150,7 +150,7 @@ export default function ForgotPasswordScreen() {
 
               <View style={styles.infoBanner}>
                 <Text style={styles.infoText}>
-                  Enter your email and we'll send you a link to reset your password.
+                  Enter your email and we&apos;ll send you a link to reset your password.
                 </Text>
               </View>
 
