@@ -64,7 +64,7 @@ export default function ForgotPasswordScreen() {
           </View>
           <Text style={styles.successTitle}>Check Your Email</Text>
           <Text style={styles.successText}>
-            We've sent a password reset link to{'\n'}
+            We&apos;ve sent a password reset link to{'\n'}
             <Text style={styles.successEmail}>{email}</Text>
           </Text>
           <TouchableOpacity

@@ -98,7 +98,7 @@ export default function SubmitComplaintScreen() {
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>Submit Complaint</Text>
-              <Text style={styles.headerSub}>We'll review and get back to you</Text>
+              <Text style={styles.headerSub}>We&apos;ll review and get back to you</Text>
             </View>
             <View style={{ width: 60 }} />
           </View>
