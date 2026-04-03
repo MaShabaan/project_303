@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,17 +6,17 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  TextInput,
+  Animated,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { TICKET_TYPES, submitTicket, type TicketType } from '@/services/firebase';
 import { router } from 'expo-router';
 
 const PRIORITIES = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+  { value: 'low', label: '🟢 Low', color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
+  { value: 'medium', label: '🟡 Medium', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
+  { value: 'high', label: '🔴 High', color: '#ef4444', bg: '#fef2f2', border: '#fecaca' },
 ] as const;
 
 export default function SubmitComplaintScreen() {
@@ -26,8 +26,26 @@ export default function SubmitComplaintScreen() {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<string>('medium');
   const [loading, setLoading] = useState(false);
+  const [titleFocused, setTitleFocused] = useState(false);
+  const [descFocused, setDescFocused] = useState(false);
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.spring(fadeAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 60,
+      friction: 8,
+      delay: 100,
+    }).start();
+  }, []);
 
   const handleSubmit = async () => {
+    console.log('User object:', user);
+    console.log('User UID:', user?.uid);
+    console.log('User Email:', user?.email);
+
     if (!user?.uid || !user?.email) {
       Alert.alert('Error', 'You must be signed in to submit a complaint.');
       return;
@@ -46,7 +64,6 @@ export default function SubmitComplaintScreen() {
       Alert.alert('Required', 'Please enter a description.');
       return;
     }
-
     setLoading(true);
     try {
       await submitTicket(user.uid, user.email, {
@@ -55,9 +72,22 @@ export default function SubmitComplaintScreen() {
         description: d,
         priority,
       });
-      Alert.alert('Success', 'Your complaint has been submitted. Admins can view and respond to it.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      
+      Alert.alert(
+        '✓ Complaint Submitted',
+        'Your complaint has been recorded. We will review it and get back to you within 24 hours.',
+        [
+          { 
+            text: 'View My Complaints', 
+            onPress: () => router.push('/(app)/(user)/my-complaints') 
+          },
+          { 
+            text: 'OK', 
+            onPress: () => router.back(),
+            style: 'cancel'
+          }
+        ]
+      );
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to submit complaint. Please try again.');
@@ -67,159 +97,285 @@ export default function SubmitComplaintScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <View style={styles.card}>
-        <Text style={styles.title}>Submit a Complaint</Text>
-        <Text style={styles.subtitle}>We’ll review your submission and get back to you.</Text>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
+        }}>
 
-        <Text style={styles.label}>Type</Text>
-        <View style={styles.optionsRow}>
-          {TICKET_TYPES.map(({ value, label }) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.optionBtn, ticketType === value && styles.optionBtnActive]}
-              onPress={() => setTicketType(value)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.optionText, ticketType === value && styles.optionTextActive]}>
-                {label}
-              </Text>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+              <Text style={styles.backText}>← Back</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle}>Submit Complaint</Text>
+              <Text style={styles.headerSub}>We&apos;ll review and get back to you</Text>
+            </View>
+            <View style={{ width: 60 }} />
+          </View>
 
-        <Input
-          label="Title"
-          placeholder="Short title for your complaint"
-          value={title}
-          onChangeText={setTitle}
-        />
+          {/* Ticket Type */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>COMPLAINT TYPE</Text>
+            <View style={styles.typesGrid}>
+              {TICKET_TYPES.map(({ value, label }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.typeBtn, ticketType === value && styles.typeBtnActive]}
+                  onPress={() => setTicketType(value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.typeText, ticketType === value && styles.typeTextActive]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        <Input
-          label="Description"
-          placeholder="Describe the issue in detail..."
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={4}
-          style={styles.descInput}
-        />
+          {/* Title */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, titleFocused && styles.sectionTitleFocused]}>TITLE</Text>
+            <TextInput
+              style={[styles.input, titleFocused && styles.inputFocused]}
+              placeholder="Short title for your complaint"
+              placeholderTextColor="#94a3b8"
+              value={title}
+              onChangeText={setTitle}
+              onFocus={() => setTitleFocused(true)}
+              onBlur={() => setTitleFocused(false)}
+            />
+          </View>
 
-        <Text style={styles.label}>Priority</Text>
-        <View style={styles.priorityRow}>
-          {PRIORITIES.map(({ value, label }) => (
-            <TouchableOpacity
-              key={value}
-              style={[styles.priorityBtn, priority === value && styles.priorityBtnActive]}
-              onPress={() => setPriority(value)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.priorityText, priority === value && styles.priorityTextActive]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+          {/* Description */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, descFocused && styles.sectionTitleFocused]}>DESCRIPTION</Text>
+            <TextInput
+              style={[styles.input, styles.textArea, descFocused && styles.inputFocused]}
+              placeholder="Describe the issue in detail..."
+              placeholderTextColor="#94a3b8"
+              value={description}
+              onChangeText={setDescription}
+              onFocus={() => setDescFocused(true)}
+              onBlur={() => setDescFocused(false)}
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+            />
+          </View>
 
-        <View style={styles.submitWrap}>
-          <Button
-            title="Submit complaint"
+          {/* Priority */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>PRIORITY</Text>
+            <View style={styles.priorityRow}>
+              {PRIORITIES.map(({ value, label, color, bg, border }) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[
+                    styles.priorityBtn,
+                    { backgroundColor: bg, borderColor: border },
+                    priority === value && styles.priorityBtnActive,
+                    priority === value && { borderColor: color },
+                  ]}
+                  onPress={() => setPriority(value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.priorityText, priority === value && { color }]}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Submit Button */}
+          <TouchableOpacity
+            style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
             onPress={handleSubmit}
-            loading={loading}
-            style={styles.submitBtn}
-          />
-        </View>
-      </View>
-    </ScrollView>
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.submitText}>
+              {loading ? 'Submitting...' : 'Submit Complaint'}
+            </Text>
+          </TouchableOpacity>
+
+        </Animated.View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#667eea' },
-  content: { padding: 20, paddingBottom: 40 },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+  container: {
+    flex: 1,
+    backgroundColor: '#f6f5ff',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-    textAlign: 'center',
+  content: {
+    padding: 16,
+    paddingTop: 20,
+    paddingBottom: 40,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
-  },
-  optionsRow: {
+
+  // Header
+  header: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
-  optionBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+  backBtn: {
+    width: 60,
   },
-  optionBtnActive: {
-    backgroundColor: '#667eea',
-  },
-  optionText: {
+  backText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: '700',
+    color: '#7c3aed',
   },
-  optionTextActive: {
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1e1b4b',
+  },
+  headerSub: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+
+  // Section
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#ede9fe',
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94a3b8',
+    letterSpacing: 1.2,
+    marginBottom: 12,
+  },
+  sectionTitleFocused: {
+    color: '#7c3aed',
+  },
+
+  // Types
+  typesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: '#f8f7ff',
+    borderWidth: 1.5,
+    borderColor: '#ede9fe',
+  },
+  typeBtnActive: {
+    backgroundColor: '#7c3aed',
+    borderColor: '#7c3aed',
+  },
+  typeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  typeTextActive: {
     color: '#fff',
   },
-  descInput: {
-    minHeight: 100,
-    textAlignVertical: 'top',
+
+  // Input
+  input: {
+    height: 50,
+    borderRadius: 12,
+    backgroundColor: '#f8f7ff',
+    borderWidth: 1.5,
+    borderColor: '#ede9fe',
+    paddingHorizontal: 16,
+    fontSize: 14,
+    color: '#1e1b4b',
+    fontWeight: '500',
   },
+  inputFocused: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#fff',
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+  },
+  textArea: {
+    height: 120,
+    paddingTop: 14,
+  },
+
+  // Priority
   priorityRow: {
     flexDirection: 'row',
     gap: 10,
-    marginBottom: 24,
   },
   priorityBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#f0f0f0',
     alignItems: 'center',
+    borderWidth: 1.5,
   },
   priorityBtnActive: {
-    backgroundColor: '#667eea',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   priorityText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748b',
   },
-  priorityTextActive: {
+
+  // Submit
+  submitBtn: {
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#1e1b4b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    shadowColor: '#1e1b4b',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  submitBtnDisabled: {
+    opacity: 0.6,
+  },
+  submitText: {
     color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  submitWrap: { marginTop: 8 },
-  submitBtn: { backgroundColor: '#667eea', paddingVertical: 16, borderRadius: 12 },
 });
