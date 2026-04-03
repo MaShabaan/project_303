@@ -250,7 +250,7 @@ export default function MyRatingsScreen() {
           <Animated.View style={[styles.empty, { opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
             <Text style={styles.emptyIcon}>⭐</Text>
             <Text style={styles.emptyTitle}>No ratings yet</Text>
-            <Text style={styles.emptyText}>You haven't rated any courses yet.</Text>
+            <Text style={styles.emptyText}>You haven&apos;t rated any courses yet.</Text>
             <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('./rate-courses')} activeOpacity={0.85}>
               <Text style={styles.emptyBtnText}>Rate a Course</Text>
             </TouchableOpacity>
@@ -318,7 +318,7 @@ export default function MyRatingsScreen() {
 
                 {item.comments ? (
                   <View style={styles.commentsBox}>
-                    <Text style={styles.commentsText}>"{item.comments}"</Text>
+                    <Text style={styles.commentsText}>&ldquo;{item.comments}&quot;</Text>
                   </View>
                 ) : null}
               </View>

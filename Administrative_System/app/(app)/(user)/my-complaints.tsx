@@ -105,7 +105,7 @@ export default function MyComplaintsScreen() {
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>You haven't submitted any complaints yet.</Text>
+            <Text style={styles.emptyText}>You haven&apos;t submitted any complaints yet.</Text>
           </View>
         }
         renderItem={({ item }) => (

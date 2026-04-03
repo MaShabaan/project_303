@@ -1,21 +1,9 @@
-/**
- * User Dashboard Layout
- *
- * Protected: Only authenticated users can access.
- * Admins are redirected to admin dashboard.
- */
-
 import { TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { Redirect, Stack, router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function UserLayout() {
-  const { user, profile, isInitialized, signOut } = useAuth();
-
-  const handleBackToLogin = () => {
-    signOut();
-    router.replace('/(auth)/login');
-  };
+  const { user, profile, isInitialized } = useAuth();
 
   if (!isInitialized) return null;
 
@@ -31,25 +19,23 @@ export default function UserLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        headerTitle: 'Dashboard',
+        headerTitle: 'Home',
         headerStyle: { backgroundColor: '#FFFFFF' },
         headerTintColor: '#333333',
+        headerLeft: () => (
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Image
+              source={require('@/assets/images/back-arrow.png')}
+              style={styles.backArrow}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        ),
       }}
     >
       <Stack.Screen
         name="index"
-        options={{
-          title: 'Home',
-          headerLeft: () => (
-            <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
-              <Image
-                source={require('@/assets/images/back-arrow.png')}
-                style={styles.backArrow}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          ),
-        }}
+        options={{ title: 'Home' }}
       />
       <Stack.Screen
         name="rate-courses"

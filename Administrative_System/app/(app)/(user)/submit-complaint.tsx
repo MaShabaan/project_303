@@ -42,6 +42,10 @@ export default function SubmitComplaintScreen() {
   }, []);
 
   const handleSubmit = async () => {
+    console.log('User object:', user);
+    console.log('User UID:', user?.uid);
+    console.log('User Email:', user?.email);
+
     if (!user?.uid || !user?.email) {
       Alert.alert('Error', 'You must be signed in to submit a complaint.');
       return;
@@ -68,9 +72,22 @@ export default function SubmitComplaintScreen() {
         description: d,
         priority,
       });
-      Alert.alert('Success ✅', 'Your complaint has been submitted. Admins will review it shortly.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      
+      Alert.alert(
+        '✓ Complaint Submitted',
+        'Your complaint has been recorded. We will review it and get back to you within 24 hours.',
+        [
+          { 
+            text: 'View My Complaints', 
+            onPress: () => router.push('/(app)/(user)/my-complaints') 
+          },
+          { 
+            text: 'OK', 
+            onPress: () => router.back(),
+            style: 'cancel'
+          }
+        ]
+      );
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to submit complaint. Please try again.');

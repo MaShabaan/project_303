@@ -13,7 +13,6 @@ import {
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS, replyToTicket, type TicketType } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/Button';
 
 interface Ticket {
   id: string;
@@ -38,9 +37,9 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const PRIORITY_BG: Record<string, string> = {
-  low: '#6b7280',
+  low: '#10b981',
   medium: '#f59e0b',
-  high: '#dc2626',
+  high: '#ef4444',
 };
 
 function formatDate(t: Ticket['createdAt']): string {
@@ -50,7 +49,7 @@ function formatDate(t: Ticket['createdAt']): string {
 }
 
 export default function ComplaintsScreen() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -74,8 +73,7 @@ export default function ComplaintsScreen() {
       setTickets(list);
     } catch (error: unknown) {
       console.error('Error loading tickets:', error);
-      const msg = error && typeof error === 'object' && 'message' in error ? String((error as { message: string }).message) : 'Failed to load complaints';
-      Alert.alert('Error', msg.includes('permission') ? 'Permission denied. Check Firestore rules (tickets).' : 'Failed to load complaints.');
+      Alert.alert('Error', 'Failed to load complaints');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -93,12 +91,21 @@ export default function ComplaintsScreen() {
 
   const handleSendReply = async (ticketId: string) => {
     const text = replyText.trim();
-    if (!text || !user?.email) return;
+    if (!text) {
+      Alert.alert('Error', 'Please enter a reply message');
+      return;
+    }
+    if (!profile?.email) {
+      Alert.alert('Error', 'You must be logged in as admin');
+      return;
+    }
+    
     setReplyLoading(true);
     try {
-      await replyToTicket(ticketId, user.email, text);
+      await replyToTicket(ticketId, profile.email, text);
       setReplyingToId(null);
       setReplyText('');
+      Alert.alert('Success', 'Reply sent successfully');
       loadTickets();
     } catch (e) {
       console.error(e);
@@ -139,10 +146,10 @@ export default function ComplaintsScreen() {
                 <Text style={styles.badgeText}>{item.priority}</Text>
               </View>
             </View>
+            <Text style={styles.userEmail}>From: {item.userEmail}</Text>
             <Text style={styles.type}>{TYPE_LABELS[item.type] || item.type}</Text>
             <Text style={styles.description}>{item.description}</Text>
             <View style={styles.meta}>
-              <Text style={styles.metaText}>{item.userEmail}</Text>
               <Text style={styles.metaText}>{formatDate(item.createdAt)}</Text>
             </View>
             {item.status && (
@@ -150,11 +157,20 @@ export default function ComplaintsScreen() {
             )}
             {item.adminReply ? (
               <View style={styles.replyBlock}>
-                <Text style={styles.replyLabel}>Your reply:</Text>
+                <Text style={styles.replyLabel}>Admin reply:</Text>
                 <Text style={styles.replyText}>{item.adminReply}</Text>
                 {item.repliedBy && (
                   <Text style={styles.repliedBy}>— {item.repliedBy}</Text>
                 )}
+                <TouchableOpacity 
+                  style={styles.editReplyButton}
+                  onPress={() => {
+                    setReplyingToId(item.id);
+                    setReplyText(item.adminReply || '');
+                  }}
+                >
+                  <Text style={styles.editReplyButtonText}>Edit Reply</Text>
+                </TouchableOpacity>
               </View>
             ) : replyingToId === item.id ? (
               <View style={styles.replyForm}>
@@ -165,23 +181,33 @@ export default function ComplaintsScreen() {
                   value={replyText}
                   onChangeText={setReplyText}
                   multiline
-                  numberOfLines={3}
+                  numberOfLines={4}
+                  textAlignVertical="top"
                 />
                 <View style={styles.replyActions}>
-                  <TouchableOpacity onPress={() => { setReplyingToId(null); setReplyText(''); }}>
-                    <Text style={styles.cancelBtn}>Cancel</Text>
+                  <TouchableOpacity 
+                    style={styles.cancelBtn}
+                    onPress={() => { 
+                      setReplyingToId(null); 
+                      setReplyText(''); 
+                    }}
+                  >
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
-                  <Button
-                    title="Send reply"
+                  <TouchableOpacity 
+                    style={[styles.sendBtn, replyLoading && styles.sendBtnDisabled]}
                     onPress={() => handleSendReply(item.id)}
-                    loading={replyLoading}
-                    style={styles.sendReplyBtn}
-                  />
+                    disabled={replyLoading}
+                  >
+                    <Text style={styles.sendBtnText}>
+                      {replyLoading ? 'Sending...' : 'Send Reply'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             ) : (
               <TouchableOpacity style={styles.replyButton} onPress={() => setReplyingToId(item.id)}>
-                <Text style={styles.replyButtonText}>Reply</Text>
+                <Text style={styles.replyButtonText}>Reply to Complaint</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -209,19 +235,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  title: { fontSize: 16, fontWeight: '700', color: '#333', flex: 1 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  title: { fontSize: 16, fontWeight: '700', color: '#333', flex: 1, marginRight: 8 },
+  userEmail: { fontSize: 12, color: '#764ba2', fontWeight: '500', marginBottom: 6 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   badgeText: { fontSize: 12, fontWeight: '600', color: '#fff' },
-  type: { fontSize: 13, color: '#764ba2', marginBottom: 8 },
-  description: { fontSize: 14, color: '#555', marginBottom: 10 },
-  meta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
+  type: { fontSize: 13, color: '#666', marginBottom: 8 },
+  description: { fontSize: 14, color: '#555', marginBottom: 10, lineHeight: 20 },
+  meta: { flexDirection: 'row', marginTop: 4 },
   metaText: { fontSize: 12, color: '#888' },
   status: { fontSize: 12, color: '#666', marginTop: 6 },
   replyBlock: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' },
   replyLabel: { fontSize: 12, fontWeight: '600', color: '#764ba2', marginBottom: 4 },
   replyText: { fontSize: 14, color: '#333' },
   repliedBy: { fontSize: 12, color: '#888', marginTop: 4 },
+  editReplyButton: { marginTop: 8, alignSelf: 'flex-start' },
+  editReplyButtonText: { color: '#764ba2', fontSize: 12, fontWeight: '500' },
   replyForm: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' },
   replyInput: {
     borderWidth: 1,
@@ -231,12 +260,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1f2937',
     backgroundColor: '#f9fafb',
-    minHeight: 80,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
-  replyActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
-  cancelBtn: { fontSize: 14, color: '#666' },
-  sendReplyBtn: { paddingHorizontal: 16, paddingVertical: 8 },
-  replyButton: { marginTop: 12, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#764ba2', borderRadius: 8 },
+  replyActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 12 },
+  cancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#f3f4f6' },
+  cancelBtnText: { fontSize: 14, color: '#666', fontWeight: '500' },
+  sendBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#764ba2' },
+  sendBtnDisabled: { opacity: 0.6 },
+  sendBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  replyButton: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#764ba2', borderRadius: 8, alignItems: 'center' },
   replyButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });
