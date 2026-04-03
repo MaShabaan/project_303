@@ -306,14 +306,30 @@ const styles = StyleSheet.create({
   bold: {
     fontWeight: "600",
   },
-  logoutWrapper: {
-    marginTop: 20,
-    alignSelf: "center",
-    width: 200,
-  },
   logoutButton: {
-    backgroundColor: "#ff4444",
-    height: 50,
+    backgroundColor: "#764ba2",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 120,
+    shadowColor: "#764ba2",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  logoutButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
+
+  logoutWrapper: {
+    marginTop: 30,
+    alignSelf: "center",
+    width: "auto",
   },
 });
