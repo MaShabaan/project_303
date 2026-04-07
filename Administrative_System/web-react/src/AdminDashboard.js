@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import './AdminDashboard.css';
 
-function AdminDashboard({ user, onLogout }) {
+function AdminDashboard({ user, onLogout, setView }) { // ✅ ضفنا setView
   const [adminData, setAdminData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  
   useEffect(() => {
     if (user) {
       setAdminData({
@@ -39,29 +38,32 @@ function AdminDashboard({ user, onLogout }) {
         </div>
         
         <div className="dashboard-cards">
-          <div className="card" onClick={() => console.log("Navigate to Manage Complaints")}>
+
+          <div className="card" onClick={() => alert("Manage Complaints coming soon")}>
             <div className="card-icon">📋</div>
             <h3>Manage Complaints</h3>
             <p>View and resolve user complaints</p>
           </div>
           
-          <div className="card" onClick={() => console.log("Navigate to Manage Courses")}>
+          {/* ✅ ده المهم */}
+          <div className="card" onClick={() => setView('manage-courses')}>
             <div className="card-icon">📚</div>
             <h3>Manage Courses</h3>
             <p>Add, edit, and manage courses</p>
           </div>
           
-          <div className="card" onClick={() => console.log("Navigate to Manage Users")}>
+          <div className="card" onClick={() => alert("Manage Users coming soon")}>
             <div className="card-icon">👥</div>
             <h3>Manage Users</h3>
             <p>View and manage user accounts</p>
           </div>
           
-          <div className="card" onClick={() => console.log("Navigate to View Reports")}>
+          <div className="card" onClick={() => alert("Reports coming soon")}>
             <div className="card-icon">📊</div>
             <h3>View Reports</h3>
             <p>Activity logs and analytics</p>
           </div>
+
         </div>
         
         <div className="user-info">
@@ -71,7 +73,9 @@ function AdminDashboard({ user, onLogout }) {
           <strong>Last Login:</strong> {adminData.lastLogin}
         </div>
         
-        <button onClick={onLogout} className="action-button logout-btn">LOGOUT</button>
+        <button onClick={onLogout} className="action-button logout-btn">
+          LOGOUT
+        </button>
       </div>
     </div>
   );
