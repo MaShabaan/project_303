@@ -27,6 +27,7 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [academicCode, setAcademicCode] = useState("");
   const [division, setDivision] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const role = "user";
@@ -43,11 +44,28 @@ export default function SignUpScreen() {
     }).start();
   }, []);
 
+  const validateAcademicCode = (code: string) => {
+    if (code.length !== 7) return false;
+    if (code[2] !== '2') return false;
+    if (code[3] !== '7') return false;
+    return true;
+  };
+
   const handleSignUp = async () => {
     clearError();
 
     if (!fullName.trim()) {
       Alert.alert("Error", "Please enter your full name.");
+      return;
+    }
+
+    if (!academicCode.trim()) {
+      Alert.alert("Error", "Please enter your academic code.");
+      return;
+    }
+
+    if (!validateAcademicCode(academicCode.trim())) {
+      Alert.alert("Error", "Academic code must be 7 digits, with the 3rd digit = 2 and 4th digit = 7");
       return;
     }
 
@@ -76,10 +94,11 @@ export default function SignUpScreen() {
         displayName: fullName.trim(),
         department: "Mathematics Department",
         division: division ?? undefined,
+        academicCode: academicCode.trim(),
       });
 
       Alert.alert("Success", "Registration successful. Please log in.", [
-        { text: "OK", onPress: () => router.replace("/(auth)/login") },
+        { text: "OK", onPress: () => router.replace("/(auth)/login") }
       ]);
 
       try {
@@ -168,6 +187,27 @@ export default function SignUpScreen() {
                   onChangeText={setFullName}
                   onFocus={() => setFocusedField("name")}
                   onBlur={() => setFocusedField(null)}
+                  editable={!isLoading}
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.label, isFocused("academic") && styles.labelFocused]}>ACADEMIC CODE</Text>
+                <TextInput
+                  style={[styles.input, isFocused("academic") && styles.inputFocused]}
+                  placeholder="7 digits (format: xx2 7xxx)"
+                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  value={academicCode}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^0-9]/g, '');
+                    if (filtered.length <= 7) {
+                      setAcademicCode(filtered);
+                    }
+                  }}
+                  onFocus={() => setFocusedField("academic")}
+                  onBlur={() => setFocusedField(null)}
+                  keyboardType="numeric"
+                  maxLength={7}
                   editable={!isLoading}
                 />
               </View>
