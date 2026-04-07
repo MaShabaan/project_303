@@ -15,7 +15,6 @@ import {
 import { Link, router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/services/firebase";
 
 const DIVISIONS = [
   { value: "computer_science", label: "Computer Science", icon: "💻" },
@@ -28,9 +27,9 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState<UserRole>("user");
   const [division, setDivision] = useState<string | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const role = "user";
 
   const cardAnim = useRef(new Animated.Value(0)).current;
 
@@ -67,7 +66,7 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (role === "user" && !division) {
+    if (!division) {
       Alert.alert("Required", "Please select your division.");
       return;
     }
@@ -75,21 +74,13 @@ export default function SignUpScreen() {
     try {
       await signUp(email.trim(), password, role, {
         displayName: fullName.trim(),
-        department: role === "user" ? "Mathematics Department" : undefined,
-        division: role === "user" ? division ?? undefined : undefined,
+        department: "Mathematics Department",
+        division: division ?? undefined,
       });
 
-      if (role === "admin") {
-        Alert.alert(
-          "Account Pending Approval",
-          "Your admin account is pending approval. You will be notified once approved.",
-          [{ text: "OK", onPress: () => router.replace("/(auth)/login") }]
-        );
-      } else {
-        Alert.alert("Success", "Registration successful. Please log in.", [
-          { text: "OK", onPress: () => router.replace("/(auth)/login") },
-        ]);
-      }
+      Alert.alert("Success", "Registration successful. Please log in.", [
+        { text: "OK", onPress: () => router.replace("/(auth)/login") },
+      ]);
 
       try {
         await signOut();
@@ -139,7 +130,6 @@ export default function SignUpScreen() {
               },
             ]}
           >
-            {/* Logo */}
             <View style={styles.logoZone}>
               <LinearGradient
                 colors={["#7c3aed", "#06b6d4"]}
@@ -156,7 +146,6 @@ export default function SignUpScreen() {
               <Text style={styles.tagline}>LETS SHARE FEEDBACK · RESOLVE ISSUES</Text>
             </View>
 
-            {/* Card */}
             <View style={styles.card}>
               {error ? (
                 <View style={styles.errorBanner}>
@@ -169,7 +158,6 @@ export default function SignUpScreen() {
 
               <Text style={styles.formTitle}>Create Account</Text>
 
-              {/* Full Name */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("name") && styles.labelFocused]}>FULL NAME</Text>
                 <TextInput
@@ -184,7 +172,6 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Email */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("email") && styles.labelFocused]}>EMAIL</Text>
                 <TextInput
@@ -202,7 +189,6 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("pass") && styles.labelFocused]}>PASSWORD</Text>
                 <TextInput
@@ -219,7 +205,6 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Confirm Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("confirm") && styles.labelFocused]}>CONFIRM PASSWORD</Text>
                 <TextInput
@@ -236,77 +221,48 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Role */}
-              <Text style={styles.label}>SELECT ROLE</Text>
-              <View style={styles.roleContainer}>
-                <TouchableOpacity
-                  style={[styles.roleOption, role === "user" && styles.roleOptionSelected]}
-                  onPress={() => setRole("user")}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.roleLabel, role === "user" && styles.roleLabelSelected]}>User</Text>
-                  <Text style={styles.roleDesc}>Submit complaints & rate courses</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.roleOption, role === "admin" && styles.roleOptionSelected]}
-                  onPress={() => { setRole("admin"); setDivision(null); }}
-                  disabled={isLoading}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.roleLabel, role === "admin" && styles.roleLabelSelected]}>Admin</Text>
-                  <Text style={styles.roleDesc}>Manage complaints & users</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Department + Division — User only */}
-              {role === "user" && (
-                <View>
-                  {/* Department — fixed */}
-                  <View style={styles.departmentBanner}>
-                    <View style={styles.departmentIcon}>
-                      <Text style={styles.departmentIconText}>🎓</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.departmentLabel}>DEPARTMENT</Text>
-                      <Text style={styles.departmentName}>Mathematics Department</Text>
-                    </View>
-                    <View style={styles.departmentCheck}>
-                      <Text style={styles.departmentCheckText}>✓</Text>
-                    </View>
+              <View>
+                <View style={styles.departmentBanner}>
+                  <View style={styles.departmentIcon}>
+                    <Text style={styles.departmentIconText}>🎓</Text>
                   </View>
-
-                  {/* Division */}
-                  <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>SELECT DIVISION</Text>
-                  <View style={styles.divisionContainer}>
-                    {DIVISIONS.map((d) => (
-                      <TouchableOpacity
-                        key={d.value}
-                        style={[
-                          styles.divisionOption,
-                          division === d.value && styles.divisionOptionSelected,
-                        ]}
-                        onPress={() => setDivision(d.value)}
-                        disabled={isLoading}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.divisionIcon}>{d.icon}</Text>
-                        <Text style={[
-                          styles.divisionLabel,
-                          division === d.value && styles.divisionLabelSelected,
-                        ]}>
-                          {d.label}
-                        </Text>
-                        {division === d.value && (
-                          <View style={styles.divisionDot} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.departmentLabel}>DEPARTMENT</Text>
+                    <Text style={styles.departmentName}>Mathematics Department</Text>
+                  </View>
+                  <View style={styles.departmentCheck}>
+                    <Text style={styles.departmentCheckText}>✓</Text>
                   </View>
                 </View>
-              )}
 
-              {/* Login Link */}
+                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>SELECT DIVISION</Text>
+                <View style={styles.divisionContainer}>
+                  {DIVISIONS.map((d) => (
+                    <TouchableOpacity
+                      key={d.value}
+                      style={[
+                        styles.divisionOption,
+                        division === d.value && styles.divisionOptionSelected,
+                      ]}
+                      onPress={() => setDivision(d.value)}
+                      disabled={isLoading}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.divisionIcon}>{d.icon}</Text>
+                      <Text style={[
+                        styles.divisionLabel,
+                        division === d.value && styles.divisionLabelSelected,
+                      ]}>
+                        {d.label}
+                      </Text>
+                      {division === d.value && (
+                        <View style={styles.divisionDot} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
               <View style={styles.formLinks}>
                 <Link href="/(auth)/login" asChild>
                   <TouchableOpacity>
@@ -315,7 +271,6 @@ export default function SignUpScreen() {
                 </Link>
               </View>
 
-              {/* Sign Up Button */}
               <TouchableOpacity
                 onPress={handleSignUp}
                 disabled={isLoading}
@@ -379,17 +334,6 @@ const styles = StyleSheet.create({
     shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3, shadowRadius: 8,
   },
-
-  roleContainer: { flexDirection: "row", gap: 12, marginBottom: 24, marginTop: 8 },
-  roleOption: {
-    flex: 1, backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 14, padding: 16, alignItems: "center",
-  },
-  roleOptionSelected: { borderColor: "#7c3aed", backgroundColor: "rgba(124,58,237,0.15)" },
-  roleLabel: { fontSize: 16, fontWeight: "700", color: "rgba(255,255,255,0.5)", marginBottom: 4 },
-  roleLabelSelected: { color: "#a78bfa" },
-  roleDesc: { fontSize: 11, color: "rgba(255,255,255,0.3)", textAlign: "center", lineHeight: 16 },
 
   departmentBanner: {
     flexDirection: "row", alignItems: "center", gap: 12,
