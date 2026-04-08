@@ -1,77 +1,69 @@
-import { useEffect, useState } from 'react';
-import './AdminDashboard.css';
+import { useEffect, useState } from "react";
+import "./AdminDashboard.css";
 
-function AdminDashboard({ user, onLogout }) {
+function AdminDashboard({ user, onLogout, setView }) {
   const [adminData, setAdminData] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  
   useEffect(() => {
     if (user) {
       setAdminData({
-        name: user.displayName || "Admin",
+        name: user.name || "Admin",
         email: user.email,
         role: "ADMIN",
         createdAt: "March 20, 2026",
-        lastLogin: new Date().toLocaleString()
+        lastLogin: new Date().toLocaleString(),
       });
-      setLoading(false);
     }
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner"></div>
-        <p>Loading admin dashboard...</p>
-      </div>
-    );
-  }
+  if (!adminData) return <div>Loading...</div>;
 
   return (
     <div className="admin-page">
       <div className="background-overlay"></div>
-      
+
       <div className="dashboard-container">
         <div className="welcome-header">
-          <h1>Welcome Mr. <span>{adminData.name}</span>!</h1>
+          <h1>
+            Welcome Mr. <span>{adminData.name}</span>!
+          </h1>
           <div className="user-role">{adminData.role}</div>
         </div>
-        
+
         <div className="dashboard-cards">
-          <div className="card" onClick={() => console.log("Navigate to Manage Complaints")}>
+          {/* 🔥 هذا المهم */}
+          <div
+            className="card"
+            onClick={() => {
+              console.log("CLICKED 🔥");
+              setView("complaints");
+            }}
+          >
             <div className="card-icon">📋</div>
             <h3>Manage Complaints</h3>
             <p>View and resolve user complaints</p>
           </div>
-          
-          <div className="card" onClick={() => console.log("Navigate to Manage Courses")}>
+
+          <div className="card">
             <div className="card-icon">📚</div>
             <h3>Manage Courses</h3>
             <p>Add, edit, and manage courses</p>
           </div>
-          
-          <div className="card" onClick={() => console.log("Navigate to Manage Users")}>
+
+          <div className="card">
             <div className="card-icon">👥</div>
             <h3>Manage Users</h3>
             <p>View and manage user accounts</p>
           </div>
-          
-          <div className="card" onClick={() => console.log("Navigate to View Reports")}>
-            <div className="card-icon">📊</div>
-            <h3>View Reports</h3>
-            <p>Activity logs and analytics</p>
-          </div>
         </div>
-        
+
         <div className="user-info">
-          <strong>Email:</strong> {adminData.email}<br />
-          <strong>Account Type:</strong> Administrator<br />
-          <strong>Account Created:</strong> {adminData.createdAt}<br />
-          <strong>Last Login:</strong> {adminData.lastLogin}
+          <strong>Email:</strong> {adminData.email}
         </div>
-        
-        <button onClick={onLogout} className="action-button logout-btn">LOGOUT</button>
+
+        <button onClick={onLogout} className="logout-btn">
+          LOGOUT
+        </button>
       </div>
     </div>
   );
