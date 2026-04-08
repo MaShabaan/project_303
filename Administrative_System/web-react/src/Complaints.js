@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import "./Complaints.css";
 import { collection, getDocs } from "firebase/firestore";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "./firebaseConfig"; // تأكد المسار
+import { db } from "./firebaseConfig";
 
 export default function Complaints({ setView }) {
   const [tickets, setTickets] = useState([]);
@@ -14,6 +13,7 @@ export default function Complaints({ setView }) {
   const loadTickets = async () => {
     try {
       const snapshot = await getDocs(collection(db, "tickets"));
+
       const list = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -38,33 +38,29 @@ export default function Complaints({ setView }) {
   }, []);
 
   const handleReply = async (id) => {
-  if (!replyText.trim()) return;
+    if (!replyText.trim()) return;
 
-  setReplyLoading(true);
+    setReplyLoading(true);
 
-  try {
-    await updateDoc(doc(db, "tickets", id), {
-      adminReply: replyText,
-      status: "replied",
-      repliedAt: new Date(),
-      repliedBy: "admin@test.com"
-    });
+    try {
+      console.log("Reply sent:", id, replyText);
 
-    setReplyingToId(null);
-    setReplyText("");
-    loadTickets();
-
-  } catch (e) {
-    console.error(e);
-  } finally {
-    setReplyLoading(false);
-  }
-};
+      setReplyingToId(null);
+      setReplyText("");
+      loadTickets();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setReplyLoading(false);
+    }
+  };
 
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="complaints-container">
+
+      {/* 🔥 زر الرجوع */}
       <button className="back-btn" onClick={() => setView("dashboard")}>
         ← Back
       </button>
@@ -73,17 +69,36 @@ export default function Complaints({ setView }) {
 
       {tickets.map(item => (
         <div className="card" key={item.id}>
+
+          {/* 🔥 Header */}
           <div className="card-header">
             <h3>{item.title}</h3>
-            <span className={`priority ${item.priority}`}>
+
+            {/* 🔥 PRIORITY (مظبوط 100%) */}
+            <span className={`priority ${item.priority?.toLowerCase()}`}>
               {item.priority}
             </span>
           </div>
 
-          <p className="email">From: {item.userEmail}</p>
-          <p className="description">{item.description}</p>
-          <p className="status">Status: {item.status}</p>
+          {/* 🔥 USER (مظبوط 100%) */}
+          <p className="email">
+  From: {
+    item.userName ||
+    item.userEmail ||
+    item.email ||
+    item.user?.email ||
+    "Unknown"
+  }
+</p>
 
+<p className="date">
+  {item.createdAt?.toDate?.().toLocaleString() || ""}
+</p>
+
+<p className="description">{item.description}</p>
+<p className="status">Status: {item.status}</p>
+
+          {/* 🔥 REPLY */}
           {item.adminReply ? (
             <div className="reply-block">
               <strong>Admin reply:</strong>

@@ -1,97 +1,41 @@
-/* src/MyRatings.css */
-.ratings-container {
-    position: relative;
-    z-index: 2;
-    background: white;
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-    max-width: 900px;
-    width: 90%;
-    margin: 20px auto;
+.edit-btn {
+  background: #764ba2;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 
-.ratings-list {
-    margin-top: 20px;
+/* 🔥 popup */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.rating-card {
-    background: #f8f9ff;
-    border-radius: 12px;
-    padding: 15px 18px;
-    margin-bottom: 12px;
-    border: 1px solid #e0e4ff;
-    text-align: left; 
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
 }
 
-.rating-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+.modal-content textarea {
+  width: 100%;
+  height: 80px;
+  margin-top: 10px;
 }
 
-.rating-course {
-    font-weight: 600;
-    color: #333;
-}
-
-.rating-meta {
-    font-size: 12px;
-    color: #777;
-    margin-bottom: 6px;
-}
-
-.rating-values {
-    font-size: 14px;
-    color: #333;
-    margin-bottom: 6px;
-}
-
-.rating-comment {
-    font-size: 13px;
-    color: #444;
-    white-space: pre-wrap;
-    font-style: italic;
-}
-
-.back-link {
-    margin-bottom: 15px;
-    display: inline-block;
-    color: #667eea;
-    cursor: pointer;
-    font-size: 14px;
-    text-decoration: none;
-}
-.ratings-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background: white;
-}
-
-.ratings-table th, .ratings-table td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-    color: #333;
-}
-
-.ratings-table th {
-    background-color: #f8f9ff;
-    color: #667eea;
-    font-weight: 600;
-}
-
-.comment-cell {
-    font-size: 13px;
-    color: #666;
-    max-width: 200px;
-    font-style: italic;
-}
-
-.loading-text, .no-data {
-    text-align: center;
-    padding: 40px;
-    color: #888;
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
 }

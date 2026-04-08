@@ -1,72 +1,99 @@
-.complaints-container {
-  padding: 20px;
-  background: #f5f5f5;
+.complaints-page {
+  background: #f5f6fa;
   min-height: 100vh;
+  padding-bottom: 80px;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.top-bar h2 {
+  margin-left: 10px;
 }
 
 .back-btn {
-  margin-bottom: 20px;
-}
-
-.card {
-  background: white;
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 15px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-}
-
-.priority {
-  padding: 4px 10px;
-  border-radius: 8px;
-  color: white;
-}
-
-.priority.low { background: #10b981; }
-.priority.medium { background: #f59e0b; }
-.priority.high { background: #ef4444; }
-
-.email {
-  color: #764ba2;
-  font-size: 13px;
-}
-
-.description {
-  margin-top: 8px;
-}
-
-.status {
-  font-size: 12px;
-  color: gray;
-}
-
-.reply-btn {
-  margin-top: 10px;
-  background: #764ba2;
-  color: white;
   border: none;
-  padding: 10px;
-  border-radius: 8px;
+  background: none;
+  font-size: 20px;
   cursor: pointer;
 }
 
-.reply-form textarea {
-  width: 100%;
-  height: 80px;
-  margin-top: 10px;
+.complaints-list {
+  padding: 15px;
 }
 
-.actions {
+.complaint-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.complaint-header {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
-.reply-block {
-  margin-top: 10px;
+.label {
+  color: #666;
+}
+
+.user {
+  font-weight: bold;
+}
+
+.complaint-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #777;
+  margin-bottom: 15px;
+}
+
+.status {
+  color: orange;
+}
+
+.reply-btn {
+  width: 100%;
+  padding: 12px;
+  background: #6c4ccf;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.reply-btn:hover {
+  background: #5a3ec2;
+}
+.priority {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+}
+
+/* 🔴 HIGH */
+.priority.high {
+  background-color: #e74c3c;
+}
+
+/* 🟠 MEDIUM */
+.priority.medium {
+  background-color: #f39c12;
+}
+
+/* 🟢 LOW */
+.priority.low {
+  background-color: #27ae60;
 }

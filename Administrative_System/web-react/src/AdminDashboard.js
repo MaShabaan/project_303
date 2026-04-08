@@ -18,55 +18,49 @@ function AdminDashboard({ user, onLogout, setView }) {
 
   if (!adminData) return <div>Loading...</div>;
 
-  return (
-    <div className="admin-page">
-      <div className="background-overlay"></div>
+return (
+  <div className="admin-page">
+    <div className="dashboard-wrapper">
 
-      <div className="dashboard-container">
-        <div className="welcome-header">
-          <h1>
-            Welcome Mr. <span>{adminData.name}</span>!
-          </h1>
-          <div className="user-role">{adminData.role}</div>
+      <h1 className="title">
+        Welcome, {adminData.name}!
+      </h1>
+
+      <div className="role-badge">ADMIN</div>
+
+      <div className="cards-grid">
+
+        <div className="card" onClick={() => setView("complaints")}>
+          📋
+          <h3>Manage Complaints</h3>
+          <p>View and resolve complaints</p>
         </div>
 
-        <div className="dashboard-cards">
-          {/* 🔥 هذا المهم */}
-          <div
-            className="card"
-            onClick={() => {
-              console.log("CLICKED 🔥");
-              setView("complaints");
-            }}
-          >
-            <div className="card-icon">📋</div>
-            <h3>Manage Complaints</h3>
-            <p>View and resolve user complaints</p>
-          </div>
-
-          <div className="card">
-            <div className="card-icon">📚</div>
-            <h3>Manage Courses</h3>
-            <p>Add, edit, and manage courses</p>
-          </div>
-
-          <div className="card">
-            <div className="card-icon">👥</div>
-            <h3>Manage Users</h3>
-            <p>View and manage user accounts</p>
-          </div>
+        <div className="card" onClick={() => setView("ratings")}>
+          ⭐
+          <h3>Manage Ratings</h3>
+          <p>View course ratings</p>
         </div>
 
-        <div className="user-info">
-          <strong>Email:</strong> {adminData.email}
+        <div className="card">
+          👥
+          <h3>Manage Users</h3>
         </div>
 
-        <button onClick={onLogout} className="logout-btn">
-          LOGOUT
-        </button>
+        <div className="card">
+          📚
+          <h3>Manage Courses</h3>
+        </div>
+
       </div>
+
+      <button onClick={onLogout} className="logout-btn">
+        Logout
+      </button>
+
     </div>
-  );
+  </div>
+);
 }
 
 export default AdminDashboard;
