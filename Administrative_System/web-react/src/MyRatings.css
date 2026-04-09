@@ -1,97 +1,80 @@
-/* src/MyRatings.css */
-.ratings-container {
-    position: relative;
-    z-index: 2;
-    background: white;
-    border-radius: 20px;
-    padding: 40px;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-    max-width: 900px;
-    width: 90%;
-    margin: 20px auto;
+.my-ratings-page {
+    background-color: #ffffff;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
-.ratings-list {
-    margin-top: 20px;
+.ratings-wide-container {
+    width: 100%;
+    padding: 60px;
 }
 
-.rating-card {
-    background: #f8f9ff;
-    border-radius: 12px;
-    padding: 15px 18px;
-    margin-bottom: 12px;
-    border: 1px solid #e0e4ff;
-    text-align: left; 
-}
-
-.rating-header {
+.ratings-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 20px;
+    margin-bottom: 40px;
 }
 
-.rating-course {
-    font-weight: 600;
-    color: #333;
+.ratings-header h1 {
+    color: #2e7d32;
+    font-size: 35px;
+    margin: 0;
 }
 
-.rating-meta {
-    font-size: 12px;
-    color: #777;
-    margin-bottom: 6px;
-}
-
-.rating-values {
-    font-size: 14px;
-    color: #333;
-    margin-bottom: 6px;
-}
-
-.rating-comment {
-    font-size: 13px;
-    color: #444;
-    white-space: pre-wrap;
-    font-style: italic;
-}
-
-.back-link {
-    margin-bottom: 15px;
-    display: inline-block;
-    color: #667eea;
+.back-btn {
+    background-color: #a52a2a;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    font-weight: 700;
     cursor: pointer;
-    font-size: 14px;
-    text-decoration: none;
 }
+
 .ratings-table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-    background: white;
-}
-
-.ratings-table th, .ratings-table td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-    color: #333;
 }
 
 .ratings-table th {
-    background-color: #f8f9ff;
-    color: #667eea;
-    font-weight: 600;
+    background-color: #f8f9fa;
+    color: #2e7d32;
+    text-align: left;
+    padding: 20px;
+    font-size: 18px;
+    border-bottom: 3px solid #2e7d32;
 }
 
-.comment-cell {
-    font-size: 13px;
+.ratings-table td {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
+    color: #333;
+}
+
+.ratings-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.rating-score {
+    color: #a52a2a;
+    font-weight: 700;
+}
+
+.comment-text {
     color: #666;
-    max-width: 200px;
     font-style: italic;
 }
 
-.loading-text, .no-data {
+.empty-msg {
     text-align: center;
-    padding: 40px;
+    padding: 100px;
+    font-size: 20px;
     color: #888;
 }

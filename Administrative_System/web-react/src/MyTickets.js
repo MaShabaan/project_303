@@ -11,26 +11,20 @@ function MyTickets({ onBack }) {
     const user = auth.currentUser;
     if (!user) return;
 
-    // 1. Reference your existing 'tickets' collection
-    const ticketsRef = collection(db, 'tickets');
-    
-    // 2. Query for tickets belonging ONLY to this student
     const q = query(
-      ticketsRef, 
+      collection(db, 'tickets'), 
       where('studentId', '==', user.uid),
-      orderBy('createdAt', 'desc') // Shows newest tickets first
+      orderBy('createdAt', 'desc')
     );
 
-    // 3. Listen for real-time updates
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const ticketsData = snapshot.docs.map(doc => ({
+      const data = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setTickets(ticketsData);
+      setTickets(data);
       setLoading(false);
     }, (error) => {
-      console.error("Error fetching tickets:", error);
       setLoading(false);
     });
 
@@ -39,44 +33,43 @@ function MyTickets({ onBack }) {
 
   return (
     <div className="my-tickets-page">
-      <div className="background-overlay"></div>
-      <div className="dashboard-container" style={{maxWidth: '1000px'}}>
-        <h1>My Support Tickets</h1>
-        <button className="back-link" onClick={onBack} style={{border: 'none', background: 'none', color: '#667eea', cursor: 'pointer', marginBottom: '20px'}}>
-          &larr; Back to Dashboard
-        </button>
+      <div className="tickets-wide-container">
+        <div className="tickets-header">
+          <h1>My Support History</h1>
+          <button className="back-btn" onClick={onBack}>Back to Dashboard</button>
+        </div>
 
         {loading ? (
-          <div className="loading-text">Loading your tickets...</div>
+          <div className="empty-state">Loading your tickets...</div>
         ) : tickets.length === 0 ? (
-          <div className="no-data">You haven't submitted any tickets yet.</div>
+          <div className="empty-state">No tickets found. Submit one if you need help!</div>
         ) : (
-          <div className="tickets-list">
-            <table className="tickets-table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Subject</th>
-                  <th>Status</th>
-                  <th>Date</th>
+          <table className="tickets-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Subject</th>
+                <th>Status</th>
+                <th>Date Submitted</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tickets.map(ticket => (
+                <tr key={ticket.id}>
+                  <td><strong>{ticket.category}</strong></td>
+                  <td>{ticket.subject}</td>
+                  <td>
+                    <span className={`status-tag ${ticket.status}`}>
+                      {ticket.status}
+                    </span>
+                  </td>
+                  <td>
+                    {ticket.createdAt ? ticket.createdAt.toDate().toLocaleDateString() : 'Processing...'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {tickets.map(ticket => (
-                  <tr key={ticket.id}>
-                    <td>{ticket.category}</td>
-                    <td>{ticket.subject}</td>
-                    <td>
-                      <span className={`status-badge ${ticket.status}`}>
-                        {ticket.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>{ticket.createdAt?.toDate().toLocaleDateString() || 'Pending...'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

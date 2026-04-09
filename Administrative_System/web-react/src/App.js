@@ -1,4 +1,9 @@
-import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  signOut
+} from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
@@ -19,7 +24,7 @@ import { auth, db } from './firebaseConfig';
 function App() {
   const [view, setView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('user'); 
+  const [userRole, setUserRole] = useState('student');
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -72,21 +77,26 @@ function App() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value;
-    const password = e.target.password.value;
-
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, e.target.email.value, e.target.password.value);
     } catch (error) {
-      alert("Login Failed: " + error.message);
+      alert(error.message);
     }
   };
 
-  const handleLogout = () => {
-    signOut(auth);
+  const handleForgotPassword = async () => {
+    const email = prompt("Please enter your university email:");
+    if (email) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Reset link sent! Please check your email.");
+      } catch (error) {
+        alert(error.message);
+      }
+    }
   };
 
-  if (loading) return <div className="loading-spinner">Loading...</div>;
+  if (loading) return <div>Loading...</div>;
 
   // =========================
   // AUTHENTICATED VIEWS
@@ -182,9 +192,6 @@ function App() {
 
             </div>
           </div>
-        );
-    }
-  }
 
   // ================= SIGNUP =================
   if (view === 'signup') {

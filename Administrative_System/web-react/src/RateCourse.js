@@ -9,9 +9,7 @@ function RateCourse({ user, onBack }) {
 
   const [formData, setFormData] = useState({
     courseName: '',
-    instructorName: '',
     courseRating: '5',
-    instructorRating: '5',
     comment: ''
   });
 
@@ -61,10 +59,6 @@ function RateCourse({ user, onBack }) {
     }
   };
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
-  };
-
   return (
     <div className="rate-course-page">
       <div className="background-overlay"></div>
@@ -101,6 +95,7 @@ function RateCourse({ user, onBack }) {
             />
           </div>
 
+        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Course Rating</label>
             <select id="courseRating" onChange={handleChange}>
