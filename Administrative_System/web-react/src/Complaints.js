@@ -60,11 +60,13 @@ export default function Complaints({ setView }) {
   return (
     <div className="complaints-container">
 
-      {/* 🔥 زر الرجوع */}
-      <button className="back-btn" onClick={() => setView("dashboard")}>
-        ← Back
-      </button>
-
+      {/* Back Button*/}
+  <div className="top-bar">
+  <button className="back-btn" onClick={() => setView("dashboard")}>
+    ←
+  </button>
+  <h2>Admin Dashboard</h2>
+</div>
       {tickets.length === 0 && <p>No complaints yet</p>}
 
       {tickets.map(item => (
@@ -74,13 +76,13 @@ export default function Complaints({ setView }) {
           <div className="card-header">
             <h3>{item.title}</h3>
 
-            {/* 🔥 PRIORITY (مظبوط 100%) */}
+            {/* 🔥 PRIORITY  */}
             <span className={`priority ${item.priority?.toLowerCase()}`}>
               {item.priority}
             </span>
           </div>
 
-          {/* 🔥 USER (مظبوط 100%) */}
+          {/* 🔥 USER */}
           <p className="email">
   From: {
     item.userName ||

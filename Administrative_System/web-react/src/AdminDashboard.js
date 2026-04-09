@@ -42,16 +42,16 @@ return (
           <p>View course ratings</p>
         </div>
 
-        <div className="card">
-          👥
-          <h3>Manage Users</h3>
-        </div>
+        <div className="card" onClick={() => setView("courses")}>
+  📚
+  <h3>Manage Courses</h3>
+</div>
 
-        <div className="card">
-          📚
-          <h3>Manage Courses</h3>
-        </div>
-
+       <div className="card" onClick={() => setView("users")}>
+  👥
+  <h3>Manage Users</h3>
+  <p>View and manage user accounts</p>
+</div>
       </div>
 
       <button onClick={onLogout} className="logout-btn">

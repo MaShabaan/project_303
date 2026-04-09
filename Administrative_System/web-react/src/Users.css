@@ -1,0 +1,95 @@
+.users-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.users-header {
+  background: #764ba2;
+  color: white;
+  padding: 25px;
+}
+
+.search-box {
+  padding: 15px;
+  background: white;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #eee;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  background: white;
+}
+
+.filters button {
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+}
+
+.filters .active {
+  background: #764ba2;
+  color: white;
+}
+
+.users-list {
+  padding: 15px;
+}
+
+.user-card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 10px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: #764ba2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 12px;
+  color: white;
+  font-size: 12px;
+}
+
+.admin {
+  background: #764ba2;
+}
+
+.user {
+  background: #28a745;
+}
+
+.pending {
+  background: orange;
+}

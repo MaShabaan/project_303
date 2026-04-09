@@ -19,7 +19,7 @@ export default function BottomNav({ setView, current }) {
         <span>Ratings</span>
       </div>
 
-      <div onClick={() => setView("users")}>
+      <div onClick={() => setView("users")} className={current === "users" ? "active" : ""}>
         👥
         <span>Users</span>
       </div>

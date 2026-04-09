@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AdminDashboard from "./AdminDashboard";
 import Complaints from "./Complaints";
+import Users from "./Users";
 import MyRatings from "./MyRatings";
 
 function App() {
@@ -10,9 +11,12 @@ function App() {
     return <Complaints setView={setView} />;
   }
 
+  if (view === "users") {return <Users setView={setView} />;}
+
   if (view === "ratings") {
     return <MyRatings setView={setView} />;
-  }
+  } 
+  
 
   return (
     <AdminDashboard
