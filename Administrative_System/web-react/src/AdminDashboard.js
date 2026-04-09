@@ -58,11 +58,11 @@ function AdminDashboard({ user, onLogout, setView }) { // ✅ ضفنا setView
             <p>View and manage user accounts</p>
           </div>
           
-          <div className="card" onClick={() => alert("Reports coming soon")}>
-            <div className="card-icon">📊</div>
-            <h3>View Reports</h3>
-            <p>Activity logs and analytics</p>
-          </div>
+<div className="card" onClick={() => setView('manage-ratings')}>
+  <div className="card-icon">⭐</div>
+  <h3>Manage Ratings</h3>
+  <p>View courses ratings and feedback</p>
+</div>
 
         </div>
         

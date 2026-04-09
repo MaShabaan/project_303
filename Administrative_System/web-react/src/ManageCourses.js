@@ -10,7 +10,7 @@ import {
 import { db } from "./firebaseConfig";
 import "./ManageCourses.css";
 
-export default function ManageCourses() {
+export default function ManageCourses({ onBack }) {
   const [courses, setCourses] = useState([]);
   const [courseName, setCourseName] = useState("");
   const [courseCode, setCourseCode] = useState("");
@@ -79,6 +79,12 @@ export default function ManageCourses() {
 
   return (
     <div className="container">
+
+      {/* 🔥 زرار الرجوع */}
+      <button className="back-btn" onClick={onBack}>
+        ⬅ Back to Dashboard
+      </button>
+
       <h1>📊 Manage Courses</h1>
 
       {/* FORM */}
@@ -88,6 +94,7 @@ export default function ManageCourses() {
           value={courseName}
           onChange={(e) => setCourseName(e.target.value)}
         />
+
         <input
           placeholder="Course Code"
           value={courseCode}
@@ -132,6 +139,7 @@ export default function ManageCourses() {
           </div>
         ))}
       </div>
+
     </div>
   );
 }

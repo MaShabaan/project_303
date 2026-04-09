@@ -1,14 +1,19 @@
 import { onAuthStateChanged, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+
 import AdminDashboard from './AdminDashboard';
 import ManageCourses from "./ManageCourses";
+import ManageRatings from "./ManageRatings"; // ⭐ NEW
+
 import './App.css';
+
 import MyRatings from './MyRatings';
 import MyTickets from './MyTickets';
 import RateCourse from './RateCourse';
 import SignUp from './SignUp';
 import SubmitTicket from './SubmitTicket';
+
 import { auth, db } from './firebaseConfig';
 
 function App() {
@@ -61,8 +66,9 @@ function App() {
       }
       setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [view]); 
+  }, [view]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -82,18 +88,37 @@ function App() {
 
   if (loading) return <div className="loading-spinner">Loading...</div>;
 
-  // --- AUTHENTICATED VIEWS ---
+  // =========================
+  // AUTHENTICATED VIEWS
+  // =========================
   if (isLoggedIn) {
 
-    // ✅ ADMIN NAVIGATION
+    // ================= ADMIN =================
     if (userRole === 'admin') {
+
       if (view === 'manage-courses') {
         return <ManageCourses />;
       }
-      return <AdminDashboard user={currentUser} onLogout={handleLogout} setView={setView} />;
+
+      if (view === 'manage-ratings') {
+        return (
+          <ManageRatings 
+            user={currentUser} 
+            onBack={() => setView('dashboard')} 
+          />
+        );
+      }
+
+      return (
+        <AdminDashboard 
+          user={currentUser} 
+          onLogout={handleLogout} 
+          setView={setView} 
+        />
+      );
     }
 
-    // ✅ USER NAVIGATION
+    // ================= USER =================
     switch(view) {
       case 'my-ratings':
         return <MyRatings user={currentUser} onBack={() => setView('dashboard')} />;
@@ -103,15 +128,14 @@ function App() {
         return <RateCourse user={currentUser} onBack={() => setView('dashboard')} />;
       case 'submit-ticket':
         return <SubmitTicket user={currentUser} onBack={() => setView('dashboard')} />;
-
-      // ✅ الجديد
       case 'manage-courses':
-        return <ManageCourses />;
+        return <ManageCourses onBack={() => setView('dashboard')} />;
 
       default:
         return (
           <div className="App">
             <div className="background-overlay"></div>
+
             <div className="dashboard-container">
               <div className="welcome-header">
                 <h1>Welcome, {currentUser?.name}!</h1>
@@ -144,7 +168,6 @@ function App() {
                   <p>View your submitted tickets</p>
                 </div>
 
-                {/* ✅ الزرار الجديد */}
                 <div className="card" onClick={() => setView('manage-courses')}>
                   <div className="card-icon">📚</div>
                   <h3>Manage Courses</h3>
@@ -153,52 +176,46 @@ function App() {
 
               </div>
 
-              <div className="user-info" style={{background: '#f0f4ff', padding: '15px', borderRadius: '12px', marginTop: '20px', textAlign: 'left', color: '#333'}}>
-                <strong>Email:</strong> {currentUser?.email}<br />
-                <strong>Last Login:</strong> {currentUser?.lastLogin}
-              </div>
-
-              <button onClick={handleLogout} className="action-button logout-btn" style={{marginTop: '30px', background: '#ff4444'}}>
+              <button onClick={handleLogout} className="action-button logout-btn">
                 LOGOUT
               </button>
+
             </div>
           </div>
         );
     }
   }
 
-  // --- SIGN UP VIEW ---
+  // ================= SIGNUP =================
   if (view === 'signup') {
     return <SignUp onBack={() => setView('login')} />;
   }
 
-  // --- LOGIN VIEW ---
+  // ================= LOGIN =================
   return (
     <div className="App">
       <div className="background-overlay"></div>
+
       <div className="content-wrapper">
         <div className="image-container">
           <img src="/assets/images/science-faculty-logo.jpg" alt="Logo" className="center-image" />
           <p className="feedback-text">LETS SHARE FEEDBACK, RESOLVE ISSUES</p>
         </div>  
+
         <div className="fieldcontainer">
           <form onSubmit={handleLogin}>
             <h2 className="form-title">LOGIN</h2>
-            <label className="labels">EMAIL</label> <br />
-            <input name="email" type="email" className="inputs" placeholder="ENTER YOUR EMAIL" required /> <br />
-            <label className="labels">PASSWORD</label> <br />
-            <input name="password" type="password" className="inputs" placeholder="ENTER YOUR PASSWORD" required /><br />
+
+            <input name="email" type="email" placeholder="EMAIL" required className="inputs" />
+            <input name="password" type="password" placeholder="PASSWORD" required className="inputs" />
+
             <button type="submit" className="action-button">LOGIN</button>
 
-            <p onClick={handleForgotPassword} style={{cursor: 'pointer', marginTop: '10px', color: '#666', fontSize: '13px', textAlign: 'center'}}>
-              Forgot Password?
-            </p>
-
-            <p onClick={() => setView('signup')} style={{cursor: 'pointer', marginTop: '15px', color: '#667eea', textAlign: 'center'}}>
-              Don't have an account? Sign Up
-            </p>
+            <p onClick={handleForgotPassword}>Forgot Password?</p>
+            <p onClick={() => setView('signup')}>Sign Up</p>
           </form>
         </div>
+
       </div>
     </div>
   );
