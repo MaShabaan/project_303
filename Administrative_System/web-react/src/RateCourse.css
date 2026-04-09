@@ -94,6 +94,25 @@ textarea.rate-input {
     margin-top: 20px;
 }
 
-.btn-submit-rate:hover {
-    background-color: #1b5e20;
+.form-group textarea {
+    min-height: 100px;
 }
+
+.loading {
+  text-align: center;
+  margin-top: 50px;
+  font-size: 20px;
+}
+
+.empty {
+  text-align: center;
+  margin-top: 50px;
+  color: gray;
+  font-size: 18px;
+}
+
+.instructor {
+  margin-top: 5px;
+  color: #444;
+} 
+

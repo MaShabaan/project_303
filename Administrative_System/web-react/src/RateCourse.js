@@ -1,43 +1,59 @@
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { useState } from 'react';
-import { universitySubjects } from './academicData';
+import { addDoc, collection, serverTimestamp, getDocs } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { auth, db } from './firebaseConfig';
 import './RateCourse.css';
 
 function RateCourse({ user, onBack }) {
-  const availableSubjects = universitySubjects[user?.major]?.[user?.semester] || [];
+
+  const [courses, setCourses] = useState([]); // ⭐ الكورسات
 
   const [formData, setFormData] = useState({
     courseName: '',
     courseRating: '5',
     comment: ''
   });
+
   const [submitting, setSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // 🔥 تحميل الكورسات من Firebase
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const snapshot = await getDocs(collection(db, "courses"));
+      const data = snapshot.docs.map(doc => doc.data());
+      setCourses(data);
+    };
+
+    fetchCourses();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!formData.courseName) {
+      return alert("Please select a course");
+    }
+
     setSubmitting(true);
 
     try {
+
       await addDoc(collection(db, 'course-ratings'), {
         studentId: auth.currentUser.uid,
-        email: auth.currentUser.email,
-        major: user?.major,
-        semester: user?.semester,
+        studentEmail: auth.currentUser.email,
         courseName: formData.courseName,
-        courseRating: formData.courseRating,
+        instructorName: formData.instructorName,
+        courseRating: formData.courseRating.toString(),
+        instructorRating: formData.instructorRating.toString(),
         comment: formData.comment,
         createdAt: serverTimestamp()
       });
 
-      alert("Rating submitted!");
-      onBack(); 
+      alert("✅ Rating submitted successfully!");
+      onBack();
+
     } catch (error) {
-      alert("Error: " + error.message);
+      console.error(error);
+      alert("Error submitting rating");
     } finally {
       setSubmitting(false);
     }
@@ -45,30 +61,44 @@ function RateCourse({ user, onBack }) {
 
   return (
     <div className="rate-course-page">
-      <div className="rate-course-container">
-        <div className="rate-header">
-          <h1>Course Evaluation</h1>
-          <button className="back-btn" onClick={onBack}>Exit</button>
-        </div>
+      <div className="background-overlay"></div>
 
-        <div className="user-badge">
-          {user?.major} — Semester {user?.semester}
-        </div>
+      <div className="rate-course-container">
+        <h1>Rate a Course</h1>
+
+        <button className="back-link" onClick={onBack}>
+          ← Back
+        </button>
 
         <form onSubmit={handleSubmit}>
+
+          {/* ⭐ SELECT COURSE بدل input */}
           <div className="form-group">
-            <label>Course Name</label>
-            <select name="courseName" className="rate-input" required onChange={handleChange} value={formData.courseName}>
-              <option value="">-- Select --</option>
-              {availableSubjects.map((subject, index) => (
-                <option key={index} value={subject}>{subject}</option>
+            <label>Course</label>
+            <select id="courseName" onChange={handleChange} value={formData.courseName}>
+              <option value="">-- Select Course --</option>
+              {courses.map((course, index) => (
+                <option key={index} value={course.courseName}>
+                  {course.courseName}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="form-group">
-            <label>Rating</label>
-            <select name="courseRating" className="rate-input" onChange={handleChange} value={formData.courseRating}>
+            <label>Instructor Name</label>
+            <input
+              type="text"
+              id="instructorName"
+              placeholder="Enter instructor name"
+              onChange={handleChange}
+            />
+          </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Course Rating</label>
+            <select id="courseRating" onChange={handleChange}>
               <option value="5">5 - Excellent</option>
               <option value="4">4 - Very Good</option>
               <option value="3">3 - Average</option>
@@ -78,13 +108,29 @@ function RateCourse({ user, onBack }) {
           </div>
 
           <div className="form-group">
-            <label>Feedback</label>
-            <textarea name="comment" className="rate-input" placeholder="Your thoughts..." onChange={handleChange} value={formData.comment}></textarea>
+            <label>Instructor Rating</label>
+            <select id="instructorRating" onChange={handleChange}>
+              <option value="5">5 - Excellent</option>
+              <option value="4">4 - Very Good</option>
+              <option value="3">3 - Average</option>
+              <option value="2">2 - Poor</option>
+              <option value="1">1 - Terrible</option>
+            </select>
           </div>
 
-          <button type="submit" className="btn-submit-rate" disabled={submitting}>
-            {submitting ? "Submitting..." : "Send Rating"}
+          <div className="form-group">
+            <label>Comment</label>
+            <textarea
+              id="comment"
+              placeholder="Write your feedback"
+              onChange={handleChange}
+            ></textarea>
+          </div>
+
+          <button type="submit" className="action-button" disabled={submitting}>
+            {submitting ? "Submitting..." : "Submit Rating"}
           </button>
+
         </form>
       </div>
     </div>
