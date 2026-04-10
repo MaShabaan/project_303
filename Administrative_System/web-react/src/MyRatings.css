@@ -1,0 +1,80 @@
+.my-ratings-page {
+    background-color: #ffffff;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.ratings-wide-container {
+    width: 100%;
+    padding: 60px;
+}
+
+.ratings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+}
+
+.ratings-header h1 {
+    color: #2e7d32;
+    font-size: 35px;
+    margin: 0;
+}
+
+.back-btn {
+    background-color: #a52a2a;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.ratings-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.ratings-table th {
+    background-color: #f8f9fa;
+    color: #2e7d32;
+    text-align: left;
+    padding: 20px;
+    font-size: 18px;
+    border-bottom: 3px solid #2e7d32;
+}
+
+.ratings-table td {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
+    color: #333;
+}
+
+.ratings-table tr:hover {
+    background-color: #f9f9f9;
+}
+
+.rating-score {
+    color: #a52a2a;
+    font-weight: 700;
+}
+
+.comment-text {
+    color: #666;
+    font-style: italic;
+}
+
+.empty-msg {
+    text-align: center;
+    padding: 100px;
+    font-size: 20px;
+    color: #888;
+}

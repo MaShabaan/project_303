@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +9,7 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -15,44 +17,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { submitCourseRating, db, COLLECTIONS } from '@/services/firebase';
 import { router } from 'expo-router';
 
-const COURSES_DATA: Record<string, Record<number, Record<number, string[]>>> = {
-  shared: {
-    2: {
-      1: ['Linear Algebra 1', 'Calculus 3', 'Newtonian Mechanics 2', 'Oriented Programming', 'Introduction to Probability Theory'],
-      2: ['Linear Algebra 2', 'Discrete Math', 'Principles of Mathematical Analysis', 'Differential Equations', 'Analytical Mechanics', 'Data Structure'],
-    },
-  },
-  special_mathematics: {
-    3: {
-      1: ['Abstract Algebra (1)', 'Real Analysis (1)', 'Mechanics of Modified Media (1)', 'Electromagnetism and Relativity (1)'],
-      2: ['Abstract Algebra (2)', 'Topology', 'Real Analysis (2)', 'Functional Analysis', 'Mechanics of Continuous Media (2)'],
-    },
-    4: {
-      1: ['Differential Geometry (1)', 'Complex Analysis (1)', 'Partial Differential Equations (1)', 'Quantum Mechanics (1)'],
-      2: ['Differential Geometry (2)', 'Complex Analysis (2)', 'Quantum Mechanics (2)', 'Nonlinear Mechanics', 'Numerical Solutions to Integral Equations'],
-    },
-  },
-  computer_science: {
-    3: {
-      1: ['Computer Logic', 'Computer Graphics', 'System Analysis', 'Database 1', 'Algorithms', 'Boolean Algebra 1'],
-      2: ['Operating Systems', 'Database 2', 'Distributed Systems', 'File Structure', 'Boolean Algebra 2', 'Software Engineering'],
-    },
-    4: {
-      1: ['Numbers Theory', 'Computer Networks', 'Automata', 'Neural Networks', 'Advanced Computer Graphics'],
-      2: ['Cryptography Theory', 'Designing Programming Languages', 'Artificial Intelligence', 'Advanced Operating Systems', 'Advanced Computer Networks'],
-    },
-  },
-};
-
-const getCoursesForDivision = (division: string, year: number, term: number): string[] => {
-  const shared = COURSES_DATA.shared[year]?.[term] ?? [];
-  const specific = COURSES_DATA[division]?.[year]?.[term] ?? [];
-  return [...shared, ...specific];
-};
-
 const YEARS = [2, 3, 4];
 const TERMS = [1, 2];
 const NPS_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+const getCoursesFromFirebase = async (division: string, year: number, term: number): Promise<string[]> => {
+  try {
+    const q = query(
+      collection(db, 'courses'),
+      where('division', '==', division),
+      where('year', '==', year),
+      where('term', '==', term)
+    );
+    const snapshot = await getDocs(q);
+    const courses = snapshot.docs.map(doc => doc.data().courseName);
+    return courses;
+  } catch (error) {
+    console.error('Error fetching courses from Firebase:', error);
+    return [];
+  }
+};
 
 const getNpsColor = (n: number) => {
   if (n <= 3) return { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', activeBg: '#ef4444' };
@@ -96,10 +80,12 @@ export default function RateCoursesScreen() {
   const [instructorFocused, setInstructorFocused] = useState(false);
   const [commentsFocused, setCommentsFocused] = useState(false);
   const [ratedCourses, setRatedCourses] = useState<string[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<string[]>([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.spring(fadeAnim, {
       toValue: 1,
       useNativeDriver: true,
@@ -110,7 +96,18 @@ export default function RateCoursesScreen() {
     loadRatedCourses();
   }, []);
 
-  // جيب كل المواد اللي اليوزر قيّمها قبل كده
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoadingCourses(true);
+      const courses = await getCoursesFromFirebase(division, selectedYear, selectedTerm);
+      setAvailableCourses(courses);
+      setLoadingCourses(false);
+      setSelectedCourse(null);
+    };
+    
+    fetchCourses();
+  }, [division, selectedYear, selectedTerm]);
+
   const loadRatedCourses = async () => {
     if (!user?.uid) return;
     try {
@@ -128,14 +125,11 @@ export default function RateCoursesScreen() {
 
   const isAlreadyRated = (courseName: string) => ratedCourses.includes(courseName);
 
-  const availableCourses = getCoursesForDivision(division, selectedYear, selectedTerm);
-
   const goNext = async () => {
     if (step === 1) {
       if (!selectedCourse) { Alert.alert('Required', 'Please select a course.'); return; }
       if (!instructor.trim()) { Alert.alert('Required', 'Please enter the instructor name.'); return; }
 
-      //  Check duplicate قبل ما يكمل
       setCheckingDuplicate(true);
       try {
         const q = query(
@@ -207,7 +201,6 @@ export default function RateCoursesScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }] }}>
 
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={goBack} activeOpacity={0.8} style={styles.progressCircleWrap}>
               <Svg width={SIZE} height={SIZE}>
@@ -227,7 +220,6 @@ export default function RateCoursesScreen() {
             <View style={{ width: 48 }} />
           </View>
 
-          {/* Division Banner */}
           <View style={styles.divisionBanner}>
             <View style={styles.divisionIcon}><Text style={styles.divisionIconText}>{divisionIcon}</Text></View>
             <View>
@@ -236,7 +228,6 @@ export default function RateCoursesScreen() {
             </View>
           </View>
 
-          {/* Step Dots */}
           <View style={styles.stepsRow}>
             {[1, 2, 3, 4].map(s => (
               <View key={s} style={styles.stepItem}>
@@ -248,7 +239,6 @@ export default function RateCoursesScreen() {
             ))}
           </View>
 
-          {/* Step 1 */}
           {step === 1 && (
             <View>
               <View style={styles.card}>
@@ -277,8 +267,16 @@ export default function RateCoursesScreen() {
 
               <View style={styles.card}>
                 <Text style={styles.sectionLabel}>SELECT COURSE</Text>
-                {availableCourses.length === 0 ? (
-                  <View style={styles.noCourses}><Text style={styles.noCoursesText}>No courses for this selection</Text></View>
+                {loadingCourses ? (
+                  <View style={styles.noCourses}>
+                    <ActivityIndicator size="small" color="#7c3aed" />
+                    <Text style={styles.noCoursesText}>Loading courses...</Text>
+                  </View>
+                ) : availableCourses.length === 0 ? (
+                  <View style={styles.noCourses}>
+                    <Text style={styles.noCoursesText}>No courses for this selection</Text>
+                    <Text style={styles.noCoursesSubText}>Ask admin to add courses first</Text>
+                  </View>
                 ) : (
                   <View style={styles.courseList}>
                     {availableCourses.map((course, i) => {
@@ -345,7 +343,6 @@ export default function RateCoursesScreen() {
             </View>
           )}
 
-          {/* Step 2 */}
           {step === 2 && (
             <View style={styles.card}>
               <Text style={styles.stepTitle}>Course Rating</Text>
@@ -367,7 +364,6 @@ export default function RateCoursesScreen() {
             </View>
           )}
 
-          {/* Step 3 */}
           {step === 3 && (
             <View style={styles.card}>
               <Text style={styles.stepTitle}>Instructor Rating</Text>
@@ -389,7 +385,6 @@ export default function RateCoursesScreen() {
             </View>
           )}
 
-          {/* Step 4 */}
           {step === 4 && (
             <View>
               <View style={styles.summaryCard}>
@@ -421,7 +416,6 @@ export default function RateCoursesScreen() {
             </View>
           )}
 
-          {/* Nav */}
           <View style={styles.navRow}>
             {step < totalSteps ? (
               <TouchableOpacity
@@ -511,6 +505,7 @@ const styles = StyleSheet.create({
   ratedBadgeText: { fontSize: 10, fontWeight: '700', color: '#059669' },
   noCourses: { padding: 20, alignItems: 'center' },
   noCoursesText: { fontSize: 13, color: '#94a3b8', fontWeight: '500' },
+  noCoursesSubText: { fontSize: 11, color: '#c084fc', marginTop: 4 },
 
   input: { height: 50, borderRadius: 12, backgroundColor: '#f8f7ff', borderWidth: 1.5, borderColor: '#ede9fe', paddingHorizontal: 16, fontSize: 14, color: '#1e1b4b', fontWeight: '500' },
   inputFocused: { borderColor: '#7c3aed', backgroundColor: '#fff', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.15, shadowRadius: 6 },

@@ -55,6 +55,7 @@ export interface UserProfile {
   isApproved?: boolean;
   department?: string;
   division?: string;
+  academicCode?: string;  
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -212,6 +213,7 @@ export async function signUpUser(
     displayName?: string;
     department?: string;
     division?: string;
+    academicCode?: string;
   },
 ): Promise<UserCredential> {
   const credential = await createUserWithEmailAndPassword(auth, email, password);
@@ -225,6 +227,7 @@ export async function signUpUser(
     isApproved: role === "admin" ? false : true,
     ...(role === "user" && userData?.department ? { department: userData.department } : {}),
     ...(role === "user" && userData?.division ? { division: userData.division } : {}),
+    academicCode: userData?.academicCode ?? null,
     createdAt: now,
     updatedAt: now,
   });

@@ -1,0 +1,77 @@
+.my-tickets-page {
+    background-color: #ffffff;
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.tickets-wide-container {
+    width: 100%;
+    padding: 60px;
+}
+
+.tickets-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 20px;
+    margin-bottom: 40px;
+}
+
+.tickets-header h1 {
+    color: #2e7d32;
+    font-size: 35px;
+    margin: 0;
+}
+
+.back-btn {
+    background-color: #a52a2a;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.tickets-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.tickets-table th {
+    background-color: #f8f9fa;
+    color: #2e7d32;
+    text-align: left;
+    padding: 20px;
+    font-size: 18px;
+    border-bottom: 3px solid #2e7d32;
+}
+
+.tickets-table td {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
+}
+
+.status-tag {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-tag.open { background: #fff3e0; color: #e65100; }
+.status-tag.closed { background: #e8f5e9; color: #2e7d32; }
+.status-tag.pending { background: #e3f2fd; color: #1565c0; }
+
+.empty-state {
+    text-align: center;
+    padding: 100px;
+    font-size: 20px;
+    color: #999;
+}

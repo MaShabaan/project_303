@@ -1,0 +1,95 @@
+body {
+    background-color: #f8f9fa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.signup-box {
+    background: white;
+    width: 480px;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.university-logo {
+    width: 140px;
+    margin: 0 auto 20px auto;
+    display: block;
+}
+
+.box-title {
+    color: #2e7d32;
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+}
+
+.box-sub-title {
+    color: #a52a2a;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 25px 0;
+}
+
+.form-group {
+    text-align: left;
+    margin-bottom: 18px;
+}
+
+.input-label {
+    display: block;
+    color: #333;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.signup-input {
+    width: 100%;
+    height: 45px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 0 15px;
+    font-size: 15px;
+    outline: none;
+}
+
+.signup-input:focus {
+    border: 2px solid #2e7d32;
+}
+
+.btn-register {
+    width: 100%;
+    height: 50px;
+    background-color: #2e7d32;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.btn-register:hover {
+    background-color: #1b5e20;
+}
+
+.footer-text {
+    margin-top: 20px;
+    font-size: 15px;
+    color: #666;
+}
+
+.login-link {
+    color: #a52a2a;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+}
