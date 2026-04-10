@@ -13,7 +13,6 @@ import {
   Animated,
 } from "react-native";
 import { Link, router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
 import { checkAcademicCodeExists } from "@/services/firebase";
 
@@ -105,7 +104,6 @@ export default function SignUpScreen() {
       return;
     }
 
-    // ✅ منع التسجيل المكرر بالكود الأكاديمي
     setCheckingCode(true);
     try {
       const codeExists = await checkAcademicCodeExists(academicCode.trim());
@@ -124,7 +122,6 @@ export default function SignUpScreen() {
     }
 
     try {
-      // كل المستخدمين يسجلوا كـ user عادي
       await signUp(email.trim(), password, "user", {
         displayName: fullName.trim(),
         department: "Mathematics Department",
@@ -153,15 +150,6 @@ export default function SignUpScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={["#0f0c29", "#302b63", "#24243e"]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
-      <View style={[styles.orb, styles.orb1]} />
-      <View style={[styles.orb, styles.orb2]} />
-
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
@@ -176,29 +164,25 @@ export default function SignUpScreen() {
               styles.contentWrapper,
               {
                 opacity: cardAnim,
-                transform: [{
-                  translateY: cardAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [40, 0],
-                  }),
-                }],
+                transform: [
+                  {
+                    translateY: cardAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20, 0],
+                    }),
+                  },
+                ],
               },
             ]}
           >
             <View style={styles.logoZone}>
-              <LinearGradient
-                colors={["#7c3aed", "#06b6d4"]}
-                style={styles.logoCircle}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Image
-                  source={require("@/assets/images/logo.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-              </LinearGradient>
-              <Text style={styles.tagline}>LETS SHARE FEEDBACK · RESOLVE ISSUES</Text>
+              <Image
+                source={require("@/assets/images/logo.png")}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.boxTitle}>University</Text>
+              <Text style={styles.boxSubTitle}>Faculty of Science</Text>
             </View>
 
             <View style={styles.card}>
@@ -211,15 +195,12 @@ export default function SignUpScreen() {
                 </View>
               ) : null}
 
-              <Text style={styles.formTitle}>Create Account</Text>
-
-              {/* Full Name */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("name") && styles.labelFocused]}>FULL NAME</Text>
                 <TextInput
                   style={[styles.input, isFocused("name") && styles.inputFocused]}
                   placeholder="Enter your full name"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#aaa"
                   value={fullName}
                   onChangeText={setFullName}
                   onFocus={() => setFocusedField("name")}
@@ -228,13 +209,12 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Academic Code */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("academic") && styles.labelFocused]}>ACADEMIC CODE</Text>
                 <TextInput
                   style={[styles.input, isFocused("academic") && styles.inputFocused]}
                   placeholder="7 digits (format: xx27xxx)"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#aaa"
                   value={academicCode}
                   onChangeText={(text) => {
                     const filtered = text.replace(/[^0-9]/g, "");
@@ -248,13 +228,12 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Email */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("email") && styles.labelFocused]}>EMAIL</Text>
                 <TextInput
                   style={[styles.input, isFocused("email") && styles.inputFocused]}
                   placeholder="you@example.com"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#aaa"
                   value={email}
                   onChangeText={setEmail}
                   onFocus={() => setFocusedField("email")}
@@ -266,13 +245,12 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("pass") && styles.labelFocused]}>PASSWORD</Text>
                 <TextInput
                   style={[styles.input, isFocused("pass") && styles.inputFocused]}
                   placeholder="Min 6 characters"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#aaa"
                   value={password}
                   onChangeText={setPassword}
                   onFocus={() => setFocusedField("pass")}
@@ -283,13 +261,12 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Confirm Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("confirm") && styles.labelFocused]}>CONFIRM PASSWORD</Text>
                 <TextInput
                   style={[styles.input, isFocused("confirm") && styles.inputFocused]}
                   placeholder="Repeat your password"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
+                  placeholderTextColor="#aaa"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   onFocus={() => setFocusedField("confirm")}
@@ -300,7 +277,6 @@ export default function SignUpScreen() {
                 />
               </View>
 
-              {/* Department + Division + Semester */}
               <View>
                 <View style={styles.departmentBanner}>
                   <View style={styles.departmentIcon}>
@@ -315,7 +291,7 @@ export default function SignUpScreen() {
                   </View>
                 </View>
 
-                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>SELECT DIVISION</Text>
+                <Text style={[styles.label, { marginTop: 12, marginBottom: 8 }]}>SELECT DIVISION</Text>
                 <View style={styles.divisionContainer}>
                   {DIVISIONS.map((d) => (
                     <TouchableOpacity
@@ -334,7 +310,7 @@ export default function SignUpScreen() {
                   ))}
                 </View>
 
-                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>SELECT SEMESTER</Text>
+                <Text style={[styles.label, { marginTop: 12, marginBottom: 8 }]}>SELECT SEMESTER</Text>
                 <View style={styles.semesterContainer}>
                   {SEMESTERS.map((s) => (
                     <TouchableOpacity
@@ -380,50 +356,46 @@ export default function SignUpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0f0c29" },
+  container: { flex: 1, backgroundColor: "#fff" },
   keyboardView: { flex: 1 },
-  scrollContent: { flexGrow: 1, padding: 20, paddingTop: 60, alignItems: "center" },
-  contentWrapper: { width: "100%", maxWidth: 420 },
-  orb: { position: "absolute", borderRadius: 999, opacity: 0.18 },
-  orb1: { width: 280, height: 280, backgroundColor: "#7c3aed", top: -80, left: -80 },
-  orb2: { width: 220, height: 220, backgroundColor: "#06b6d4", bottom: 40, right: -60 },
-  logoZone: { alignItems: "center", marginBottom: 32 },
-  logoCircle: { width: 80, height: 80, borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 14, shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
-  logo: { width: 48, height: 48 },
-  tagline: { fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2.5, fontWeight: "600" },
-  card: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", marginBottom: 40 },
-  formTitle: { textAlign: "center", color: "#fff", fontSize: 26, fontWeight: "700", marginBottom: 28, letterSpacing: 0.5 },
-  fieldGroup: { marginBottom: 18 },
-  label: { fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: "700", letterSpacing: 2.5, marginBottom: 8 },
-  labelFocused: { color: "#a78bfa" },
-  input: { height: 52, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", paddingHorizontal: 18, fontSize: 15, color: "#fff" },
-  inputFocused: { borderColor: "#7c3aed", backgroundColor: "rgba(255,255,255,0.1)", shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 8 },
-  departmentBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(124,58,237,0.12)", borderWidth: 1, borderColor: "rgba(124,58,237,0.3)", borderRadius: 14, padding: 14 },
-  departmentIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(124,58,237,0.2)", alignItems: "center", justifyContent: "center" },
+  scrollContent: { flexGrow: 1, padding: 20, justifyContent: "center", alignItems: "center" },
+  contentWrapper: { width: "100%", maxWidth: 500 },
+  logoZone: { alignItems: "center", marginBottom: 24 },
+  logo: { width: 100, height: 100, marginBottom: 8 },
+  boxTitle: { color: "#2e7d32", fontSize: 24, fontWeight: "700", marginBottom: 2 },
+  boxSubTitle: { color: "#a52a2a", fontSize: 14, fontWeight: "600", marginBottom: 4 },
+  card: { backgroundColor: "#fff", borderRadius: 16, padding: 28, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4, borderWidth: 1, borderColor: "#e0e0e0" },
+  fieldGroup: { marginBottom: 14 },
+  label: { fontSize: 12, fontWeight: "600", color: "#555", marginBottom: 6, letterSpacing: 0.5 },
+  labelFocused: { color: "#2e7d32" },
+  input: { height: 44, borderWidth: 1, borderColor: "#ddd", borderRadius: 10, paddingHorizontal: 14, fontSize: 14, color: "#333", backgroundColor: "#fff" },
+  inputFocused: { borderWidth: 1.5, borderColor: "#2e7d32", backgroundColor: "#fff" },
+  departmentBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#f8f9fa", borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: "#eee" },
+  departmentIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: "#e8f5e9", alignItems: "center", justifyContent: "center" },
   departmentIconText: { fontSize: 18 },
-  departmentLabel: { fontSize: 9, color: "rgba(255,255,255,0.35)", fontWeight: "700", letterSpacing: 1.5 },
-  departmentName: { fontSize: 14, fontWeight: "700", color: "#a78bfa", marginTop: 2 },
-  departmentCheck: { width: 24, height: 24, borderRadius: 99, backgroundColor: "rgba(124,58,237,0.3)", alignItems: "center", justifyContent: "center" },
-  departmentCheckText: { fontSize: 12, color: "#a78bfa", fontWeight: "700" },
-  divisionContainer: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  divisionOption: { flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, padding: 16, alignItems: "center", position: "relative" },
-  divisionOptionSelected: { borderColor: "#06b6d4", backgroundColor: "rgba(6,182,212,0.12)" },
-  divisionIcon: { fontSize: 24, marginBottom: 8 },
-  divisionLabel: { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 16 },
-  divisionLabelSelected: { color: "#67e8f9" },
-  divisionDot: { position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 99, backgroundColor: "#06b6d4" },
-  semesterContainer: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
-  semesterOption: { flex: 1, minWidth: "30%", backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, padding: 16, alignItems: "center", position: "relative" },
-  semesterOptionSelected: { borderColor: "#7c3aed", backgroundColor: "rgba(124,58,237,0.12)" },
-  semesterLabel: { fontSize: 14, fontWeight: "700", color: "rgba(255,255,255,0.6)" },
-  semesterLabelSelected: { color: "#c4b5fd" },
-  semesterDot: { position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 99, backgroundColor: "#7c3aed" },
-  formLinks: { marginBottom: 24 },
-  link: { color: "#a78bfa", fontSize: 13, fontWeight: "600" },
-  actionButton: { height: 54, borderRadius: 14, backgroundColor: "#7c3aed", alignItems: "center", justifyContent: "center", shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 8 },
+  departmentLabel: { fontSize: 10, color: "#888", fontWeight: "600", letterSpacing: 1 },
+  departmentName: { fontSize: 13, fontWeight: "700", color: "#2e7d32", marginTop: 2 },
+  departmentCheck: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#2e7d32", alignItems: "center", justifyContent: "center" },
+  departmentCheckText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  divisionContainer: { flexDirection: "row", gap: 12, marginBottom: 8 },
+  divisionOption: { flex: 1, backgroundColor: "#f8f9fa", borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 12, alignItems: "center", position: "relative" },
+  divisionOptionSelected: { borderColor: "#2e7d32", backgroundColor: "#e8f5e9" },
+  divisionIcon: { fontSize: 22, marginBottom: 6 },
+  divisionLabel: { fontSize: 11, fontWeight: "600", color: "#666", textAlign: "center" },
+  divisionLabelSelected: { color: "#2e7d32" },
+  divisionDot: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#2e7d32" },
+  semesterContainer: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 },
+  semesterOption: { flex: 1, minWidth: "30%", backgroundColor: "#f8f9fa", borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 10, alignItems: "center", position: "relative" },
+  semesterOptionSelected: { borderColor: "#2e7d32", backgroundColor: "#e8f5e9" },
+  semesterLabel: { fontSize: 13, fontWeight: "600", color: "#666" },
+  semesterLabelSelected: { color: "#2e7d32" },
+  semesterDot: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#2e7d32" },
+  formLinks: { marginBottom: 20, alignItems: "center" },
+  link: { color: "#a52a2a", fontSize: 13, fontWeight: "700" },
+  actionButton: { height: 48, backgroundColor: "#2e7d32", borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 8 },
   actionButtonDisabled: { opacity: 0.6 },
-  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 2 },
-  errorBanner: { backgroundColor: "rgba(239,68,68,0.15)", borderWidth: 1, borderColor: "rgba(239,68,68,0.35)", padding: 14, borderRadius: 14, marginBottom: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  errorText: { color: "#fca5a5", flex: 1, fontSize: 13, fontWeight: "600" },
-  dismissText: { color: "#fca5a5", fontSize: 14, paddingLeft: 10 },
+  buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 1 },
+  errorBanner: { backgroundColor: "#ffebee", borderWidth: 1, borderColor: "#ffcdd2", padding: 12, borderRadius: 10, marginBottom: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  errorText: { color: "#c62828", flex: 1, fontSize: 12, fontWeight: "600" },
+  dismissText: { color: "#c62828", fontSize: 14, fontWeight: "700", paddingLeft: 10 },
 });
