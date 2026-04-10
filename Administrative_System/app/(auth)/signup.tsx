@@ -15,10 +15,20 @@ import {
 import { Link, router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/contexts/AuthContext";
+import { checkAcademicCodeExists } from "@/services/firebase";
 
 const DIVISIONS = [
   { value: "computer_science", label: "Computer Science", icon: "💻" },
   { value: "special_mathematics", label: "Special Mathematics", icon: "📐" },
+];
+
+const SEMESTERS = [
+  { value: 3, label: "Semester 3", year: 2 },
+  { value: 4, label: "Semester 4", year: 2 },
+  { value: 5, label: "Semester 5", year: 3 },
+  { value: 6, label: "Semester 6", year: 3 },
+  { value: 7, label: "Semester 7", year: 4 },
+  { value: 8, label: "Semester 8", year: 4 },
 ];
 
 export default function SignUpScreen() {
@@ -29,8 +39,9 @@ export default function SignUpScreen() {
   const [fullName, setFullName] = useState("");
   const [academicCode, setAcademicCode] = useState("");
   const [division, setDivision] = useState<string | null>(null);
+  const [semester, setSemester] = useState<number | null>(null);
   const [focusedField, setFocusedField] = useState<string | null>(null);
-  const role = "user";
+  const [checkingCode, setCheckingCode] = useState(false);
 
   const cardAnim = useRef(new Animated.Value(0)).current;
 
@@ -46,8 +57,8 @@ export default function SignUpScreen() {
 
   const validateAcademicCode = (code: string) => {
     if (code.length !== 7) return false;
-    if (code[2] !== '2') return false;
-    if (code[3] !== '7') return false;
+    if (code[2] !== "2") return false;
+    if (code[3] !== "7") return false;
     return true;
   };
 
@@ -65,7 +76,7 @@ export default function SignUpScreen() {
     }
 
     if (!validateAcademicCode(academicCode.trim())) {
-      Alert.alert("Error", "Academic code must be 7 digits, with the 3rd digit = 2 and 4th digit = 7");
+      Alert.alert("Error", "Academic code must be 7 digits (3rd digit = 2, 4th digit = 7).");
       return;
     }
 
@@ -89,16 +100,41 @@ export default function SignUpScreen() {
       return;
     }
 
+    if (!semester) {
+      Alert.alert("Required", "Please select your semester.");
+      return;
+    }
+
+    // ✅ منع التسجيل المكرر بالكود الأكاديمي
+    setCheckingCode(true);
     try {
-      await signUp(email.trim(), password, role, {
+      const codeExists = await checkAcademicCodeExists(academicCode.trim());
+      if (codeExists) {
+        Alert.alert(
+          "Academic Code Already Used",
+          "This academic code is already registered. Please contact support if you think this is an error."
+        );
+        setCheckingCode(false);
+        return;
+      }
+    } catch (e) {
+      console.error("Code check error:", e);
+    } finally {
+      setCheckingCode(false);
+    }
+
+    try {
+      // كل المستخدمين يسجلوا كـ user عادي
+      await signUp(email.trim(), password, "user", {
         displayName: fullName.trim(),
         department: "Mathematics Department",
         division: division ?? undefined,
         academicCode: academicCode.trim(),
+        semester: semester,
       });
 
       Alert.alert("Success", "Registration successful. Please log in.", [
-        { text: "OK", onPress: () => router.replace("/(auth)/login") }
+        { text: "OK", onPress: () => router.replace("/(auth)/login") },
       ]);
 
       try {
@@ -106,14 +142,14 @@ export default function SignUpScreen() {
       } catch (logoutErr) {
         console.warn("Sign out after signup failed", logoutErr);
       }
-
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Sign up failed. Please try again.";
+      const message = err instanceof Error ? err.message : "Sign up failed.";
       Alert.alert("Error", message);
     }
   };
 
   const isFocused = (field: string) => focusedField === field;
+  const isSubmitting = isLoading || checkingCode;
 
   return (
     <View style={styles.container}>
@@ -177,6 +213,7 @@ export default function SignUpScreen() {
 
               <Text style={styles.formTitle}>Create Account</Text>
 
+              {/* Full Name */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("name") && styles.labelFocused]}>FULL NAME</Text>
                 <TextInput
@@ -187,31 +224,31 @@ export default function SignUpScreen() {
                   onChangeText={setFullName}
                   onFocus={() => setFocusedField("name")}
                   onBlur={() => setFocusedField(null)}
-                  editable={!isLoading}
+                  editable={!isSubmitting}
                 />
               </View>
 
+              {/* Academic Code */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("academic") && styles.labelFocused]}>ACADEMIC CODE</Text>
                 <TextInput
                   style={[styles.input, isFocused("academic") && styles.inputFocused]}
-                  placeholder="7 digits (format: xx2 7xxx)"
+                  placeholder="7 digits (format: xx27xxx)"
                   placeholderTextColor="rgba(255,255,255,0.25)"
                   value={academicCode}
                   onChangeText={(text) => {
-                    const filtered = text.replace(/[^0-9]/g, '');
-                    if (filtered.length <= 7) {
-                      setAcademicCode(filtered);
-                    }
+                    const filtered = text.replace(/[^0-9]/g, "");
+                    if (filtered.length <= 7) setAcademicCode(filtered);
                   }}
                   onFocus={() => setFocusedField("academic")}
                   onBlur={() => setFocusedField(null)}
                   keyboardType="numeric"
                   maxLength={7}
-                  editable={!isLoading}
+                  editable={!isSubmitting}
                 />
               </View>
 
+              {/* Email */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("email") && styles.labelFocused]}>EMAIL</Text>
                 <TextInput
@@ -225,10 +262,11 @@ export default function SignUpScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
-                  editable={!isLoading}
+                  editable={!isSubmitting}
                 />
               </View>
 
+              {/* Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("pass") && styles.labelFocused]}>PASSWORD</Text>
                 <TextInput
@@ -241,10 +279,11 @@ export default function SignUpScreen() {
                   onBlur={() => setFocusedField(null)}
                   secureTextEntry
                   autoComplete="new-password"
-                  editable={!isLoading}
+                  editable={!isSubmitting}
                 />
               </View>
 
+              {/* Confirm Password */}
               <View style={styles.fieldGroup}>
                 <Text style={[styles.label, isFocused("confirm") && styles.labelFocused]}>CONFIRM PASSWORD</Text>
                 <TextInput
@@ -257,10 +296,11 @@ export default function SignUpScreen() {
                   onBlur={() => setFocusedField(null)}
                   secureTextEntry
                   autoComplete="new-password"
-                  editable={!isLoading}
+                  editable={!isSubmitting}
                 />
               </View>
 
+              {/* Department + Division + Semester */}
               <View>
                 <View style={styles.departmentBanner}>
                   <View style={styles.departmentIcon}>
@@ -280,24 +320,34 @@ export default function SignUpScreen() {
                   {DIVISIONS.map((d) => (
                     <TouchableOpacity
                       key={d.value}
-                      style={[
-                        styles.divisionOption,
-                        division === d.value && styles.divisionOptionSelected,
-                      ]}
+                      style={[styles.divisionOption, division === d.value && styles.divisionOptionSelected]}
                       onPress={() => setDivision(d.value)}
-                      disabled={isLoading}
+                      disabled={isSubmitting}
                       activeOpacity={0.8}
                     >
                       <Text style={styles.divisionIcon}>{d.icon}</Text>
-                      <Text style={[
-                        styles.divisionLabel,
-                        division === d.value && styles.divisionLabelSelected,
-                      ]}>
+                      <Text style={[styles.divisionLabel, division === d.value && styles.divisionLabelSelected]}>
                         {d.label}
                       </Text>
-                      {division === d.value && (
-                        <View style={styles.divisionDot} />
-                      )}
+                      {division === d.value && <View style={styles.divisionDot} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>SELECT SEMESTER</Text>
+                <View style={styles.semesterContainer}>
+                  {SEMESTERS.map((s) => (
+                    <TouchableOpacity
+                      key={s.value}
+                      style={[styles.semesterOption, semester === s.value && styles.semesterOptionSelected]}
+                      onPress={() => setSemester(s.value)}
+                      disabled={isSubmitting}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.semesterLabel, semester === s.value && styles.semesterLabelSelected]}>
+                        {s.label}
+                      </Text>
+                      {semester === s.value && <View style={styles.semesterDot} />}
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -313,12 +363,12 @@ export default function SignUpScreen() {
 
               <TouchableOpacity
                 onPress={handleSignUp}
-                disabled={isLoading}
+                disabled={isSubmitting}
                 activeOpacity={0.85}
-                style={[styles.actionButton, isLoading && styles.actionButtonDisabled]}
+                style={[styles.actionButton, isSubmitting && styles.actionButtonDisabled]}
               >
                 <Text style={styles.buttonText}>
-                  {isLoading ? "Creating account..." : "SIGN UP"}
+                  {checkingCode ? "Checking code..." : isLoading ? "Creating account..." : "SIGN UP"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -334,102 +384,46 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, padding: 20, paddingTop: 60, alignItems: "center" },
   contentWrapper: { width: "100%", maxWidth: 420 },
-
   orb: { position: "absolute", borderRadius: 999, opacity: 0.18 },
   orb1: { width: 280, height: 280, backgroundColor: "#7c3aed", top: -80, left: -80 },
   orb2: { width: 220, height: 220, backgroundColor: "#06b6d4", bottom: 40, right: -60 },
-
   logoZone: { alignItems: "center", marginBottom: 32 },
-  logoCircle: {
-    width: 80, height: 80, borderRadius: 22,
-    alignItems: "center", justifyContent: "center", marginBottom: 14,
-    shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5, shadowRadius: 20, elevation: 12,
-  },
+  logoCircle: { width: 80, height: 80, borderRadius: 22, alignItems: "center", justifyContent: "center", marginBottom: 14, shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20, elevation: 12 },
   logo: { width: 48, height: 48 },
   tagline: { fontSize: 10, color: "rgba(255,255,255,0.4)", letterSpacing: 2.5, fontWeight: "600" },
-
-  card: {
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: 24, padding: 32,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    marginBottom: 40,
-  },
-  formTitle: {
-    textAlign: "center", color: "#fff", fontSize: 26,
-    fontWeight: "700", marginBottom: 28, letterSpacing: 0.5,
-  },
-
+  card: { backgroundColor: "rgba(255,255,255,0.07)", borderRadius: 24, padding: 32, borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", marginBottom: 40 },
+  formTitle: { textAlign: "center", color: "#fff", fontSize: 26, fontWeight: "700", marginBottom: 28, letterSpacing: 0.5 },
   fieldGroup: { marginBottom: 18 },
   label: { fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: "700", letterSpacing: 2.5, marginBottom: 8 },
   labelFocused: { color: "#a78bfa" },
-  input: {
-    height: 52, borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    paddingHorizontal: 18, fontSize: 15, color: "#fff",
-  },
-  inputFocused: {
-    borderColor: "#7c3aed", backgroundColor: "rgba(255,255,255,0.1)",
-    shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3, shadowRadius: 8,
-  },
-
-  departmentBanner: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: "rgba(124,58,237,0.12)",
-    borderWidth: 1, borderColor: "rgba(124,58,237,0.3)",
-    borderRadius: 14, padding: 14,
-  },
-  departmentIcon: {
-    width: 40, height: 40, borderRadius: 12,
-    backgroundColor: "rgba(124,58,237,0.2)",
-    alignItems: "center", justifyContent: "center",
-  },
+  input: { height: 52, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", paddingHorizontal: 18, fontSize: 15, color: "#fff" },
+  inputFocused: { borderColor: "#7c3aed", backgroundColor: "rgba(255,255,255,0.1)", shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  departmentBanner: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(124,58,237,0.12)", borderWidth: 1, borderColor: "rgba(124,58,237,0.3)", borderRadius: 14, padding: 14 },
+  departmentIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: "rgba(124,58,237,0.2)", alignItems: "center", justifyContent: "center" },
   departmentIconText: { fontSize: 18 },
   departmentLabel: { fontSize: 9, color: "rgba(255,255,255,0.35)", fontWeight: "700", letterSpacing: 1.5 },
   departmentName: { fontSize: 14, fontWeight: "700", color: "#a78bfa", marginTop: 2 },
-  departmentCheck: {
-    width: 24, height: 24, borderRadius: 99,
-    backgroundColor: "rgba(124,58,237,0.3)",
-    alignItems: "center", justifyContent: "center",
-  },
+  departmentCheck: { width: 24, height: 24, borderRadius: 99, backgroundColor: "rgba(124,58,237,0.3)", alignItems: "center", justifyContent: "center" },
   departmentCheckText: { fontSize: 12, color: "#a78bfa", fontWeight: "700" },
-
-  divisionContainer: { flexDirection: "row", gap: 12, marginBottom: 24 },
-  divisionOption: {
-    flex: 1, backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.12)",
-    borderRadius: 14, padding: 16, alignItems: "center",
-    position: "relative",
-  },
+  divisionContainer: { flexDirection: "row", gap: 12, marginBottom: 16 },
+  divisionOption: { flex: 1, backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, padding: 16, alignItems: "center", position: "relative" },
   divisionOptionSelected: { borderColor: "#06b6d4", backgroundColor: "rgba(6,182,212,0.12)" },
   divisionIcon: { fontSize: 24, marginBottom: 8 },
   divisionLabel: { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.4)", textAlign: "center", lineHeight: 16 },
   divisionLabelSelected: { color: "#67e8f9" },
-  divisionDot: {
-    position: "absolute", top: 10, right: 10,
-    width: 8, height: 8, borderRadius: 99, backgroundColor: "#06b6d4",
-  },
-
+  divisionDot: { position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 99, backgroundColor: "#06b6d4" },
+  semesterContainer: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
+  semesterOption: { flex: 1, minWidth: "30%", backgroundColor: "rgba(255,255,255,0.07)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)", borderRadius: 14, padding: 16, alignItems: "center", position: "relative" },
+  semesterOptionSelected: { borderColor: "#7c3aed", backgroundColor: "rgba(124,58,237,0.12)" },
+  semesterLabel: { fontSize: 14, fontWeight: "700", color: "rgba(255,255,255,0.6)" },
+  semesterLabelSelected: { color: "#c4b5fd" },
+  semesterDot: { position: "absolute", top: 10, right: 10, width: 8, height: 8, borderRadius: 99, backgroundColor: "#7c3aed" },
   formLinks: { marginBottom: 24 },
   link: { color: "#a78bfa", fontSize: 13, fontWeight: "600" },
-
-  actionButton: {
-    height: 54, borderRadius: 14, backgroundColor: "#7c3aed",
-    alignItems: "center", justifyContent: "center",
-    shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 14, elevation: 8,
-  },
+  actionButton: { height: 54, borderRadius: 14, backgroundColor: "#7c3aed", alignItems: "center", justifyContent: "center", shadowColor: "#7c3aed", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 8 },
   actionButtonDisabled: { opacity: 0.6 },
   buttonText: { color: "#fff", fontSize: 15, fontWeight: "700", letterSpacing: 2 },
-
-  errorBanner: {
-    backgroundColor: "rgba(239,68,68,0.15)",
-    borderWidth: 1, borderColor: "rgba(239,68,68,0.35)",
-    padding: 14, borderRadius: 14, marginBottom: 20,
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-  },
+  errorBanner: { backgroundColor: "rgba(239,68,68,0.15)", borderWidth: 1, borderColor: "rgba(239,68,68,0.35)", padding: 14, borderRadius: 14, marginBottom: 20, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   errorText: { color: "#fca5a5", flex: 1, fontSize: 13, fontWeight: "600" },
   dismissText: { color: "#fca5a5", fontSize: 14, paddingLeft: 10 },
 });
