@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { collection, query, getDocs, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, getDocs, where, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/services/firebase';
+import { notifyAccountBanned, notifyAccountUnbanned } from '@/services/notifications';
 
 interface User {
   id: string;
@@ -20,6 +21,7 @@ interface User {
   displayName?: string | null;
   role: 'admin' | 'user';
   isApproved?: boolean;
+  isBanned?: boolean;
   createdAt: any;
 }
 
@@ -77,6 +79,45 @@ export default function UsersScreen() {
         }
       ]
     );
+  };
+
+  const handleBanUser = async (userId: string, userEmail: string) => {
+    Alert.alert('Suspend account', `Suspend ${userEmail}? They will be signed out and blocked from the app.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Suspend',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await updateDoc(doc(db, 'users', userId), { isBanned: true, updatedAt: Timestamp.now() });
+            await notifyAccountBanned(userId);
+            Alert.alert('Done', 'Account suspended.');
+            loadUsers();
+          } catch (error) {
+            Alert.alert('Error', 'Failed to update user');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleUnbanUser = async (userId: string, userEmail: string) => {
+    Alert.alert('Reinstate account', `Allow ${userEmail} to use the app again?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reinstate',
+        onPress: async () => {
+          try {
+            await updateDoc(doc(db, 'users', userId), { isBanned: false, updatedAt: Timestamp.now() });
+            await notifyAccountUnbanned(userId);
+            Alert.alert('Done', 'Account reinstated.');
+            loadUsers();
+          } catch (error) {
+            Alert.alert('Error', 'Failed to update user');
+          }
+        },
+      },
+    ]);
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
@@ -158,6 +199,24 @@ export default function UsersScreen() {
             <IconSymbol size={18} name="checkmark" color="#fff" />
             <Text style={styles.actionText}>Approve</Text>
           </TouchableOpacity>
+        )}
+
+        {item.role === 'user' && (
+          item.isBanned ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.approveButton]}
+              onPress={() => handleUnbanUser(item.id, item.email)}
+            >
+              <Text style={styles.actionText}>Reinstate</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.warnButton]}
+              onPress={() => handleBanUser(item.id, item.email)}
+            >
+              <Text style={styles.actionText}>Suspend</Text>
+            </TouchableOpacity>
+          )
         )}
         
         {isSuperAdmin && (
@@ -392,6 +451,9 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#dc3545',
+  },
+  warnButton: {
+    backgroundColor: '#d97706',
   },
   actionText: {
     color: '#fff',

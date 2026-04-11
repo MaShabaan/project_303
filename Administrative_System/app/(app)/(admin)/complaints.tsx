@@ -22,6 +22,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { COLLECTIONS, db, replyToTicket } from "@/services/firebase";
+import { notifyComplaintReply } from "@/services/notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -194,6 +195,16 @@ export default function ComplaintsScreen() {
     }
     setReplySaving(true);
     try {
+      const ticketRow = rows.find((r) => r.id === replyModalId);
+      const ticketUserId =
+        ticketRow && typeof ticketRow.raw.userId === "string"
+          ? ticketRow.raw.userId
+          : null;
+      const ticketTitle =
+        ticketRow && typeof ticketRow.raw.title === "string"
+          ? ticketRow.raw.title
+          : ticketRow?.complaintText ?? "";
+
       if (mode === "resolved") {
         await replyToTicket(replyModalId, adminEmail, text);
       } else {
@@ -201,6 +212,13 @@ export default function ComplaintsScreen() {
           adminReply: text,
           status: "open",
         });
+      }
+      if (ticketUserId) {
+        try {
+          await notifyComplaintReply(ticketUserId, replyModalId, ticketTitle);
+        } catch (notifyErr) {
+          console.error(notifyErr);
+        }
       }
       closeReply();
       Alert.alert("Saved", "Reply has been saved.");

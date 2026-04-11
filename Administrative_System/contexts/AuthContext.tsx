@@ -17,8 +17,10 @@ import {
   resetPassword,
   UserProfile,
   UserRole,
+  db,
+  COLLECTIONS,
 } from '@/services/firebase';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, doc, onSnapshot } from 'firebase/firestore';
 
 const USER_PROFILE_KEY = '@auth_user_profile';
 
@@ -35,7 +37,14 @@ interface AuthContextValue extends AuthState {
     email: string,
     password: string,
     role: UserRole,
-    userData?: { displayName?: string; department?: string; division?: string; academicCode?: string }
+    userData?: {
+      displayName?: string;
+      department?: string;
+      division?: string;
+      academicCode?: string;
+      academicYear?: number;
+      currentTerm?: number;
+    }
   ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -99,12 +108,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, [loadUserProfile]);
 
+  useEffect(() => {
+    if (!user?.uid) return;
+    const ref = doc(db, COLLECTIONS.USERS, user.uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (!snap.exists()) return;
+        const next = snap.data() as UserProfile;
+        setProfile(next);
+        AsyncStorage.setItem(USER_PROFILE_KEY, JSON.stringify(next)).catch(() => {});
+      },
+      (err) => console.error('Profile snapshot error:', err),
+    );
+    return unsub;
+  }, [user?.uid]);
+
   const signUp = useCallback(
     async (
       email: string,
       password: string,
       role: UserRole,
-      userData?: { displayName?: string; department?: string; division?: string; academicCode?: string }
+      userData?: {
+        displayName?: string;
+        department?: string;
+        division?: string;
+        academicCode?: string;
+        academicYear?: number;
+        currentTerm?: number;
+      }
     ) => {
       setIsLoading(true);
       setError(null);
@@ -135,6 +167,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (userProfile.role === 'admin' && userProfile.isApproved === false) {
         await logoutUser();
         throw new Error('Your admin account is pending approval. Please wait for super admin confirmation.');
+      }
+
+      if (userProfile.isBanned === true) {
+        await logoutUser();
+        throw new Error('Your account has been suspended. Contact support if you need help.');
       }
 
       setProfile(userProfile);

@@ -5,12 +5,13 @@
  * Regular users attempting to access will be redirected.
  */
 
-import { TouchableOpacity, Image, StyleSheet } from "react-native";
+import { TouchableOpacity, Image, StyleSheet, View } from "react-native";
 import { Redirect, Tabs, router } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { NotificationBellButton } from "@/components/NotificationBellButton";
 
 export default function AdminLayout() {
   const { user, profile, isInitialized, signOut } = useAuth();
@@ -31,6 +32,10 @@ export default function AdminLayout() {
   // Protect admin routes - redirect regular users
   if (profile.role !== "admin") {
     return <Redirect href="/(app)/(user)" />;
+  }
+
+  if (profile.isBanned === true) {
+    return <Redirect href="/(app)/(user)/account-suspended" />;
   }
 
   const SUPER_ADMINS = ["mshabaan295@gmail.com", "hoda17753@gmail.com"];
@@ -55,6 +60,11 @@ export default function AdminLayout() {
               resizeMode="contain"
             />
           </TouchableOpacity>
+        ),
+        headerRight: () => (
+          <View style={styles.headerRight}>
+            <NotificationBellButton href="./notifications" />
+          </View>
         ),
       }}
     >
@@ -113,6 +123,24 @@ export default function AdminLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="enrollments"
+        options={{
+          title: "Enrollments",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="list.clipboard.fill" color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          title: "Notifications",
+        }}
+      />
     </Tabs>
   );
 }
@@ -125,5 +153,9 @@ const styles = StyleSheet.create({
   backArrow: {
     width: 24,
     height: 24,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });
