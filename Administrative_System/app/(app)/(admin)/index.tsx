@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { router } from "expo-router";
+import { NotificationBellButton } from "@/components/NotificationBellButton";
 
 export default function AdminDashboardScreen() {
   const { user, profile, signOut } = useAuth();
@@ -54,6 +55,12 @@ export default function AdminDashboardScreen() {
       subtitle: "View user course feedback and ratings",
       route: "./feedback",
     },
+    {
+      icon: "📝",
+      title: "Student enrollments",
+      subtitle: "Review and edit student course selections",
+      route: "./enrollments",
+    },
   ];
 
   const handleNavigation = (route: string, title: string) => {
@@ -65,6 +72,8 @@ export default function AdminDashboardScreen() {
       router.push("./feedback");
     } else if (route === "./courses") {
       router.push("./courses");
+    } else if (route === "./enrollments") {
+      router.push("./enrollments");
     } else {
       Alert.alert("Coming Soon", `${title} page coming soon!`);
     }
@@ -78,7 +87,10 @@ export default function AdminDashboardScreen() {
       >
         <View style={styles.dashboardCard}>
           <View style={styles.welcomeHeader}>
-            <Text style={styles.title}>Welcome Mr. {displayName}!</Text>
+            <View style={styles.welcomeTitleRow}>
+              <Text style={styles.title}>Welcome Mr. {displayName}!</Text>
+              <NotificationBellButton href="./notifications" />
+            </View>
             <View style={styles.roleBadge}>
               <Text style={styles.roleText}>ADMIN</Text>
             </View>
@@ -178,13 +190,22 @@ const styles = StyleSheet.create({
   welcomeHeader: {
     alignItems: "center",
     marginBottom: 30,
+    width: "100%",
+  },
+  welcomeTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 10,
+    gap: 8,
   },
   title: {
+    flex: 1,
     fontSize: 24,
     fontWeight: "600",
     color: "#333",
     textAlign: "center",
-    marginBottom: 10,
   },
   roleBadge: {
     backgroundColor: "#764ba2",

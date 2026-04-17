@@ -1,10 +1,14 @@
-import { Stack, useSegments, useRouter } from "expo-router";
+/**
+ * Admin area layout — mirrors main branch Stack + route guards, with banned-user redirect.
+ */
+
+import { Stack, useSegments, useRouter, Redirect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
 import { ActivityIndicator, View } from "react-native";
 import { useEffect } from "react";
 import { autoUnblockExpiredUsers } from "@/services/firebase";
 
-export default function RootLayout() {
+export default function AdminLayout() {
   const { user, profile, isLoading, isInitialized } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -61,6 +65,10 @@ export default function RootLayout() {
         go("/(admin)");
         return;
       }
+      if (currentPath.includes("/admin/enrollments") && !hasPermission("manage_enrollments")) {
+        go("/(admin)");
+        return;
+      }
       if (currentPath.includes("/admin/feedback") && !hasPermission("view_feedback")) {
         go("/(admin)");
         return;
@@ -89,6 +97,10 @@ export default function RootLayout() {
         <ActivityIndicator size="large" color="#7c3aed" />
       </View>
     );
+  }
+
+  if (user && profile?.isBanned === true) {
+    return <Redirect href={"/(app)/(user)/account-suspended" as any} />;
   }
 
   return <Stack screenOptions={{ headerShown: false }} />;
