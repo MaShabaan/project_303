@@ -15,7 +15,7 @@ function ManageRatings({ onBack }) {
   const [usersMap, setUsersMap] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // 🔥 تحميل البيانات
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -51,16 +51,16 @@ function ManageRatings({ onBack }) {
     fetchData();
   }, []);
 
-  // ⭐ stars
+  
   const renderStars = (num) => "⭐".repeat(parseInt(num || 0));
 
-  // 📅 date
+ 
   const formatDate = (timestamp) => {
     if (!timestamp) return "";
     return timestamp.toDate().toLocaleString();
   };
 
-  // 🗑 delete
+  
   const handleDelete = async (id) => {
     const confirmDelete = window.confirm("Delete this rating?");
     if (!confirmDelete) return;
