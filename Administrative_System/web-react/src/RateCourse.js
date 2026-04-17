@@ -17,7 +17,7 @@ function RateCourse({ user, onBack }) {
 
   const [submitting, setSubmitting] = useState(false);
 
-
+  // ✅ HANDLE CHANGE (مرة واحدة بس)
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -25,7 +25,7 @@ function RateCourse({ user, onBack }) {
     });
   };
 
-  
+ 
   useEffect(() => {
     const fetchCourses = async () => {
       const snapshot = await getDocs(collection(db, "courses"));
@@ -36,15 +36,7 @@ function RateCourse({ user, onBack }) {
     fetchCourses();
   }, []);
 
-  // ================= HANDLE CHANGE =================
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.id]: e.target.value
-    });
-  };
-
-  // ================= SUBMIT =================
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -88,7 +80,6 @@ function RateCourse({ user, onBack }) {
           ← Back
         </button>
 
-        {/* ✅ form واحدة بس */}
         <form onSubmit={handleSubmit}>
 
           <div className="form-group">
@@ -107,7 +98,6 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
-          {/* INSTRUCTOR NAME */}
           <div className="form-group">
             <label>Instructor Name</label>
             <input
@@ -134,7 +124,6 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
-          {/* INSTRUCTOR RATING */}
           <div className="form-group">
             <label>Instructor Rating</label>
             <select
@@ -150,7 +139,6 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
-          {/* COMMENT */}
           <div className="form-group">
             <label>Comment</label>
             <textarea
