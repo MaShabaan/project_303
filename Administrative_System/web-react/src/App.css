@@ -1,142 +1,161 @@
+/* RESET */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
+/* BODY */
 body {
-    background-color: #f8f9fa;
-    min-height: 100vh;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  font-family: "Segoe UI", sans-serif;
+  background: #f5f6fa;
 }
 
-.dashboard-wrapper {
-    width: 100%;
-    min-height: 100vh;
-    display: flex;
+/* WRAPPER */
+.login-wrapper {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 80px;
+}
+
+/* LEFT SIDE */
+.left-side {
+  text-align: center;
+}
+
+.logo {
+  width: 160px;
+  margin-bottom: 20px;
+}
+
+.left-side p {
+  color: #666;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* RIGHT SIDE (CARD) */
+.login-box {
+  background: white;
+  padding: 40px;
+  border-radius: 15px;
+  width: 350px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+/* TITLE */
+.login-box h2 {
+  margin-bottom: 25px;
+  color: #333;
+}
+
+/* INPUTS */
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #f1f2f6;
+  font-size: 14px;
+}
+
+/* BUTTON */
+.login-box button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(to right, #5f9cff, #7b3fe4);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+/* LINKS */
+.login-box p {
+  margin-top: 10px;
+  color: #b03a3a;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .login-wrapper {
     flex-direction: column;
+    gap: 20px;
+  }
+}
+/* ===== FIX LOGIN LAYOUT ===== */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
-.dashboard-header {
-    background-color: white;
-    padding: 20px 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+/* الصورة فوق */
+.login-header {
+  text-align: center;
+  margin-bottom: 25px;
 }
 
-.header-brand {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.login-logo {
+  width: 120px;
+  display: block;
+  margin: 0 auto 10px;
 }
 
-.header-logo {
-    width: 50px;
+.login-header p {
+  color: #666;
+  font-size: 14px;
 }
 
-.header-title {
-    color: #2e7d32;
-    font-size: 20px;
-    font-weight: 700;
+/* البوكس */
+.login-box {
+  background: white;
+  padding: 35px;
+  border-radius: 12px;
+  width: 320px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  text-align: center;
 }
 
-.user-info-section {
-    text-align: right;
+/* المدخلات */
+.login-box input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #f1f2f6;
 }
 
-.user-name {
-    display: block;
-    font-weight: 700;
-    color: #333;
+/* الزر */
+.login-box button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(to right, #5f9cff, #7b3fe4);
+  color: white;
+  font-weight: bold;
+  margin-top: 10px;
+  cursor: pointer;
 }
 
-.user-details {
-    font-size: 13px;
-    color: #666;
-}
-
-.dashboard-content {
-    flex: 1;
-    padding: 40px;
-    max-width: 1200px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-.welcome-message {
-    margin-bottom: 30px;
-}
-
-.welcome-message h2 {
-    color: #333;
-    font-size: 28px;
-}
-
-.welcome-message p {
-    color: #a52a2a;
-    font-weight: 600;
-}
-
-.cards-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 25px;
-}
-
-.dashboard-card {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: 1px solid #eee;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-}
-
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
-    border-color: #2e7d32;
-}
-
-.card-icon {
-    font-size: 40px;
-}
-
-.card-title {
-    font-weight: 700;
-    color: #333;
-    font-size: 18px;
-}
-
-.card-desc {
-    color: #777;
-    font-size: 14px;
-}
-
-.logout-container {
-    margin-top: 40px;
-    text-align: center;
-}
-
-.btn-logout {
-    background-color: transparent;
-    color: #a52a2a;
-    border: 2px solid #a52a2a;
-    padding: 10px 25px;
-    border-radius: 6px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-logout:hover {
-    background-color: #a52a2a;
-    color: white;
+/* الروابط */
+.login-box p {
+  margin-top: 10px;
+  color: #b03a3a;
+  cursor: pointer;
+  font-size: 14px;
 }
