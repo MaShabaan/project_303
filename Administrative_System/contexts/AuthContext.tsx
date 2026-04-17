@@ -35,7 +35,13 @@ interface AuthContextValue extends AuthState {
     email: string,
     password: string,
     role: UserRole,
-    userData?: { displayName?: string; department?: string; division?: string; academicCode?: string }
+    userData?: { 
+      displayName?: string; 
+      department?: string; 
+      division?: string; 
+      academicCode?: string;
+      semester?: number;
+    }
   ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -104,7 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: string,
       password: string,
       role: UserRole,
-      userData?: { displayName?: string; department?: string; division?: string; academicCode?: string }
+      userData?: { 
+        displayName?: string; 
+        department?: string; 
+        division?: string; 
+        academicCode?: string;
+        semester?: number;
+      }
     ) => {
       setIsLoading(true);
       setError(null);

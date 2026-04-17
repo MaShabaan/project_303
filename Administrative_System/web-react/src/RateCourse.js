@@ -17,7 +17,15 @@ function RateCourse({ user, onBack }) {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // ================= FETCH COURSES =================
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    });
+  };
+
+  
   useEffect(() => {
     const fetchCourses = async () => {
       const snapshot = await getDocs(collection(db, "courses"));
@@ -80,9 +88,9 @@ function RateCourse({ user, onBack }) {
           ← Back
         </button>
 
+        {/* ✅ form واحدة بس */}
         <form onSubmit={handleSubmit}>
 
-          {/* COURSE */}
           <div className="form-group">
             <label>Course</label>
             <select
@@ -111,7 +119,6 @@ function RateCourse({ user, onBack }) {
             />
           </div>
 
-          {/* COURSE RATING */}
           <div className="form-group">
             <label>Course Rating</label>
             <select

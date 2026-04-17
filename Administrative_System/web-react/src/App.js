@@ -29,36 +29,25 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ================= LOGIN =================
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      await signInWithEmailAndPassword(
-        auth,
-        e.target.email.value,
-        e.target.password.value
-      );
-    } catch (error) {
-      alert(error.message);
+
+  const handleForgotPassword = async () => {
+    const email = prompt("Please enter your university email:");
+    if (email) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Reset link sent! Please check your email.");
+      } catch (error) {
+        alert(error.message);
+      }
     }
   };
 
-  // ================= LOGOUT =================
+
   const handleLogout = async () => {
-    await signOut(auth);
-    setIsLoggedIn(false);
-    setCurrentUser(null);
-    setView('login');
-  };
-
-  // ================= FORGOT PASSWORD =================
-  const handleForgotPassword = async () => {
-    const email = prompt("Please enter your email address to reset password:");
-    if (!email) return;
-
     try {
-      await sendPasswordResetEmail(auth, email);
-      alert("Password reset email sent!");
+      await signOut(auth);
+      setIsLoggedIn(false);
+      setView('login');
     } catch (error) {
       alert(error.message);
     }
@@ -102,21 +91,31 @@ function App() {
     return () => unsubscribe();
   }, [view]);
 
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(
+        auth,
+        e.target.email.value,
+        e.target.password.value
+      );
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   if (loading) return <div>Loading...</div>;
 
-  // ================= SIGNUP =================
-  if (view === 'signup') {
-    return <SignUp onBack={() => setView('login')} />;
-  }
 
-  // ================= LOGGED IN =================
   if (isLoggedIn) {
 
-    // ================= ADMIN =================
+   
     if (userRole === 'admin') {
 
       if (view === 'manage-courses') {
-        return <ManageCourses onBack={() => setView('dashboard')} />;
+        return (
+          <ManageCourses onBack={() => setView('dashboard')} />
+        );
       }
 
       if (view === 'manage-ratings') {
@@ -137,7 +136,6 @@ function App() {
       );
     }
 
-    // ================= USER =================
     switch (view) {
       case 'my-ratings':
         return <MyRatings user={currentUser} onBack={() => setView('dashboard')} />;
@@ -170,23 +168,28 @@ function App() {
               <div className="dashboard-cards">
 
                 <div className="card" onClick={() => setView('rate-course')}>
-                  ⭐ Rate Courses
+                  <div className="card-icon">⭐</div>
+                  <h3>Rate Courses</h3>
                 </div>
 
                 <div className="card" onClick={() => setView('my-ratings')}>
-                  📊 My Ratings
+                  <div className="card-icon">📊</div>
+                  <h3>My Ratings</h3>
                 </div>
 
                 <div className="card" onClick={() => setView('submit-ticket')}>
-                  🎫 Submit Ticket
+                  <div className="card-icon">🎫</div>
+                  <h3>Submit Ticket</h3>
                 </div>
 
                 <div className="card" onClick={() => setView('my-tickets')}>
-                  📩 My Tickets
+                  <div className="card-icon">📩</div>
+                  <h3>My Tickets</h3>
                 </div>
 
                 <div className="card" onClick={() => setView('manage-courses')}>
-                  📚 Manage Courses
+                  <div className="card-icon">📚</div>
+                  <h3>Manage Courses</h3>
                 </div>
 
               </div>
@@ -200,7 +203,11 @@ function App() {
     }
   }
 
-  // ================= LOGIN PAGE =================
+  if (view === 'signup') {
+    return <SignUp onBack={() => setView('login')} />;
+  }
+
+
   return (
     <div className="App">
       <div className="background-overlay"></div>
@@ -213,7 +220,7 @@ function App() {
             className="center-image"
           />
           <p className="feedback-text">
-            LET'S SHARE FEEDBACK, RESOLVE ISSUES
+            LETS SHARE FEEDBACK, RESOLVE ISSUES
           </p>
         </div>
 
