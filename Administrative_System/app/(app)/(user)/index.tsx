@@ -11,6 +11,7 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 import { useAuth } from '@/contexts/AuthContext';
 import { db, COLLECTIONS } from '@/services/firebase';
 import { router } from 'expo-router';
+import { NotificationBellButton } from '@/components/NotificationBellButton';
 
 interface ActivityItem {
   icon: string;
@@ -171,6 +172,7 @@ export default function UserDashboardScreen() {
 
   const actions = [
     { icon: '📝', title: 'Submit Complaint', sub: 'Share your concerns', bg: '#f5f3ff', border: '#ede9fe', route: './submit-complaint' as const },
+    { icon: '📚', title: 'Course enrollment', sub: 'Select your courses', bg: '#fdf4ff', border: '#f5d0fe', route: './enroll-courses' as const },
     { icon: '⭐', title: 'Rate Courses', sub: 'Evaluate courses', bg: '#fffbeb', border: '#fde68a', route: './rate-courses' as const },
     { icon: '📋', title: 'My Complaints', sub: 'Track status', bg: '#f0fdf4', border: '#bbf7d0', route: './my-complaints' as const },
     { icon: '📊', title: 'My Ratings', sub: 'View ratings', bg: '#eff6ff', border: '#bfdbfe', route: './my-ratings' as const },
@@ -196,10 +198,7 @@ export default function UserDashboardScreen() {
               </View>
             </View>
             <View style={styles.headerRight}>
-              <View style={styles.notifBtn}>
-                <Text style={styles.notifIcon}>🔔</Text>
-                <View style={styles.notifDot} />
-              </View>
+              <NotificationBellButton href="./notifications" />
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
                 <Text style={styles.logoutText}>Logout</Text>
               </TouchableOpacity>
@@ -299,9 +298,6 @@ const styles = StyleSheet.create({
   welcomeText: { fontSize: 14, fontWeight: '700', color: '#1e1b4b' },
   roleText: { fontSize: 12, color: '#a78bfa', fontWeight: '600', marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  notifBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#f3f0ff', borderWidth: 1, borderColor: '#ede9fe', alignItems: 'center', justifyContent: 'center' },
-  notifIcon: { fontSize: 16 },
-  notifDot: { width: 7, height: 7, backgroundColor: '#ef4444', borderRadius: 99, position: 'absolute', top: 7, right: 7, borderWidth: 1.5, borderColor: '#fff' },
   logoutBtn: { backgroundColor: '#1e1b4b', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   logoutText: { color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
 

@@ -11,9 +11,10 @@ import {
   Modal,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, getDocs, doc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
 import { db, promoteToAdmin, demoteFromAdmin, blockUser, unblockUser, autoUnblockExpiredUsers } from '@/services/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
+import { notifyAccountBanned, notifyAccountUnbanned } from '@/services/notifications';
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface User {
   displayName?: string | null;
   role: 'admin' | 'user' | 'super_admin';
   isApproved?: boolean;
+  isBanned?: boolean;
   academicCode?: string;
   division?: string;
   semester?: number;
@@ -84,6 +86,45 @@ export default function UsersScreen() {
           promoteToAdmin(user.id)
             .then(() => { loadUsers(); Alert.alert('Done ✅', 'User promoted to Admin.'); })
             .catch(() => Alert.alert('Error', 'Failed to promote.'));
+        },
+      },
+    ]);
+  };
+
+  const handleBanUser = async (userId: string, userEmail: string) => {
+    Alert.alert('Suspend account', `Suspend ${userEmail}? They will be signed out and blocked from the app.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Suspend',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await updateDoc(doc(db, 'users', userId), { isBanned: true, updatedAt: Timestamp.now() });
+            await notifyAccountBanned(userId);
+            Alert.alert('Done', 'Account suspended.');
+            loadUsers();
+          } catch (error) {
+            Alert.alert('Error', 'Failed to update user');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleUnbanUser = async (userId: string, userEmail: string) => {
+    Alert.alert('Reinstate account', `Allow ${userEmail} to use the app again?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reinstate',
+        onPress: async () => {
+          try {
+            await updateDoc(doc(db, 'users', userId), { isBanned: false, updatedAt: Timestamp.now() });
+            await notifyAccountUnbanned(userId);
+            Alert.alert('Done', 'Account reinstated.');
+            loadUsers();
+          } catch (error) {
+            Alert.alert('Error', 'Failed to update user');
+          }
         },
       },
     ]);
@@ -279,6 +320,25 @@ export default function UsersScreen() {
           <TouchableOpacity style={[styles.actionBtn, styles.unblockBtn]} onPress={() => handleUnblock(item)} activeOpacity={0.8}>
             <Text style={styles.actionBtnText}>🔓 Unblock</Text>
           </TouchableOpacity>
+        )}
+        {item.role === 'user' && !item.isBlocked && (
+          item.isBanned ? (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.unblockBtn]}
+              onPress={() => handleUnbanUser(item.id, item.email)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionBtnText}>Reinstate</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.demoteBtn]}
+              onPress={() => handleBanUser(item.id, item.email)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.actionBtnText}>Suspend</Text>
+            </TouchableOpacity>
+          )
         )}
         {isSuperAdmin && (
           <TouchableOpacity style={[styles.actionBtn, styles.deleteBtn]} onPress={() => handleDelete(item)} activeOpacity={0.8}>
