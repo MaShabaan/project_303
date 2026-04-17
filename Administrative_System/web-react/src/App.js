@@ -149,8 +149,10 @@ function App() {
       case 'submit-ticket':
         return <SubmitTicket user={currentUser} onBack={() => setView('dashboard')} />;
 
-      case 'manage-courses':
-        return <ManageCourses onBack={() => setView('dashboard')} />;
+case 'manage-courses':
+  return userRole === 'admin'
+    ? <ManageCourses onBack={() => setView('dashboard')} />
+    : <div style={{padding: "20px"}}>⛔ Access Denied</div>;
 
       default:
         return (
@@ -187,10 +189,12 @@ function App() {
                   <h3>My Tickets</h3>
                 </div>
 
-                <div className="card" onClick={() => setView('manage-courses')}>
-                  <div className="card-icon">📚</div>
-                  <h3>Manage Courses</h3>
-                </div>
+{userRole === 'admin' && (
+  <div className="card" onClick={() => setView('manage-courses')}>
+    <div className="card-icon">📚</div>
+    <h3>Manage Courses</h3>
+  </div>
+)}
 
               </div>
 
