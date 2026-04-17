@@ -21,7 +21,11 @@ function AdminDashboard({ user, onLogout, setView }) {
   return (
     <div className="admin-page">
       <div className="dashboard-wrapper">
-
+<div className="topbar">
+  <div className="bell" onClick={() => setView("notifications")}>
+    🔔
+  </div>
+</div>
         <h1 className="title">
           Welcome, {adminData.name}!
         </h1>
@@ -30,36 +34,34 @@ function AdminDashboard({ user, onLogout, setView }) {
 
         <div className="cards-grid">
 
-          {/* Complaints */}
+          
           <div className="card" onClick={() => setView("complaints")}>
             📋
             <h3>Manage Complaints</h3>
             <p>View and resolve complaints</p>
           </div>
 
-          {/* Users */}
           <div className="card" onClick={() => setView("users")}>
             👥
             <h3>Manage Users</h3>
             <p>View and manage user accounts</p>
           </div>
 
-          {/* Ratings */}
+         
           <div className="card" onClick={() => setView("ratings")}>
             ⭐
             <h3>Manage Ratings</h3>
             <p>View course ratings</p>
           </div>
 
-          {/* Courses */}
+         
           <div className="card" onClick={() => setView("courses")}>
             📚
             <h3>Manage Courses</h3>
             <p>Manage courses data</p>
           </div>
 
-          
-
+         
         </div>
 
         <button onClick={onLogout} className="logout-btn">

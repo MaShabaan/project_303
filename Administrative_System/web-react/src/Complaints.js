@@ -26,22 +26,39 @@ export default function Complaints({ setView }) {
     return "low";
   };
 
-  // ✅ تغيير الحالة (فقط Firebase + UI)
+  
   const handleStatusChange = async (id, newStatus) => {
-  try {
-    await updateDoc(doc(db, "tickets", id), {
-      status: newStatus,
-    });
+    try {
+      await updateDoc(doc(db, "tickets", id), {
+        status: newStatus,
+      });
 
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === id ? { ...t, status: newStatus } : t
-      )
-    );
-  } catch (e) {
-    console.error(e);
-  }
-};
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, status: newStatus } : t
+        )
+      );
+
+      
+      const oldNotifications =
+        JSON.parse(localStorage.getItem("notifications")) || [];
+
+      const newNotification = {
+        message: `Your ticket status is now: ${newStatus}`,
+        createdAt: new Date().toLocaleString(),
+        read: false,
+      };
+
+      const updated = [newNotification, ...oldNotifications];
+
+      localStorage.setItem(
+        "notifications",
+        JSON.stringify(updated)
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const loadTickets = async () => {
     try {
@@ -53,17 +70,16 @@ export default function Complaints({ setView }) {
 
           let senderEmail = "Unknown";
 
-          if (data.userEmail) {
-            senderEmail = data.userEmail;
-          } else if (data.email) {
-            senderEmail = data.email;
-          } else if (data.user?.email) {
-            senderEmail = data.user.email;
-          } else if (data.emailAddress) {
+          if (data.userEmail) senderEmail = data.userEmail;
+          else if (data.email) senderEmail = data.email;
+          else if (data.user?.email) senderEmail = data.user.email;
+          else if (data.emailAddress)
             senderEmail = data.emailAddress;
-          } else if (data.userId) {
+          else if (data.userId) {
             try {
-              const userDoc = await getDoc(doc(db, "users", data.userId));
+              const userDoc = await getDoc(
+                doc(db, "users", data.userId)
+              );
               if (userDoc.exists()) {
                 const userData = userDoc.data();
                 senderEmail =
@@ -103,6 +119,7 @@ export default function Complaints({ setView }) {
     loadTickets();
   }, []);
 
+ 
   const handleReply = async (id) => {
     if (!replyText.trim()) return;
 
@@ -110,8 +127,10 @@ export default function Complaints({ setView }) {
 
     try {
       console.log("Reply sent:", id, replyText);
+
       setReplyingToId(null);
       setReplyText("");
+
       await loadTickets();
     } catch (e) {
       console.error(e);
@@ -120,7 +139,8 @@ export default function Complaints({ setView }) {
     }
   };
 
-  if (loading) return <div className="complaints-loading">Loading...</div>;
+  if (loading)
+    return <div className="complaints-loading">Loading...</div>;
 
   return (
     <div className="complaints-page">
@@ -136,80 +156,115 @@ export default function Complaints({ setView }) {
 
       <div className="complaints-list">
         {tickets.length === 0 && (
-          <p className="complaints-empty">No complaints yet</p>
+          <p className="complaints-empty">
+            No complaints yet
+          </p>
         )}
 
         {tickets.map((item) => {
-          const priorityClass = normalizePriority(item.priority);
+          const priorityClass = normalizePriority(
+            item.priority
+          );
 
           return (
             <div className="complaint-card" key={item.id}>
               <div className="complaint-card-header">
-                <div>
-                  <span>From:</span>
-                  <p>{item.senderEmail}</p>
+                <div className="complaint-sender-block">
+                  <span className="complaint-from-label">
+                    From:
+                  </span>
+                  <p className="complaint-sender-email">
+                    {item.senderEmail}
+                  </p>
                 </div>
 
-                <span className={`complaint-priority ${priorityClass}`}>
+                <span
+                  className={`complaint-priority ${priorityClass}`}
+                >
                   {priorityClass}
                 </span>
               </div>
 
               <div className="complaint-meta-row">
-                <span>
-                  {item.createdAt?.toDate?.().toLocaleString() || ""}
+                <span className="complaint-date">
+                  {item.createdAt?.toDate?.().toLocaleString() ||
+                    ""}
                 </span>
 
                 <select
-  className={`complaint-status ${item.status || "open"}`}
-  value={item.status || "open"}
-  onChange={(e) =>
-    handleStatusChange(item.id, e.target.value)
-  }
->
-  <option value="open">Open</option>
-  <option value="in-progress">In Progress</option>
-  <option value="resolved">Resolved</option>
-</select>
+                  className={`complaint-status ${
+                    item.status || "open"
+                  }`}
+                  value={item.status || "open"}
+                  onChange={(e) =>
+                    handleStatusChange(
+                      item.id,
+                      e.target.value
+                    )
+                  }
+                >
+                  <option value="open">Open</option>
+                  <option value="in-progress">
+                    In Progress
+                  </option>
+                  <option value="resolved">Resolved</option>
+                </select>
               </div>
 
-              <p>{item.title}</p>
-              <p>{item.description}</p>
+              {item.title && (
+                <p className="complaint-title">
+                  {item.title}
+                </p>
+              )}
 
+              <p className="complaint-description">
+                {item.description || ""}
+              </p>
+
+             
               {replyingToId === item.id ? (
-  <div className="complaint-reply-form">
-    <textarea
-      value={replyText}
-      onChange={(e) => setReplyText(e.target.value)}
-      placeholder="Type your reply..."
-    />
+                <div className="complaint-reply-form">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) =>
+                      setReplyText(e.target.value)
+                    }
+                    placeholder="Type your reply..."
+                  />
 
-    <div className="complaint-reply-actions">
-      <button
-        className="complaint-cancel-btn"
-        onClick={() => {
-          setReplyingToId(null);
-          setReplyText("");
-        }}
-      >
-        Cancel
-      </button>
+                  <div className="complaint-reply-actions">
+                    <button
+                      className="complaint-cancel-btn"
+                      onClick={() => {
+                        setReplyingToId(null);
+                        setReplyText("");
+                      }}
+                    >
+                      Cancel
+                    </button>
 
-      <button
-        className="complaint-send-btn"
-        onClick={() => handleReply(item.id)}
-      >
-        {replyLoading ? "Sending..." : "Send"}
-      </button>
-    </div>
-  </div>
-) : (
+                    <button
+                      className="complaint-send-btn"
+                      onClick={() =>
+                        handleReply(item.id)
+                      }
+                    >
+                      {replyLoading
+                        ? "Sending..."
+                        : "Send"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
                 <button
-  className="complaint-reply-btn"
-  onClick={() => setReplyingToId(item.id)}
->
-  Reply to Complaint
-</button>
+                type= "button"
+                  className="complaint-reply-btn"
+                  onClick={() =>
+                    setReplyingToId(item.id)
+                  }
+                >
+                  Reply to Complaint
+                </button>
               )}
             </div>
           );

@@ -67,3 +67,23 @@
   border-radius: 10px;
   cursor: pointer;
 }
+.topbar {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.bell {
+  font-size: 24px;
+  cursor: pointer;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 50%;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: 0.2s;
+}
+
+.bell:hover {
+  transform: scale(1.1);
+}

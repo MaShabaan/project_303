@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 
 import AdminDashboard from './AdminDashboard';
 import Complaints from './Complaints';
+import Notifications from "./Notifications";
 import Users from './Users';
 
 
@@ -107,7 +108,9 @@ function App() {
     if (view === 'users') {
       return <Users setView={setView} />;
     }
-    
+ if (view === "notifications") {
+  return <Notifications setView={setView} />;
+}    
     return (
       <AdminDashboard
         user={currentUser}
