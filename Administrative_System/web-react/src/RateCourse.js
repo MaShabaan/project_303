@@ -36,6 +36,15 @@ function RateCourse({ user, onBack }) {
     fetchCourses();
   }, []);
 
+  // ================= HANDLE CHANGE =================
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    });
+  };
+
+  // ================= SUBMIT =================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -84,7 +93,11 @@ function RateCourse({ user, onBack }) {
 
           <div className="form-group">
             <label>Course</label>
-            <select id="courseName" onChange={handleChange} value={formData.courseName}>
+            <select
+              id="courseName"
+              value={formData.courseName}
+              onChange={handleChange}
+            >
               <option value="">-- Select Course --</option>
               {courses.map((course, index) => (
                 <option key={index} value={course.courseName}>
@@ -94,19 +107,25 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
+          {/* INSTRUCTOR NAME */}
           <div className="form-group">
             <label>Instructor Name</label>
             <input
               type="text"
               id="instructorName"
               placeholder="Enter instructor name"
+              value={formData.instructorName}
               onChange={handleChange}
             />
           </div>
 
           <div className="form-group">
             <label>Course Rating</label>
-            <select id="courseRating" onChange={handleChange}>
+            <select
+              id="courseRating"
+              value={formData.courseRating}
+              onChange={handleChange}
+            >
               <option value="5">5 - Excellent</option>
               <option value="4">4 - Very Good</option>
               <option value="3">3 - Average</option>
@@ -115,9 +134,14 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
+          {/* INSTRUCTOR RATING */}
           <div className="form-group">
             <label>Instructor Rating</label>
-            <select id="instructorRating" onChange={handleChange}>
+            <select
+              id="instructorRating"
+              value={formData.instructorRating}
+              onChange={handleChange}
+            >
               <option value="5">5 - Excellent</option>
               <option value="4">4 - Very Good</option>
               <option value="3">3 - Average</option>
@@ -126,16 +150,22 @@ function RateCourse({ user, onBack }) {
             </select>
           </div>
 
+          {/* COMMENT */}
           <div className="form-group">
             <label>Comment</label>
             <textarea
               id="comment"
               placeholder="Write your feedback"
+              value={formData.comment}
               onChange={handleChange}
-            ></textarea>
+            />
           </div>
 
-          <button type="submit" className="action-button" disabled={submitting}>
+          <button
+            type="submit"
+            className="action-button"
+            disabled={submitting}
+          >
             {submitting ? "Submitting..." : "Submit Rating"}
           </button>
 

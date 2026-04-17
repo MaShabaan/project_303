@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth';
+
 import { doc, getDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
@@ -52,6 +53,7 @@ function App() {
     }
   };
 
+  // ================= AUTH LISTENER =================
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
@@ -75,14 +77,14 @@ function App() {
           if (view === 'login' || view === 'signup') {
             setView('dashboard');
           }
-
         } catch (error) {
-          console.error("Error fetching user data:", error);
+          console.error(error);
         }
       } else {
         setIsLoggedIn(false);
         if (view !== 'signup') setView('login');
       }
+
       setLoading(false);
     });
 
@@ -158,7 +160,9 @@ function App() {
             <div className="dashboard-container">
               <div className="welcome-header">
                 <h1>Welcome, {currentUser?.name}!</h1>
-                <div className="user-role-badge">{userRole.toUpperCase()}</div>
+                <div className="user-role-badge">
+                  {userRole.toUpperCase()}
+                </div>
               </div>
 
               <div className="dashboard-cards">
@@ -224,13 +228,18 @@ function App() {
           <form onSubmit={handleLogin}>
             <h2 className="form-title">LOGIN</h2>
 
-            <input name="email" type="email" placeholder="EMAIL" required className="inputs" />
-            <input name="password" type="password" placeholder="PASSWORD" required className="inputs" />
+            <input name="email" type="email" placeholder="EMAIL" required />
+            <input name="password" type="password" placeholder="PASSWORD" required />
 
-            <button type="submit" className="action-button">LOGIN</button>
+            <button type="submit">LOGIN</button>
 
-            <p onClick={handleForgotPassword}>Forgot Password?</p>
-            <p onClick={() => setView('signup')}>Sign Up</p>
+            <p onClick={handleForgotPassword} style={{ cursor: "pointer" }}>
+              Forgot Password?
+            </p>
+
+            <p onClick={() => setView('signup')} style={{ cursor: "pointer" }}>
+              Sign Up
+            </p>
           </form>
         </div>
       </div>
