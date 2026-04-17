@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import "./Complaints.css";
 import {
@@ -27,36 +26,18 @@ export default function Complaints({ setView }) {
     return "low";
   };
 
-  // 🔥 تغيير الحالة
-const handleStatusChange = async (id, newStatus) => {
+  // ✅ تغيير الحالة (فقط Firebase + UI)
+  const handleStatusChange = async (id, newStatus) => {
   try {
-    // 🔥 نحفظ في Firebase
     await updateDoc(doc(db, "tickets", id), {
       status: newStatus,
     });
 
-    // 🔥 نحدث الشاشة
     setTickets((prev) =>
       prev.map((t) =>
         t.id === id ? { ...t, status: newStatus } : t
       )
     );
-
-    // 🔥 نجيب النوتيفيكيشنز القديمة
-    const oldNotifications =
-      JSON.parse(localStorage.getItem("notifications")) || [];
-
-    // 🔥 نضيف جديد
-    const newNotification = {
-      message: `Your ticket status is now: ${newStatus}`,
-      createdAt: new Date().toLocaleString(),
-      read: false,
-    };
-
-    const updated = [newNotification, ...oldNotifications];
-
-    localStorage.setItem("notifications", JSON.stringify(updated));
-
   } catch (e) {
     console.error(e);
   }
@@ -147,7 +128,6 @@ const handleStatusChange = async (id, newStatus) => {
         <button
           className="complaints-backbtn"
           onClick={() => setView("dashboard")}
-          type="button"
         >
           ←
         </button>
@@ -164,13 +144,10 @@ const handleStatusChange = async (id, newStatus) => {
 
           return (
             <div className="complaint-card" key={item.id}>
-              {/* HEADER */}
               <div className="complaint-card-header">
-                <div className="complaint-sender-block">
-                  <span className="complaint-from-label">From:</span>
-                  <p className="complaint-sender-email">
-                    {item.senderEmail}
-                  </p>
+                <div>
+                  <span>From:</span>
+                  <p>{item.senderEmail}</p>
                 </div>
 
                 <span className={`complaint-priority ${priorityClass}`}>
@@ -178,73 +155,61 @@ const handleStatusChange = async (id, newStatus) => {
                 </span>
               </div>
 
-              {/* DATE + STATUS */}
               <div className="complaint-meta-row">
-                <span className="complaint-date">
+                <span>
                   {item.createdAt?.toDate?.().toLocaleString() || ""}
                 </span>
 
-                {/* 🔥 STATUS DROPDOWN */}
                 <select
-                  className={`complaint-status ${item.status || "open"}`}
-                  value={item.status || "open"}
-                  onChange={(e) =>
-                    handleStatusChange(item.id, e.target.value )
-                  }
-                >
-                  <option value="open">Open</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                </select>
+  className={`complaint-status ${item.status || "open"}`}
+  value={item.status || "open"}
+  onChange={(e) =>
+    handleStatusChange(item.id, e.target.value)
+  }
+>
+  <option value="open">Open</option>
+  <option value="in-progress">In Progress</option>
+  <option value="resolved">Resolved</option>
+</select>
               </div>
 
-              {/* CONTENT */}
-              {item.title && (
-                <p className="complaint-title">{item.title}</p>
-              )}
+              <p>{item.title}</p>
+              <p>{item.description}</p>
 
-              <p className="complaint-description">
-                {item.description || ""}
-              </p>
-
-              {/* REPLY */}
               {replyingToId === item.id ? (
-                <div className="complaint-reply-form">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply..."
-                  />
+  <div className="complaint-reply-form">
+    <textarea
+      value={replyText}
+      onChange={(e) => setReplyText(e.target.value)}
+      placeholder="Type your reply..."
+    />
 
-                  <div className="complaint-reply-actions">
-                    <button
-                      type="button"
-                      className="complaint-cancel-btn"
-                      onClick={() => {
-                        setReplyingToId(null);
-                        setReplyText("");
-                      }}
-                    >
-                      Cancel
-                    </button>
+    <div className="complaint-reply-actions">
+      <button
+        className="complaint-cancel-btn"
+        onClick={() => {
+          setReplyingToId(null);
+          setReplyText("");
+        }}
+      >
+        Cancel
+      </button>
 
-                    <button
-                      type="button"
-                      className="complaint-send-btn"
-                      onClick={() => handleReply(item.id)}
-                    >
-                      {replyLoading ? "Sending..." : "Send"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
+      <button
+        className="complaint-send-btn"
+        onClick={() => handleReply(item.id)}
+      >
+        {replyLoading ? "Sending..." : "Send"}
+      </button>
+    </div>
+  </div>
+) : (
                 <button
-                  type="button"
-                  className="complaint-reply-btn"
-                  onClick={() => setReplyingToId(item.id)}
-                >
-                  Reply to Complaint
-                </button>
+  className="complaint-reply-btn"
+  onClick={() => setReplyingToId(item.id)}
+>
+  Reply to Complaint
+</button>
               )}
             </div>
           );

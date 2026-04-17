@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import AdminDashboard from './AdminDashboard';
 import Complaints from './Complaints';
 import Users from './Users';
-import Notifications from './Notifications';
+
 
 import SignUp from './SignUp';
 import './App.css';
@@ -107,10 +107,7 @@ function App() {
     if (view === 'users') {
       return <Users setView={setView} />;
     }
-    if (view === "notifications") {
-      return <Notifications setView={setView} />;
-    }
-
+    
     return (
       <AdminDashboard
         user={currentUser}

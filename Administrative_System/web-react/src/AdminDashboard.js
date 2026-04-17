@@ -58,15 +58,7 @@ function AdminDashboard({ user, onLogout, setView }) {
             <p>Manage courses data</p>
           </div>
 
-          {/* Notifications 🔥 */}
-          <div
-  className="card"
-  onClick={() => setView("notifications")}
-  style={{ cursor: "pointer" }}
->🔔
-  <h3>Notifications</h3>
-  <p>Send and manage notifications</p>
-</div>
+          
 
         </div>
 
