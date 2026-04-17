@@ -5,17 +5,27 @@ import './RateCourse.css';
 
 function RateCourse({ user, onBack }) {
 
-  const [courses, setCourses] = useState([]); // ⭐ الكورسات
+  const [courses, setCourses] = useState([]);
 
   const [formData, setFormData] = useState({
     courseName: '',
+    instructorName: '',
     courseRating: '5',
+    instructorRating: '5',
     comment: ''
   });
 
   const [submitting, setSubmitting] = useState(false);
 
-  // 🔥 تحميل الكورسات من Firebase
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    });
+  };
+
+  
   useEffect(() => {
     const fetchCourses = async () => {
       const snapshot = await getDocs(collection(db, "courses"));
@@ -36,14 +46,13 @@ function RateCourse({ user, onBack }) {
     setSubmitting(true);
 
     try {
-
       await addDoc(collection(db, 'course-ratings'), {
         studentId: auth.currentUser.uid,
         studentEmail: auth.currentUser.email,
         courseName: formData.courseName,
         instructorName: formData.instructorName,
-        courseRating: formData.courseRating.toString(),
-        instructorRating: formData.instructorRating.toString(),
+        courseRating: formData.courseRating,
+        instructorRating: formData.instructorRating,
         comment: formData.comment,
         createdAt: serverTimestamp()
       });
@@ -70,9 +79,9 @@ function RateCourse({ user, onBack }) {
           ← Back
         </button>
 
+        {/* ✅ form واحدة بس */}
         <form onSubmit={handleSubmit}>
 
-          {/* ⭐ SELECT COURSE بدل input */}
           <div className="form-group">
             <label>Course</label>
             <select id="courseName" onChange={handleChange} value={formData.courseName}>
@@ -95,7 +104,6 @@ function RateCourse({ user, onBack }) {
             />
           </div>
 
-        <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Course Rating</label>
             <select id="courseRating" onChange={handleChange}>
