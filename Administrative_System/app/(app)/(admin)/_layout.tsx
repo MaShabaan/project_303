@@ -1,161 +1,107 @@
 /**
- * Admin Dashboard Layout
- *
- * Protected: Only users with role "admin" can access.
- * Regular users attempting to access will be redirected.
+ * Admin area layout — mirrors main branch Stack + route guards, with banned-user redirect.
  */
 
-import { TouchableOpacity, Image, StyleSheet, View } from "react-native";
-import { Redirect, Tabs, router } from "expo-router";
+import { Stack, useSegments, useRouter, Redirect } from "expo-router";
 import { useAuth } from "@/contexts/AuthContext";
-import { IconSymbol } from "@/components/ui/icon-symbol";
-import { Colors } from "@/constants/theme";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { NotificationBellButton } from "@/components/NotificationBellButton";
+import { ActivityIndicator, View } from "react-native";
+import { useEffect } from "react";
+import { autoUnblockExpiredUsers } from "@/services/firebase";
 
 export default function AdminLayout() {
-  const { user, profile, isInitialized, signOut } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
+  const { user, profile, isLoading, isInitialized } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-  const handleBackToLogin = () => {
-    signOut();
-    router.replace("/(auth)/login");
-  };
+  useEffect(() => {
+    autoUnblockExpiredUsers();
+  }, []);
 
-  if (!isInitialized) return null;
+  useEffect(() => {
+    if (!isInitialized || isLoading) return;
 
-  if (!user || !profile) {
-    return <Redirect href="/(auth)/login" />;
+    const isLoggedIn = !!user;
+    const userRole = profile?.role;
+    const userPermissions = profile?.permissions || {};
+    const currentPath = segments.join("/");
+
+    const hasPermission = (permission: string) => {
+      if (userRole === "super_admin") return true;
+      return userPermissions[permission as keyof typeof userPermissions] === true;
+    };
+
+    const isAdminRoute = currentPath.startsWith("admin");
+    const isUserRoute = currentPath.startsWith("user");
+    const isAuthRoute = currentPath.startsWith("login") || currentPath.startsWith("signup");
+
+    const go = (path: string) => router.replace(path as any);
+
+    if (isLoggedIn && isAuthRoute) {
+      if (userRole === "admin" || userRole === "super_admin") {
+        go("/(admin)");
+        return;
+      }
+      go("/(user)");
+      return;
+    }
+
+    if (!isLoggedIn && !isAuthRoute) {
+      go("/(auth)/login");
+      return;
+    }
+
+    if (isLoggedIn && isAdminRoute && userRole === "user") {
+      go("/(user)");
+      return;
+    }
+
+    if (isLoggedIn && isUserRoute && (userRole === "admin" || userRole === "super_admin")) {
+      go("/(admin)");
+      return;
+    }
+
+    if (isLoggedIn && isAdminRoute && userRole === "admin") {
+      if (currentPath.includes("/admin/courses") && !hasPermission("manage_courses")) {
+        go("/(admin)");
+        return;
+      }
+      if (currentPath.includes("/admin/enrollments") && !hasPermission("manage_enrollments")) {
+        go("/(admin)");
+        return;
+      }
+      if (currentPath.includes("/admin/feedback") && !hasPermission("view_feedback")) {
+        go("/(admin)");
+        return;
+      }
+      if (currentPath.includes("/admin/complaints") && !hasPermission("manage_complaints")) {
+        go("/(admin)");
+        return;
+      }
+      if (currentPath.includes("/admin/users") && !hasPermission("view_users")) {
+        go("/(admin)");
+        return;
+      }
+    }
+
+    if (isLoggedIn && userRole !== "super_admin") {
+      if (currentPath.includes("/admin/approvals")) {
+        go("/(admin)");
+        return;
+      }
+    }
+  }, [isInitialized, isLoading, user, profile, segments]);
+
+  if (!isInitialized || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0f0c29" }}>
+        <ActivityIndicator size="large" color="#7c3aed" />
+      </View>
+    );
   }
 
-  // Protect admin routes - redirect regular users
-  if (profile.role !== "admin") {
-    return <Redirect href="/(app)/(user)" />;
+  if (user && profile?.isBanned === true) {
+    return <Redirect href={"/(app)/(user)/account-suspended" as any} />;
   }
 
-  if (profile.isBanned === true) {
-    return <Redirect href="/(app)/(user)/account-suspended" />;
-  }
-
-  const SUPER_ADMINS = ["mshabaan295@gmail.com", "hoda17753@gmail.com"];
-  const isSuperAdmin = SUPER_ADMINS.includes(profile.email || "");
-
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: colors.tint,
-        headerShown: true,
-        headerTitle: "Admin Dashboard",
-        headerStyle: { backgroundColor: "#FFFFFF" },
-        headerTintColor: "#333333",
-        headerLeft: () => (
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
-            <Image
-              source={require("@/assets/images/back-arrow.png")}
-              style={styles.backArrow}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        ),
-        headerRight: () => (
-          <View style={styles.headerRight}>
-            <NotificationBellButton href="./notifications" />
-          </View>
-        ),
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="house.fill" color={color} />
-          ),
-        }}
-      />
-
-      {isSuperAdmin && (
-        <Tabs.Screen
-          name="approvals"
-          options={{
-            title: "Approvals",
-            tabBarIcon: ({ color }) => (
-              <IconSymbol
-                size={28}
-                name="person.badge.clock.fill"
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
-
-      <Tabs.Screen
-        name="complaints"
-        options={{
-          title: "Complaints",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="text.bubble.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="feedback"
-        options={{
-          title: "Ratings",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="star.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: "Users",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.2.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="enrollments"
-        options={{
-          title: "Enrollments",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="list.clipboard.fill" color={color} />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          href: null,
-          title: "Notifications",
-        }}
-      />
-    </Tabs>
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
-
-const styles = StyleSheet.create({
-  backButton: {
-    padding: 12,
-    marginLeft: 4,
-  },
-  backArrow: {
-    width: 24,
-    height: 24,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-});

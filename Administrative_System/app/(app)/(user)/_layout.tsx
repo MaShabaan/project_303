@@ -12,7 +12,7 @@ export default function UserLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (profile.role === "admin") {
+  if (profile.role === "admin" || profile.role === "super_admin") {
     return <Redirect href="/(app)/(admin)" />;
   }
 

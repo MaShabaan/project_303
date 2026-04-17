@@ -20,6 +20,9 @@ import {
   updateDoc,
   deleteDoc,
   collection,
+  query,
+  where,
+  getDocs,
   Timestamp,
 } from "firebase/firestore";
 import { firebaseConfig } from "@/config/firebase";
@@ -28,7 +31,7 @@ const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
   if (existingApps.length > 0) return getApp();
   if (!firebaseConfig?.apiKey) {
-    throw new Error("Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts");
+    throw new Error("Firebase config is missing.");
   }
   return initializeApp(firebaseConfig);
 };
@@ -46,9 +49,10 @@ export const db: Firestore = (() => {
 
 enableNetwork(db).catch(() => {});
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "user" | "super_admin";
 
 export interface UserProfile {
+  uid?: string;
   email: string;
   displayName?: string | null;
   role: UserRole;
@@ -58,10 +62,29 @@ export interface UserProfile {
   department?: string;
   division?: string;
   academicCode?: string;
+  semester?: number;
+  isBlocked?: boolean;
+  blockDetails?: {
+    reason: string;
+    duration: string;
+    blockedBy: string;
+    blockedByRole: string;
+    blockedAt: Timestamp;
+    expiresAt: Timestamp | null;
+  } | null;
   /** Study level used with `currentTerm` to filter courses (defaults: 2, 1). */
   academicYear?: number;
   /** Semester / term (1 or 2). */
   currentTerm?: number;
+  permissions?: {
+    manage_courses?: boolean;
+    manage_enrollments?: boolean;
+    view_feedback?: boolean;
+    manage_complaints?: boolean;
+    view_users?: boolean;
+    manage_users?: boolean;
+    manage_admins?: boolean;
+  };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -111,6 +134,192 @@ export interface EnrollmentRecord {
   updatedAt: Timestamp;
 }
 
+const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
+
+export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
+  const usersRef = collection(db, COLLECTIONS.USERS);
+  const snapshot = await getDocs(usersRef);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (UserProfile & { id: string })[];
+}
+
+export async function checkAcademicCodeExists(academicCode: string): Promise<boolean> {
+  const q = query(
+    collection(db, COLLECTIONS.USERS),
+    where("academicCode", "==", academicCode)
+  );
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
+}
+
+export async function promoteToAdmin(userId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
+    role: "admin",
+    isApproved: true,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function demoteFromAdmin(userId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
+    role: "user",
+    isApproved: true,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function deleteUser(userId: string, currentUserEmail: string): Promise<void> {
+  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+    throw new Error('Only super admins can delete users');
+  }
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const userData = userDoc.data();
+  
+  if (SUPER_ADMINS.includes(userData?.email || '')) {
+    throw new Error('Cannot delete super admin account');
+  }
+  
+  await deleteDoc(userRef);
+}
+
+export async function blockUser(
+  userId: string,
+  reason: string,
+  duration: '2days' | '1week' | '1month' | 'permanent',
+  currentUser: UserProfile
+): Promise<void> {
+  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const targetUser = userDoc.data() as UserProfile;
+  
+  if (targetUser.email === currentUser.email) {
+    throw new Error('You cannot block yourself');
+  }
+  
+  if (SUPER_ADMINS.includes(targetUser.email)) {
+    throw new Error('Cannot block super admin');
+  }
+  
+  if (!isSuperAdmin && currentUser.role !== 'admin') {
+    throw new Error('Only admins can block users');
+  }
+  
+  let expiresAt: Timestamp | null = null;
+  const now = Timestamp.now();
+  
+  switch (duration) {
+    case '2days':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 2 * 24 * 60 * 60 * 1000));
+      break;
+    case '1week':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 7 * 24 * 60 * 60 * 1000));
+      break;
+    case '1month':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 30 * 24 * 60 * 60 * 1000));
+      break;
+    case 'permanent':
+      expiresAt = null;
+      break;
+  }
+  
+  await updateDoc(userRef, {
+    isBlocked: true,
+    blockDetails: {
+      reason: reason,
+      duration: duration,
+      blockedBy: currentUser.email,
+      blockedByRole: currentUser.role,
+      blockedAt: now,
+      expiresAt: expiresAt,
+    },
+    updatedAt: now,
+  });
+}
+
+export async function unblockUser(userId: string, currentUser: UserProfile): Promise<void> {
+  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const targetUser = userDoc.data() as UserProfile;
+  
+  if (!isSuperAdmin && currentUser.role === 'admin') {
+    if (targetUser.blockDetails?.blockedBy !== currentUser.email) {
+      throw new Error('You can only unblock users you blocked yourself');
+    }
+  }
+  
+  await updateDoc(userRef, {
+    isBlocked: false,
+    blockDetails: null,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function autoUnblockExpiredUsers(): Promise<number> {
+  try {
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where("isBlocked", "==", true));
+    const snapshot = await getDocs(q);
+    const now = Timestamp.now();
+    let unblockedCount = 0;
+    
+    for (const userDoc of snapshot.docs) {
+      const userData = userDoc.data();
+      if (userData.blockDetails?.expiresAt && userData.blockDetails.expiresAt < now) {
+        await updateDoc(doc(db, COLLECTIONS.USERS, userDoc.id), {
+          isBlocked: false,
+          blockDetails: null,
+          updatedAt: now,
+        });
+        unblockedCount++;
+      }
+    }
+    
+    return unblockedCount;
+  } catch (error) {
+    console.error("Error in autoUnblockExpiredUsers:", error);
+    return 0;
+  }
+}
+
+export async function updateUserPermissions(
+  userId: string,
+  permissions: {
+    manage_courses: boolean;
+    manage_enrollments: boolean;
+    view_feedback: boolean;
+    manage_complaints: boolean;
+    view_users: boolean;
+    manage_users: boolean;
+    manage_admins: boolean;
+  },
+  currentUserEmail: string
+): Promise<void> {
+  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+    throw new Error('Only super admins can update permissions');
+  }
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const userData = userDoc.data();
+  
+  if (SUPER_ADMINS.includes(userData?.email || '')) {
+    throw new Error('Cannot change super admin permissions');
+  }
+  
+  await updateDoc(userRef, {
+    permissions: permissions,
+    updatedAt: Timestamp.now(),
+  });
+}
+
 export type CourseRatingPayload = {
   userId: string;
   userEmail: string;
@@ -125,7 +334,6 @@ export type CourseRatingPayload = {
   createdAt: Timestamp;
 };
 
-// ── Submit new rating ─────────────────────────────────────────
 export async function submitCourseRating(
   userId: string,
   userEmail: string,
@@ -156,7 +364,6 @@ export async function submitCourseRating(
   });
 }
 
-// ── Update existing rating ────────────────────────────────────
 export async function updateCourseRating(
   feedbackId: string,
   data: {
@@ -176,10 +383,8 @@ export async function updateCourseRating(
   });
 }
 
-// ── Delete rating ─────────────────────────────────────────────
 export async function deleteCourseRating(feedbackId: string): Promise<void> {
-  const ref = doc(db, COLLECTIONS.FEEDBACK, feedbackId);
-  await deleteDoc(ref);
+  await deleteDoc(doc(db, COLLECTIONS.FEEDBACK, feedbackId));
 }
 
 export const TICKET_TYPES = [
@@ -210,8 +415,7 @@ export async function replyToTicket(
   adminEmail: string,
   replyText: string
 ): Promise<void> {
-  const ref = doc(db, COLLECTIONS.TICKETS, ticketId);
-  await updateDoc(ref, {
+  await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
     adminReply: replyText.trim(),
     repliedAt: Timestamp.now(),
     repliedBy: adminEmail,
@@ -224,8 +428,7 @@ export async function submitTicket(
   userEmail: string,
   data: { type: TicketType; title: string; description: string; priority: string }
 ): Promise<void> {
-  const ref = collection(db, COLLECTIONS.TICKETS);
-  await addDoc(ref, {
+  await addDoc(collection(db, COLLECTIONS.TICKETS), {
     userId,
     userEmail,
     type: data.type,
@@ -243,7 +446,9 @@ export function getUserDocRef(uid: string) {
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const userDoc = await getDoc(getUserDocRef(uid));
-  return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+  if (!userDoc.exists()) return null;
+  const data = userDoc.data() as UserProfile;
+  return { ...data, uid: userDoc.id };
 }
 
 export async function signUpUser(
@@ -255,10 +460,19 @@ export async function signUpUser(
     department?: string;
     division?: string;
     academicCode?: string;
+    semester?: number;
     academicYear?: number;
     currentTerm?: number;
   },
 ): Promise<UserCredential> {
+  
+  if (userData?.academicCode) {
+    const exists = await checkAcademicCodeExists(userData.academicCode);
+    if (exists) {
+      throw new Error("Academic code already exists. Please contact support.");
+    }
+  }
+
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   const { uid } = credential.user;
   const now = Timestamp.now();
@@ -268,8 +482,11 @@ export async function signUpUser(
     displayName: userData?.displayName ?? null,
     role,
     isApproved: role === "admin" ? false : true,
-    ...(role === "user" && userData?.department ? { department: userData.department } : {}),
-    ...(role === "user" && userData?.division ? { division: userData.division } : {}),
+    isBlocked: false,
+    isBanned: false,
+    ...(userData?.department ? { department: userData.department } : {}),
+    ...(userData?.division ? { division: userData.division } : {}),
+    ...(userData?.semester !== undefined ? { semester: userData.semester } : {}),
     academicCode: userData?.academicCode ?? null,
     ...(role === "user" && userData?.academicYear != null
       ? { academicYear: Number(userData.academicYear) }

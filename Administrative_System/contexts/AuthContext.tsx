@@ -42,6 +42,7 @@ interface AuthContextValue extends AuthState {
       department?: string;
       division?: string;
       academicCode?: string;
+      semester?: number;
       academicYear?: number;
       currentTerm?: number;
     }
@@ -134,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         department?: string;
         division?: string;
         academicCode?: string;
+        semester?: number;
         academicYear?: number;
         currentTerm?: number;
       }
