@@ -10,13 +10,14 @@ import {
   Animated,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { TICKET_TYPES, submitTicket, type TicketType } from '@/services/firebase';
+import { submitTicket, type TicketType } from '@/services/firebase';
 import { router } from 'expo-router';
 
-const PRIORITIES = [
-  { value: 'low', label: '🟢 Low', color: '#10b981', bg: '#f0fdf4', border: '#bbf7d0' },
-  { value: 'medium', label: '🟡 Medium', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' },
-  { value: 'high', label: '🔴 High', color: '#ef4444', bg: '#fef2f2', border: '#fecaca' },
+const TICKET_TYPES = [
+  { value: "harassment", label: "Harassment", priority: "urgent" },
+  { value: "complaint", label: "Complaint", priority: "high" },
+  { value: "technical_issue", label: "Technical Issue", priority: "medium" },
+  { value: "request", label: "Request", priority: "low" },
 ] as const;
 
 export default function SubmitComplaintScreen() {
@@ -24,7 +25,7 @@ export default function SubmitComplaintScreen() {
   const [ticketType, setTicketType] = useState<TicketType | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<string>('medium');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(false);
   const [titleFocused, setTitleFocused] = useState(false);
   const [descFocused, setDescFocused] = useState(false);
@@ -42,16 +43,12 @@ export default function SubmitComplaintScreen() {
   }, []);
 
   const handleSubmit = async () => {
-    console.log('User object:', user);
-    console.log('User UID:', user?.uid);
-    console.log('User Email:', user?.email);
-
     if (!user?.uid || !user?.email) {
       Alert.alert('Error', 'You must be signed in to submit a complaint.');
       return;
     }
     if (!ticketType) {
-      Alert.alert('Required', 'Please select a ticket type.');
+      Alert.alert('Required', 'Please select a complaint type.');
       return;
     }
     const t = title.trim();
@@ -70,12 +67,14 @@ export default function SubmitComplaintScreen() {
         type: ticketType,
         title: t,
         description: d,
-        priority,
+        isAnonymous,
       });
       
       Alert.alert(
         '✓ Complaint Submitted',
-        'Your complaint has been recorded. We will review it and get back to you within 24 hours.',
+        isAnonymous 
+          ? 'Your anonymous complaint has been recorded. Admin will see it as "Anonymous".'
+          : 'Your complaint has been recorded. We will review it and get back to you within 24 hours.',
         [
           { 
             text: 'View My Complaints', 
@@ -108,19 +107,17 @@ export default function SubmitComplaintScreen() {
           transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
         }}>
 
-          {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
               <Text style={styles.backText}>← Back</Text>
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>Submit Complaint</Text>
-              <Text style={styles.headerSub}>We&apos;ll review and get back to you</Text>
+              <Text style={styles.headerSub}>We'll review and get back to you</Text>
             </View>
             <View style={{ width: 60 }} />
           </View>
 
-          {/* Ticket Type */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>COMPLAINT TYPE</Text>
             <View style={styles.typesGrid}>
@@ -139,7 +136,6 @@ export default function SubmitComplaintScreen() {
             </View>
           </View>
 
-          {/* Title */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, titleFocused && styles.sectionTitleFocused]}>TITLE</Text>
             <TextInput
@@ -153,7 +149,6 @@ export default function SubmitComplaintScreen() {
             />
           </View>
 
-          {/* Description */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, descFocused && styles.sectionTitleFocused]}>DESCRIPTION</Text>
             <TextInput
@@ -170,31 +165,23 @@ export default function SubmitComplaintScreen() {
             />
           </View>
 
-          {/* Priority */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>PRIORITY</Text>
-            <View style={styles.priorityRow}>
-              {PRIORITIES.map(({ value, label, color, bg, border }) => (
-                <TouchableOpacity
-                  key={value}
-                  style={[
-                    styles.priorityBtn,
-                    { backgroundColor: bg, borderColor: border },
-                    priority === value && styles.priorityBtnActive,
-                    priority === value && { borderColor: color },
-                  ]}
-                  onPress={() => setPriority(value)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.priorityText, priority === value && { color }]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.sectionTitle}>ANONYMOUS</Text>
+            <TouchableOpacity
+              style={styles.anonymousOption}
+              onPress={() => setIsAnonymous(!isAnonymous)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.checkbox, isAnonymous && styles.checkboxChecked]}>
+                {isAnonymous && <Text style={styles.checkboxIcon}>✓</Text>}
+              </View>
+              <View style={styles.anonymousTextContainer}>
+                <Text style={styles.anonymousTitle}>Submit anonymously</Text>
+                <Text style={styles.anonymousSubtext}>Admin will see this as "Anonymous", but super admin can see your identity</Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Submit Button */}
           <TouchableOpacity
             style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
             onPress={handleSubmit}
@@ -215,7 +202,7 @@ export default function SubmitComplaintScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f6f5ff',
+    backgroundColor: '#f8f9fa',
   },
   content: {
     padding: 16,
@@ -223,7 +210,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,7 +231,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1e1b4b',
+    color: '#1a1a1a',
   },
   headerSub: {
     fontSize: 11,
@@ -254,18 +240,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Section
   section: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#ede9fe',
-    shadowColor: '#7c3aed',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
+    borderColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
   sectionTitle: {
@@ -279,7 +264,6 @@ const styles = StyleSheet.create({
     color: '#7c3aed',
   },
 
-  // Types
   typesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -289,9 +273,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 10,
-    backgroundColor: '#f8f7ff',
-    borderWidth: 1.5,
-    borderColor: '#ede9fe',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   typeBtnActive: {
     backgroundColor: '#7c3aed',
@@ -306,64 +290,73 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
-  // Input
   input: {
     height: 50,
     borderRadius: 12,
-    backgroundColor: '#f8f7ff',
-    borderWidth: 1.5,
-    borderColor: '#ede9fe',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
     paddingHorizontal: 16,
     fontSize: 14,
-    color: '#1e1b4b',
+    color: '#1a1a1a',
     fontWeight: '500',
   },
   inputFocused: {
     borderColor: '#7c3aed',
+    borderWidth: 2,
     backgroundColor: '#fff',
-    shadowColor: '#7c3aed',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
   },
   textArea: {
     height: 120,
     paddingTop: 14,
   },
 
-  // Priority
-  priorityRow: {
+  anonymousOption: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  priorityBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 1.5,
+    gap: 12,
   },
-  priorityBtnActive: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  priorityText: {
-    fontSize: 13,
+  checkboxChecked: {
+    backgroundColor: '#7c3aed',
+    borderColor: '#7c3aed',
+  },
+  checkboxIcon: {
+    color: '#fff',
+    fontSize: 14,
     fontWeight: '700',
-    color: '#64748b',
+  },
+  anonymousTextContainer: {
+    flex: 1,
+  },
+  anonymousTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  anonymousSubtext: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 2,
   },
 
-  // Submit
   submitBtn: {
     height: 54,
     borderRadius: 16,
-    backgroundColor: '#1e1b4b',
+    backgroundColor: '#7c3aed',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
-    shadowColor: '#1e1b4b',
+    shadowColor: '#7c3aed',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
