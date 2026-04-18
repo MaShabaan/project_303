@@ -3,6 +3,8 @@ import "./Complaints.css";
 import {
   collection,
   getDocs,
+  query,
+  orderBy,
   doc,
   getDoc,
   updateDoc,
@@ -15,18 +17,28 @@ export default function Complaints({ setView }) {
   const [replyingToId, setReplyingToId] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [replyLoading, setReplyLoading] = useState(false);
+  const [sortByPriority, setSortByPriority] = useState(false);
 
-  const normalizePriority = (p) => {
-    if (!p) return "low";
-    const val = String(p).toLowerCase();
+  // ✅ priority logic (يدعم القديم + الجديد)
+  const normalizePriority = (item) => {
+    if (item.priorityScore === 1) return "high";
+    if (item.priorityScore === 2) return "medium";
+    if (item.priorityScore === 3) return "low";
 
-    if (val.includes("urgent")) return "high";
-    if (val.includes("high")) return "high";
-    if (val.includes("med")) return "medium";
+    if (item.priority) {
+      if (item.priority === "high") return "high";
+      if (item.priority === "medium") return "medium";
+      if (item.priority === "low") return "low";
+    }
+
+    if (item.category === "Harrasment or Bullying") return "high";
+    if (item.category === "Registration") return "medium";
+    if (item.category === "Building issues") return "low";
+
     return "low";
   };
 
-  
+  // ✅ تغيير الحالة
   const handleStatusChange = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, "tickets", id), {
@@ -39,7 +51,6 @@ export default function Complaints({ setView }) {
         )
       );
 
-      
       const oldNotifications =
         JSON.parse(localStorage.getItem("notifications")) || [];
 
@@ -49,20 +60,32 @@ export default function Complaints({ setView }) {
         read: false,
       };
 
-      const updated = [newNotification, ...oldNotifications];
-
       localStorage.setItem(
         "notifications",
-        JSON.stringify(updated)
+        JSON.stringify([newNotification, ...oldNotifications])
       );
     } catch (e) {
       console.error(e);
     }
   };
 
+  // ✅ تحميل البيانات
   const loadTickets = async () => {
+    setLoading(true);
+
     try {
-      const snapshot = await getDocs(collection(db, "tickets"));
+      let snapshot;
+
+      if (sortByPriority) {
+        const q = query(
+          collection(db, "tickets"),
+          orderBy("priorityScore", "asc"),
+          orderBy("createdAt", "asc")
+        );
+        snapshot = await getDocs(q);
+      } else {
+        snapshot = await getDocs(collection(db, "tickets"));
+      }
 
       const list = await Promise.all(
         snapshot.docs.map(async (docSnap) => {
@@ -73,8 +96,7 @@ export default function Complaints({ setView }) {
           if (data.userEmail) senderEmail = data.userEmail;
           else if (data.email) senderEmail = data.email;
           else if (data.user?.email) senderEmail = data.user.email;
-          else if (data.emailAddress)
-            senderEmail = data.emailAddress;
+          else if (data.emailAddress) senderEmail = data.emailAddress;
           else if (data.userId) {
             try {
               const userDoc = await getDoc(
@@ -101,12 +123,6 @@ export default function Complaints({ setView }) {
         })
       );
 
-      list.sort((a, b) => {
-        const tA = a.createdAt?.seconds || 0;
-        const tB = b.createdAt?.seconds || 0;
-        return tB - tA;
-      });
-
       setTickets(list);
     } catch (e) {
       console.error(e);
@@ -117,9 +133,9 @@ export default function Complaints({ setView }) {
 
   useEffect(() => {
     loadTickets();
-  }, []);
+  }, [sortByPriority]);
 
- 
+  // ✅ رد
   const handleReply = async (id) => {
     if (!replyText.trim()) return;
 
@@ -151,28 +167,36 @@ export default function Complaints({ setView }) {
         >
           ←
         </button>
+
         <h2>Admin Dashboard</h2>
+
+        {/* ✅ زر ترتيب priority */}
+        <select
+          className="complaint-status"
+          value={sortByPriority ? "priority" : "default"}
+          onChange={(e) =>
+            setSortByPriority(e.target.value === "priority")
+          }
+          style={{ marginLeft: "auto" }}
+        >
+          <option value="default">Default</option>
+          <option value="priority">Sort by Priority</option>
+        </select>
       </div>
 
       <div className="complaints-list">
         {tickets.length === 0 && (
-          <p className="complaints-empty">
-            No complaints yet
-          </p>
+          <p className="complaints-empty">No complaints yet</p>
         )}
 
         {tickets.map((item) => {
-          const priorityClass = normalizePriority(
-            item.priority
-          );
+          const priorityClass = normalizePriority(item);
 
           return (
             <div className="complaint-card" key={item.id}>
               <div className="complaint-card-header">
                 <div className="complaint-sender-block">
-                  <span className="complaint-from-label">
-                    From:
-                  </span>
+                  <span className="complaint-from-label">From:</span>
                   <p className="complaint-sender-email">
                     {item.senderEmail}
                   </p>
@@ -187,41 +211,33 @@ export default function Complaints({ setView }) {
 
               <div className="complaint-meta-row">
                 <span className="complaint-date">
-                  {item.createdAt?.toDate?.().toLocaleString() ||
-                    ""}
+                  {item.createdAt?.toDate?.().toLocaleString() || ""}
                 </span>
 
+                {/* ✅ status dropdown فقط */}
                 <select
                   className={`complaint-status ${
                     item.status || "open"
                   }`}
                   value={item.status || "open"}
                   onChange={(e) =>
-                    handleStatusChange(
-                      item.id,
-                      e.target.value
-                    )
+                    handleStatusChange(item.id, e.target.value)
                   }
                 >
                   <option value="open">Open</option>
-                  <option value="in-progress">
-                    In Progress
-                  </option>
+                  <option value="in-progress">In Progress</option>
                   <option value="resolved">Resolved</option>
                 </select>
               </div>
 
               {item.title && (
-                <p className="complaint-title">
-                  {item.title}
-                </p>
+                <p className="complaint-title">{item.title}</p>
               )}
 
               <p className="complaint-description">
                 {item.description || ""}
               </p>
 
-             
               {replyingToId === item.id ? (
                 <div className="complaint-reply-form">
                   <textarea
@@ -245,23 +261,16 @@ export default function Complaints({ setView }) {
 
                     <button
                       className="complaint-send-btn"
-                      onClick={() =>
-                        handleReply(item.id)
-                      }
+                      onClick={() => handleReply(item.id)}
                     >
-                      {replyLoading
-                        ? "Sending..."
-                        : "Send"}
+                      {replyLoading ? "Sending..." : "Send"}
                     </button>
                   </div>
                 </div>
               ) : (
                 <button
-                type= "button"
                   className="complaint-reply-btn"
-                  onClick={() =>
-                    setReplyingToId(item.id)
-                  }
+                  onClick={() => setReplyingToId(item.id)}
                 >
                   Reply to Complaint
                 </button>

@@ -6,7 +6,14 @@ import { db } from "./firebaseConfig";
 export default function Users({ setView }) {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("all"); // all | admins | users
+  const [mainTab, setMainTab] = useState("all-users"); // all-users | blocked
+  const [blockedUsers, setBlockedUsers] = useState([]);
+
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("blockedUsers")) || [];
+    setBlockedUsers(stored);
+  }, []);
 
   useEffect(() => {
     loadUsers();
@@ -27,22 +34,29 @@ export default function Users({ setView }) {
     }
   };
 
-  // 🔍 فلترة + بحث
-  const filtered = users.filter((user) => {
-    const name = user.displayName || "";
-    const email = user.email || "";
+  const isAdmin = (user) => user.role === "admin";
 
-    const matchesSearch =
-      name.toLowerCase().includes(search.toLowerCase()) ||
-      email.toLowerCase().includes(search.toLowerCase());
+  const isBlockedUser = (userId) => {
+    return blockedUsers.some((u) => u.id === userId);
+  };
 
-    if (filter === "admins") return matchesSearch && user.role === "admin";
-    if (filter === "users") return matchesSearch && user.role === "user";
+  const toggleBlockUser = (user) => {
+    // ✅ لا يعمل بلوك للأدمن
+    if (isAdmin(user)) return;
 
-    return matchesSearch;
-  });
+    const alreadyBlocked = isBlockedUser(user.id);
 
-  // 🎯 badge logic 
+    let updated;
+    if (alreadyBlocked) {
+      updated = blockedUsers.filter((u) => u.id !== user.id);
+    } else {
+      updated = [...blockedUsers, user];
+    }
+
+    setBlockedUsers(updated);
+    localStorage.setItem("blockedUsers", JSON.stringify(updated));
+  };
+
   const getBadge = (user) => {
     if (user.role === "admin") {
       if (user.isApproved === false) {
@@ -54,10 +68,30 @@ export default function Users({ setView }) {
     return <span className="badge user">User</span>;
   };
 
+  const matchesSearch = (user) => {
+    const name = user.displayName || "";
+    const email = user.email || "";
+
+    return (
+      name.toLowerCase().includes(search.toLowerCase()) ||
+      email.toLowerCase().includes(search.toLowerCase())
+    );
+  };
+
+  const displayedUsers =
+    mainTab === "blocked"
+      ? blockedUsers.filter((user) => matchesSearch(user))
+      : users.filter((user) => {
+          if (!matchesSearch(user)) return false;
+
+          if (filter === "admins") return user.role === "admin";
+          if (filter === "users") return user.role === "user";
+
+          return true;
+        });
+
   return (
     <div className="users-page">
-
-      {/* 🔙 Header */}
       <div className="top-bar">
         <button onClick={() => setView("dashboard")} className="back-btn">
           ←
@@ -65,50 +99,111 @@ export default function Users({ setView }) {
         <h2>Admin Dashboard</h2>
       </div>
 
-      {/* 🔥 Purple header */}
       <div className="users-header">
         <h1>Manage Users</h1>
-        <p>Total Users: {users.length}</p>
+        <p>
+          {mainTab === "blocked"
+            ? `${blockedUsers.length} blocked users`
+            : `${users.length} users`}
+        </p>
       </div>
 
-      {/* 🔍 Search */}
       <div className="search-box">
         <input
           type="text"
-          placeholder="Search by name or email..."
+          placeholder="Search name, email or code..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {/* 🎯 Filters */}
-      <div className="filters">
-        <button onClick={() => setFilter("all")} className={filter==="all"?"active":""}>All</button>
-        <button onClick={() => setFilter("admins")} className={filter==="admins"?"active":""}>Admins</button>
-        <button onClick={() => setFilter("users")} className={filter==="users"?"active":""}>Users</button>
+      {/* ✅ التابات الرئيسية */}
+      <div className="main-tabs">
+        <button
+          className={mainTab === "all-users" ? "active" : ""}
+          onClick={() => setMainTab("all-users")}
+        >
+          All Users
+        </button>
+
+        <button
+          className={mainTab === "blocked" ? "active" : ""}
+          onClick={() => setMainTab("blocked")}
+        >
+          🔒 Blocked ({blockedUsers.length})
+        </button>
       </div>
 
-      {/* 👥 List */}
+      {/* ✅ التابات الفرعية تظهر فقط مع All Users */}
+      {mainTab === "all-users" && (
+        <div className="filters">
+          <button
+            onClick={() => setFilter("all")}
+            className={filter === "all" ? "active" : ""}
+          >
+            All
+          </button>
+
+          <button
+            onClick={() => setFilter("admins")}
+            className={filter === "admins" ? "active" : ""}
+          >
+            Admins
+          </button>
+
+          <button
+            onClick={() => setFilter("users")}
+            className={filter === "users" ? "active" : ""}
+          >
+            Users
+          </button>
+        </div>
+      )}
+
+      <div className="section-label">
+        {mainTab === "blocked" ? "🔒 Blocked users" : "👥 View only"}
+      </div>
+
       <div className="users-list">
-        {filtered.map((user) => (
-          <div key={user.id} className="user-card">
+        {displayedUsers.length === 0 ? (
+          <p className="no-users">
+            {mainTab === "blocked" ? "No blocked users" : "No users found"}
+          </p>
+        ) : (
+          displayedUsers.map((user) => {
+            const blocked = isBlockedUser(user.id);
 
-            <div className="user-left">
-              <div className="avatar">
-                {(user.displayName || user.email || "U")[0].toUpperCase()}
+            return (
+              <div key={user.id} className="user-card">
+                <div className="user-left">
+                  <div className="avatar">
+                    {(user.displayName || user.email || "U")[0].toUpperCase()}
+                  </div>
+
+                  <div>
+                    <h3>{user.displayName || "No Name"}</h3>
+                    <p>{user.email}</p>
+                  </div>
+                </div>
+
+                <div className="user-actions">
+                  {getBadge(user)}
+
+                  {/* ✅ زر البلوك فقط لليوزر */}
+                  {user.role !== "admin" && (
+                    <button
+                      className={blocked ? "unblock-btn" : "block-btn"}
+                      onClick={() => toggleBlockUser(user)}
+                    >
+                      {blocked ? "Unblock" : "Block"}
+                    </button>
+                  )}
+                </div>
               </div>
-
-              <div>
-                <h3>{user.displayName || "No Name"}</h3>
-                <p>{user.email}</p>
-              </div>
-            </div>
-
-            {getBadge(user)}
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
-
     </div>
   );
 }
