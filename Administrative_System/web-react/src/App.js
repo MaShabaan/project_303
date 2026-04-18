@@ -23,9 +23,9 @@ import SubmitTicket from './SubmitTicket';
 import { auth, db } from './firebaseConfig';
 
 function App() {
+
   const [view, setView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userRole, setUserRole] = useState('student');
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -212,6 +212,7 @@ case 'manage-courses':
   }
 
 
+  
   return (
   <div className="content-wrapper">
   <div className="image-container">

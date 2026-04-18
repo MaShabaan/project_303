@@ -1,0 +1,33 @@
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  background: white;
+  padding: 10px 0;
+  border-top: 1px solid #ddd;
+
+  z-index: 100;
+}
+
+.bottom-nav div {
+  text-align: center;
+  font-size: 12px;
+  color: gray;
+  cursor: pointer;
+}
+
+.bottom-nav div span {
+  display: block;
+  font-size: 11px;
+}
+
+.bottom-nav .active {
+  color: #764ba2;
+  font-weight: bold;
+}

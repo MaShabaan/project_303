@@ -1,0 +1,159 @@
+.users-page {
+  background: #f5f5f5;
+  min-height: 100vh;
+}
+
+.users-header {
+  background: #764ba2;
+  color: white;
+  padding: 25px;
+}
+
+.search-box {
+  padding: 15px;
+  background: white;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #eee;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  background: white;
+}
+
+.filters button {
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: none;
+  background: #eee;
+  cursor: pointer;
+}
+
+.filters .active {
+  background: #764ba2;
+  color: white;
+}
+
+.users-list {
+  padding: 15px;
+}
+
+.user-card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 10px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: #764ba2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.badge {
+  padding: 6px 12px;
+  border-radius: 12px;
+  color: white;
+  font-size: 12px;
+}
+
+.admin {
+  background: #764ba2;
+}
+
+.user {
+  background: #28a745;
+}
+
+.pending {
+  background: orange;
+}
+.main-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding: 14px 18px;
+}
+
+.main-tabs button {
+  border: none;
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #eef0f5;
+  color: #777;
+}
+
+.main-tabs button.active {
+  background: linear-gradient(90deg, #7c3aed, #8b5cf6);
+  color: white;
+}
+
+.section-label {
+  margin: 0 18px 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f3eefc;
+  color: #6b46c1;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.block-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: #fee2e2;
+  color: #dc2626;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.unblock-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: #dcfce7;
+  color: #16a34a;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.no-users {
+  text-align: center;
+  color: #777;
+  padding: 24px;
+}

@@ -1,31 +1,22 @@
-import { useEffect, useState } from 'react';
-import './AdminDashboard.css';
+import { useEffect, useState } from "react";
+import "./AdminDashboard.css";
 
 function AdminDashboard({ user, onLogout, setView }) { // ✅ ضفنا setView
   const [adminData, setAdminData] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user) {
       setAdminData({
-        name: user.displayName || "Admin",
+        name: user.name || "Admin",
         email: user.email,
         role: "ADMIN",
         createdAt: "March 20, 2026",
-        lastLogin: new Date().toLocaleString()
+        lastLogin: new Date().toLocaleString(),
       });
-      setLoading(false);
     }
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner"></div>
-        <p>Loading admin dashboard...</p>
-      </div>
-    );
-  }
+  if (!adminData) return <div>Loading...</div>;
 
   return (
     <div className="admin-page">
