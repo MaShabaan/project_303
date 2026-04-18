@@ -19,6 +19,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { db, COLLECTIONS, type InAppNotificationRecord } from "@/services/firebase";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 const ACCENT = "#764ba2";
 
@@ -99,6 +101,22 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={["#667eea", "#764ba2"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>🔔 Notifications</Text>
+          <Text style={styles.headerSubtitle}>{rows.length} total</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       <FlatList
         data={rows}
         keyExtractor={(item) => item.id}
@@ -139,6 +157,40 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f6f5ff" },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f6f5ff" },
+
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: {
+    alignItems: "center",
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 4,
+  },
+
   list: { padding: 16, paddingBottom: 32 },
   empty: { padding: 48, alignItems: "center" },
   emptyTitle: { fontSize: 17, fontWeight: "700", color: "#64748b", marginTop: 12 },

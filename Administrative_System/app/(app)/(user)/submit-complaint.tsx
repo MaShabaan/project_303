@@ -12,6 +12,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { submitTicket, type TicketType } from '@/services/firebase';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const TICKET_TYPES = [
   { value: "harassment", label: "Harassment", priority: "urgent" },
@@ -109,13 +110,13 @@ export default function SubmitComplaintScreen() {
 
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backText}>← Back</Text>
+              <Ionicons name="arrow-back" size={24} color="#7c3aed" />
             </TouchableOpacity>
             <View style={styles.headerCenter}>
               <Text style={styles.headerTitle}>Submit Complaint</Text>
               <Text style={styles.headerSub}>We'll review and get back to you</Text>
             </View>
-            <View style={{ width: 60 }} />
+            <View style={{ width: 40 }} />
           </View>
 
           <View style={styles.section}>
@@ -217,12 +218,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backBtn: {
-    width: 60,
-  },
-  backText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7c3aed',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerCenter: {
     alignItems: 'center',

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -17,6 +16,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { collection, doc, updateDoc, deleteDoc, Timestamp, getDocs, query, orderBy } from 'firebase/firestore';
 import { db, COLLECTIONS, replyToTicket, updateTicketStatus, getAllTickets, type Ticket } from '@/services/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 const PRIORITY_COLORS = {
   urgent: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: '🔴 Urgent' },
@@ -244,8 +245,14 @@ export default function AdminComplaintsScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
-        <Text style={styles.headerTitle}>📋 Complaints</Text>
-        <Text style={styles.headerSubtitle}>{filteredTickets.length} tickets</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>📋 Complaints</Text>
+          <Text style={styles.headerSubtitle}>{filteredTickets.length} tickets</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
       <View style={styles.filterContainer}>
@@ -400,7 +407,28 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f6f5ff' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
 
-  header: { paddingTop: 50, paddingBottom: 25, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  header: { 
+    paddingTop: 50, 
+    paddingBottom: 25, 
+    paddingHorizontal: 20, 
+    borderBottomLeftRadius: 30, 
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
   headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
 

@@ -28,6 +28,8 @@ import {
   type EnrollmentRecord,
 } from "@/services/firebase";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 const ACCENT = "#764ba2";
 
@@ -235,95 +237,154 @@ export default function EnrollCoursesScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.infoCard}>
-        <Text style={styles.infoLabel}>Your context</Text>
-        <Text style={styles.infoText}>{departmentLabel}</Text>
-        <Text style={styles.infoSub}>
-          Division: {division === "computer_science" ? "Computer Science" : "Special Mathematics"} · Year{" "}
-          {academicYear} · Term {term}
-        </Text>
-        <Text style={styles.hint}>
-          Courses listed match your department, year, and current semester. You may enroll in up to{" "}
-          {MAX_STUDENT_ENROLLMENT_COURSES} courses.
-        </Text>
-      </View>
-
-      {submitted ? (
-        <View style={styles.lockedCard}>
-          <Ionicons name="lock-closed" size={22} color={ACCENT} />
-          <Text style={styles.lockedTitle}>Enrollment submitted</Text>
-          <Text style={styles.lockedBody}>
-            Your choices are locked. Only an administrator can change them.
-          </Text>
-          {summary && summary.length > 0 ? (
-            <View style={styles.readList}>
-              {summary.map((name, i) => (
-                <Text key={i} style={styles.readItem}>
-                  • {name}
-                </Text>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.muted}>Loading course names…</Text>
-          )}
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["#667eea", "#764ba2"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>📚 Course Enrollment</Text>
+          <Text style={styles.headerSubtitle}>Select your courses</Text>
         </View>
-      ) : (
-        <>
-          <Text style={styles.sectionTitle}>
-            Select up to {MAX_STUDENT_ENROLLMENT_COURSES} courses ({selected.size} selected)
-          </Text>
-          {courses.length === 0 ? (
-            <Text style={styles.muted}>No courses found for this term. Check back later.</Text>
-          ) : (
-            courses.map((c) => {
-              const on = selected.has(c.id);
-              const atCap = selected.size >= MAX_STUDENT_ENROLLMENT_COURSES && !on;
-              return (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.courseRow, on && styles.courseRowOn, atCap && !on && styles.courseRowDisabled]}
-                  onPress={() => toggle(c.id)}
-                  disabled={atCap}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.check}>
-                    {on ? (
-                      <Ionicons name="checkbox" size={24} color={ACCENT} />
-                    ) : (
-                      <Ionicons name="square-outline" size={24} color="#94a3b8" />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.courseName}>{c.courseName}</Text>
-                    {c.courseCode ? <Text style={styles.courseCode}>{c.courseCode}</Text> : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
+        <View style={{ width: 40 }} />
+      </LinearGradient>
 
-          <TouchableOpacity
-            style={[styles.primaryBtn, submitting && styles.btnDisabled]}
-            onPress={submitFinal}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#fff" />
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.infoCard}>
+          <Text style={styles.infoLabel}>Your context</Text>
+          <Text style={styles.infoText}>{departmentLabel}</Text>
+          <Text style={styles.infoSub}>
+            Division: {division === "computer_science" ? "Computer Science" : "Special Mathematics"} · Year{" "}
+            {academicYear} · Term {term}
+          </Text>
+          <Text style={styles.hint}>
+            Courses listed match your department, year, and current semester. You may enroll in up to{" "}
+            {MAX_STUDENT_ENROLLMENT_COURSES} courses.
+          </Text>
+        </View>
+
+        {submitted ? (
+          <View style={styles.lockedCard}>
+            <Ionicons name="lock-closed" size={22} color={ACCENT} />
+            <Text style={styles.lockedTitle}>Enrollment submitted</Text>
+            <Text style={styles.lockedBody}>
+              Your choices are locked. Only an administrator can change them.
+            </Text>
+            {summary && summary.length > 0 ? (
+              <View style={styles.readList}>
+                {summary.map((name, i) => (
+                  <Text key={i} style={styles.readItem}>
+                    • {name}
+                  </Text>
+                ))}
+              </View>
             ) : (
-              <Text style={styles.primaryBtnText}>Submit enrollment</Text>
+              <Text style={styles.muted}>Loading course names…</Text>
             )}
-          </TouchableOpacity>
-        </>
-      )}
-    </ScrollView>
+          </View>
+        ) : (
+          <>
+            <Text style={styles.sectionTitle}>
+              Select up to {MAX_STUDENT_ENROLLMENT_COURSES} courses ({selected.size} selected)
+            </Text>
+            {courses.length === 0 ? (
+              <Text style={styles.muted}>No courses found for this term. Check back later.</Text>
+            ) : (
+              courses.map((c) => {
+                const on = selected.has(c.id);
+                const atCap = selected.size >= MAX_STUDENT_ENROLLMENT_COURSES && !on;
+                return (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={[styles.courseRow, on && styles.courseRowOn, atCap && !on && styles.courseRowDisabled]}
+                    onPress={() => toggle(c.id)}
+                    disabled={atCap}
+                    activeOpacity={0.85}
+                  >
+                    <View style={styles.check}>
+                      {on ? (
+                        <Ionicons name="checkbox" size={24} color={ACCENT} />
+                      ) : (
+                        <Ionicons name="square-outline" size={24} color="#94a3b8" />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.courseName}>{c.courseName}</Text>
+                      {c.courseCode ? <Text style={styles.courseCode}>{c.courseCode}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+
+            <TouchableOpacity
+              style={[styles.primaryBtn, submitting && styles.btnDisabled]}
+              onPress={submitFinal}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryBtnText}>Submit enrollment</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f6f5ff" },
-  content: { padding: 16, paddingBottom: 40 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f6f5ff" },
+  
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: {
+    alignItems: "center",
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#fff",
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.8)",
+    marginTop: 4,
+  },
+  
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  
   infoCard: {
     backgroundColor: "#fff",
     borderRadius: 16,

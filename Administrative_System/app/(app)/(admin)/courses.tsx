@@ -16,6 +16,8 @@ import {
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "@/services/firebase";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
 
@@ -225,8 +227,14 @@ export default function ManageCoursesScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.headerGradient}
       >
-        <Text style={styles.headerTitle}>📊 Course Dashboard</Text>
-        <Text style={styles.headerSubtitle}>Manage your courses</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>📊 Course Dashboard</Text>
+          <Text style={styles.headerSubtitle}>Manage your courses</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
       <ScrollView 
@@ -580,14 +588,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerCenter: {
+    alignItems: "center",
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "800",
     color: "#fff",
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "rgba(255,255,255,0.8)",
     marginTop: 4,
   },
