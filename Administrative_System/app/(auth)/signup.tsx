@@ -21,15 +21,6 @@ const DIVISIONS = [
   { value: "special_mathematics", label: "Special Mathematics", icon: "📐" },
 ];
 
-const SEMESTERS = [
-  { value: 3, label: "Semester 3", year: 2 },
-  { value: 4, label: "Semester 4", year: 2 },
-  { value: 5, label: "Semester 5", year: 3 },
-  { value: 6, label: "Semester 6", year: 3 },
-  { value: 7, label: "Semester 7", year: 4 },
-  { value: 8, label: "Semester 8", year: 4 },
-];
-
 export default function SignUpScreen() {
   const { signUp, signOut, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState("");
@@ -38,7 +29,6 @@ export default function SignUpScreen() {
   const [fullName, setFullName] = useState("");
   const [academicCode, setAcademicCode] = useState("");
   const [division, setDivision] = useState<string | null>(null);
-  const [semester, setSemester] = useState<number | null>(null);
   const [academicYear, setAcademicYear] = useState(2);
   const [currentTerm, setCurrentTerm] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -101,11 +91,6 @@ export default function SignUpScreen() {
       return;
     }
 
-    if (!semester) {
-      Alert.alert("Required", "Please select your semester.");
-      return;
-    }
-
     setCheckingCode(true);
     try {
       const codeExists = await checkAcademicCodeExists(academicCode.trim());
@@ -129,7 +114,6 @@ export default function SignUpScreen() {
         department: "Mathematics Department",
         division: division ?? undefined,
         academicCode: academicCode.trim(),
-        semester: semester ?? undefined,
         academicYear,
         currentTerm,
       });
@@ -314,24 +298,6 @@ export default function SignUpScreen() {
                   ))}
                 </View>
 
-                <Text style={[styles.label, { marginTop: 12, marginBottom: 8 }]}>SELECT SEMESTER</Text>
-                <View style={styles.semesterContainer}>
-                  {SEMESTERS.map((s) => (
-                    <TouchableOpacity
-                      key={s.value}
-                      style={[styles.semesterOption, semester === s.value && styles.semesterOptionSelected]}
-                      onPress={() => setSemester(s.value)}
-                      disabled={isSubmitting}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={[styles.semesterLabel, semester === s.value && styles.semesterLabelSelected]}>
-                        {s.label}
-                      </Text>
-                      {semester === s.value && <View style={styles.semesterDot} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
                 <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>ACADEMIC YEAR</Text>
                 <View style={styles.divisionContainer}>
                   {[2, 3, 4].map((y) => (
@@ -440,12 +406,6 @@ const styles = StyleSheet.create({
   divisionLabel: { fontSize: 11, fontWeight: "600", color: "#666", textAlign: "center" },
   divisionLabelSelected: { color: "#2e7d32" },
   divisionDot: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#2e7d32" },
-  semesterContainer: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 8 },
-  semesterOption: { flex: 1, minWidth: "30%", backgroundColor: "#f8f9fa", borderWidth: 1, borderColor: "#ddd", borderRadius: 10, padding: 10, alignItems: "center", position: "relative" },
-  semesterOptionSelected: { borderColor: "#2e7d32", backgroundColor: "#e8f5e9" },
-  semesterLabel: { fontSize: 13, fontWeight: "600", color: "#666" },
-  semesterLabelSelected: { color: "#2e7d32" },
-  semesterDot: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#2e7d32" },
   formLinks: { marginBottom: 20, alignItems: "center" },
   link: { color: "#a52a2a", fontSize: 13, fontWeight: "700" },
   actionButton: { height: 48, backgroundColor: "#2e7d32", borderRadius: 10, alignItems: "center", justifyContent: "center", marginTop: 8 },
