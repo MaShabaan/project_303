@@ -17,6 +17,8 @@ import {
 import { db, COLLECTIONS, updateCourseRating, deleteCourseRating } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FeedbackDoc {
   id: string;
@@ -118,7 +120,6 @@ export default function MyRatingsScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadRatings(); };
 
-  // ── Edit ──────────────────────────────────────────────────
   const openEdit = (item: FeedbackDoc) => {
     setEditingItem(item);
     setEditInstructor(item.instructor);
@@ -152,17 +153,12 @@ export default function MyRatingsScreen() {
     }
   };
 
-  // ── Delete — button 
   const handleDelete = (item: FeedbackDoc) => {
     Alert.alert(
       'Delete Rating',
       `Delete your rating for "${item.courseName}"?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => {},
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
@@ -170,16 +166,9 @@ export default function MyRatingsScreen() {
             setDeleteLoading(item.id);
             deleteCourseRating(item.id)
               .then(() => loadRatings())
-              .then(() => {
-                Alert.alert('Deleted ✅', 'Rating deleted successfully.');
-              })
-              .catch((e) => {
-                console.error(e);
-                Alert.alert('Error', 'Failed to delete. Please try again.');
-              })
-              .finally(() => {
-                setDeleteLoading(null);
-              });
+              .then(() => { Alert.alert('Deleted ✅', 'Rating deleted successfully.'); })
+              .catch((e) => { console.error(e); Alert.alert('Error', 'Failed to delete.'); })
+              .finally(() => { setDeleteLoading(null); });
           },
         },
       ],
@@ -203,6 +192,22 @@ export default function MyRatingsScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={["#667eea", "#764ba2"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerGradient}
+      >
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>⭐ My Ratings</Text>
+          <Text style={styles.headerSubtitle}>{items.length} course{items.length !== 1 ? 's' : ''} rated</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -212,18 +217,7 @@ export default function MyRatingsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#7c3aed']} tintColor="#7c3aed" />
         }
         ListHeaderComponent={
-          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Text style={styles.backText}>← Back</Text>
-              </TouchableOpacity>
-              <View style={styles.headerCenter}>
-                <Text style={styles.headerTitle}>My Ratings</Text>
-                <Text style={styles.headerSub}>{items.length} course{items.length !== 1 ? 's' : ''} rated</Text>
-              </View>
-              <View style={{ width: 60 }} />
-            </View>
-
+          <Animated.View style={{ opacity: fadeAnim }}>
             {items.length > 0 && (
               <View style={styles.statsRow}>
                 <View style={styles.statCard}>
@@ -247,10 +241,10 @@ export default function MyRatingsScreen() {
           </Animated.View>
         }
         ListEmptyComponent={
-          <Animated.View style={[styles.empty, { opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
+          <Animated.View style={[styles.empty, { opacity: fadeAnim }]}>
             <Text style={styles.emptyIcon}>⭐</Text>
             <Text style={styles.emptyTitle}>No ratings yet</Text>
-            <Text style={styles.emptyText}>You haven&apos;t rated any courses yet.</Text>
+            <Text style={styles.emptyText}>You haven't rated any courses yet.</Text>
             <TouchableOpacity style={styles.emptyBtn} onPress={() => router.push('./rate-courses')} activeOpacity={0.85}>
               <Text style={styles.emptyBtnText}>Rate a Course</Text>
             </TouchableOpacity>
@@ -267,7 +261,7 @@ export default function MyRatingsScreen() {
           const isDeleting = deleteLoading === item.id;
 
           return (
-            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+            <Animated.View style={{ opacity: fadeAnim }}>
               <View style={[styles.card, isDeleting && { opacity: 0.5 }]}>
                 <View style={styles.cardHeader}>
                   <View style={[styles.courseAvatar, { backgroundColor: avatarColor }]}>
@@ -327,7 +321,6 @@ export default function MyRatingsScreen() {
         }}
       />
 
-      {/* ── Edit Modal ── */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -407,12 +400,38 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14, color: '#94a3b8', fontWeight: '600' },
   listContent: { padding: 16, paddingBottom: 40 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  backBtn: { width: 60 },
-  backText: { fontSize: 14, fontWeight: '700', color: '#7c3aed' },
-  headerCenter: { alignItems: 'center', flex: 1 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1e1b4b' },
-  headerSub: { fontSize: 11, color: '#94a3b8', fontWeight: '500', marginTop: 2 },
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
 
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   statCard: { flex: 1, borderRadius: 16, padding: 14, backgroundColor: '#fff', position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#ede9fe' },

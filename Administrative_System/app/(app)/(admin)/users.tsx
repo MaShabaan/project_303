@@ -15,6 +15,8 @@ import { collection, getDocs, doc, deleteDoc, Timestamp, updateDoc } from 'fireb
 import { db, promoteToAdmin, demoteFromAdmin, blockUser, unblockUser, autoUnblockExpiredUsers } from '@/services/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { notifyAccountBanned, notifyAccountUnbanned } from '@/services/notifications';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 interface User {
   id: string;
@@ -360,8 +362,14 @@ export default function UsersScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
-        <Text style={styles.headerTitle}>Manage Users</Text>
-        <Text style={styles.headerSub}>{filteredUsers.length} of {users.length} users</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Manage Users</Text>
+          <Text style={styles.headerSub}>{filteredUsers.length} of {users.length} users</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </LinearGradient>
 
       <View style={styles.searchWrap}>
@@ -499,7 +507,28 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f5ff' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  header: { paddingTop: 50, paddingBottom: 25, paddingHorizontal: 20, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  header: { 
+    paddingTop: 50, 
+    paddingBottom: 25, 
+    paddingHorizontal: 20, 
+    borderBottomLeftRadius: 30, 
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 },
   headerSub: { fontSize: 13, color: '#a5b4fc' },
 

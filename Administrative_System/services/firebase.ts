@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { 
   getAuth, 
@@ -23,6 +24,7 @@ import {
   query,
   where,
   getDocs,
+  orderBy,
   Timestamp,
 } from "firebase/firestore";
 import { firebaseConfig } from "@/config/firebase";
@@ -57,7 +59,6 @@ export interface UserProfile {
   displayName?: string | null;
   role: UserRole;
   isApproved?: boolean;
-  /** When true, student users cannot use the app (checked after load / realtime). */
   isBanned?: boolean;
   department?: string;
   division?: string;
@@ -72,9 +73,7 @@ export interface UserProfile {
     blockedAt: Timestamp;
     expiresAt: Timestamp | null;
   } | null;
-  /** Study level used with `currentTerm` to filter courses (defaults: 2, 1). */
   academicYear?: number;
-  /** Semester / term (1 or 2). */
   currentTerm?: number;
   permissions?: {
     manage_courses?: boolean;
@@ -100,7 +99,6 @@ export const COLLECTIONS = {
   NOTIFICATIONS: "notifications",
 } as const;
 
-/** Max courses a student may enroll in (admins may exceed in Firestore). */
 export const MAX_STUDENT_ENROLLMENT_COURSES = 5;
 
 export type InAppNotificationType =
@@ -119,11 +117,9 @@ export interface InAppNotificationRecord {
   meta?: Record<string, string>;
 }
 
-/** One doc per student: `enrollments/{userId}` */
 export interface EnrollmentRecord {
   userId: string;
   userEmail?: string | null;
-  /** Firestore `courses` document IDs */
   courseIds: string[];
   division: string;
   academicYear: number;
@@ -388,55 +384,120 @@ export async function deleteCourseRating(feedbackId: string): Promise<void> {
 }
 
 export const TICKET_TYPES = [
-  { value: "technical_issue", label: "Technical issue" },
+  { value: "harassment", label: "Harassment" },
   { value: "complaint", label: "Complaint" },
+  { value: "technical_issue", label: "Technical Issue" },
   { value: "request", label: "Request" },
-  { value: "other", label: "Other" },
 ] as const;
 
 export type TicketType = (typeof TICKET_TYPES)[number]["value"];
 
-export type TicketPayload = {
+export interface Ticket {
+  id: string;
   userId: string;
-  userEmail: string;
+  userEmail: string | null;
+  isAnonymous?: boolean;
   type: TicketType;
+  priority: string;
   title: string;
   description: string;
-  priority: string;
   status: string;
+  adminReply: string | null;
+  repliedAt: Timestamp | null;
+  repliedBy: string | null;
   createdAt: Timestamp;
-  adminReply?: string;
-  repliedAt?: Timestamp;
-  repliedBy?: string;
-};
+  updatedAt: Timestamp;
+}
+
+export async function getAllTickets(): Promise<(Ticket & { id: string })[]> {
+  const ticketsRef = collection(db, COLLECTIONS.TICKETS);
+  const q = query(ticketsRef, orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  const tickets = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (Ticket & { id: string })[];
+  
+  const priorityOrder: Record<string, number> = { 
+    urgent: 0, 
+    high: 1, 
+    medium: 2, 
+    low: 3 
+  };
+  
+  return tickets.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+}
+
+export async function getTicketsByUser(userId: string): Promise<(Ticket & { id: string })[]> {
+  const q = query(
+    collection(db, COLLECTIONS.TICKETS),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (Ticket & { id: string })[];
+}
 
 export async function replyToTicket(
   ticketId: string,
   adminEmail: string,
-  replyText: string
+  replyText: string,
+  newStatus: string = "replied"
 ): Promise<void> {
+  const now = Timestamp.now();
   await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
     adminReply: replyText.trim(),
-    repliedAt: Timestamp.now(),
+    repliedAt: now,
     repliedBy: adminEmail,
-    status: "replied",
+    status: newStatus,
+    updatedAt: now,
+  });
+}
+
+export async function updateTicketStatus(
+  ticketId: string,
+  status: string
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
+    status,
+    updatedAt: Timestamp.now(),
   });
 }
 
 export async function submitTicket(
   userId: string,
   userEmail: string,
-  data: { type: TicketType; title: string; description: string; priority: string }
+  data: {
+    type: TicketType;
+    title: string;
+    description: string;
+    isAnonymous?: boolean;
+  }
 ): Promise<void> {
+  const now = Timestamp.now();
+  let priority = "medium";
+  if (data.type === "harassment") priority = "urgent";
+  if (data.type === "complaint") priority = "high";
+  if (data.type === "technical_issue") priority = "medium";
+  if (data.type === "request") priority = "low";
+
   await addDoc(collection(db, COLLECTIONS.TICKETS), {
     userId,
-    userEmail,
+    userEmail: userEmail,
+    isAnonymous: data.isAnonymous || false,
     type: data.type,
     title: data.title.trim(),
     description: data.description.trim(),
-    priority: data.priority,
+    priority: priority,
     status: "open",
-    createdAt: Timestamp.now(),
+    adminReply: null,
+    repliedAt: null,
+    repliedBy: null,
+    createdAt: now,
+    updatedAt: now,
   });
 }
 
@@ -512,8 +573,6 @@ export async function logoutUser(): Promise<void> {
 export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
-
-// ── In-app notifications (created by admins / admin flows only; see firestore.rules) ──
 
 export async function createInAppNotification(
   data: Omit<InAppNotificationRecord, "createdAt" | "read"> & { read?: boolean },

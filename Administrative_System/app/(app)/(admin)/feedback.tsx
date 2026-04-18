@@ -7,9 +7,13 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db, COLLECTIONS } from '@/services/firebase';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FeedbackDoc {
   id: string;
@@ -19,7 +23,7 @@ interface FeedbackDoc {
   instructor: string;
   courseRating?: number;
   instructorRating?: number;
-  rating?: number; // legacy single rating
+  rating?: number;
   comments: string;
   createdAt: Timestamp | { toDate: () => Date };
 }
@@ -79,6 +83,17 @@ export default function FeedbackScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>⭐ Course Ratings</Text>
+          <Text style={styles.headerSubtitle}>{items.length} total ratings</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -124,30 +139,58 @@ export default function FeedbackScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#f6f5ff' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f6f5ff' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+
+  header: { 
+    paddingTop: 50, 
+    paddingBottom: 25, 
+    paddingHorizontal: 20, 
+    borderBottomLeftRadius: 30, 
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { fontSize: 13, color: '#a5b4fc', marginTop: 4 },
+
   listContent: { padding: 16, paddingBottom: 32 },
   empty: { padding: 40, alignItems: 'center' },
-  emptyText: { fontSize: 16, color: '#666' },
+  emptyText: { fontSize: 16, color: '#94a3b8' },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: '#7c3aed',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#ede9fe',
   },
   cardHeader: { marginBottom: 6 },
-  courseName: { fontSize: 16, fontWeight: '700', color: '#333' },
-  instructor: { fontSize: 14, color: '#555', marginBottom: 6 },
+  courseName: { fontSize: 17, fontWeight: '800', color: '#1e1b4b' },
+  instructor: { fontSize: 14, color: '#64748b', marginBottom: 6 },
   ratingsRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap' },
-  ratingText: { fontSize: 16, fontWeight: '700', color: '#764ba2' },
-  ratingLabel: { fontSize: 14, color: '#666' },
-  comments: { fontSize: 14, color: '#666', fontStyle: 'italic', marginBottom: 8 },
+  ratingText: { fontSize: 16, fontWeight: '700', color: '#7c3aed' },
+  ratingLabel: { fontSize: 14, color: '#64748b' },
+  comments: { fontSize: 14, color: '#475569', fontStyle: 'italic', marginBottom: 8, backgroundColor: '#f8f7ff', padding: 10, borderRadius: 10 },
   meta: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  metaText: { fontSize: 12, color: '#888' },
+  metaText: { fontSize: 11, color: '#94a3b8' },
 });
