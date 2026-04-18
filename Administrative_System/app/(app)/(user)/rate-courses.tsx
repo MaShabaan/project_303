@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -16,9 +15,9 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { submitCourseRating, db, COLLECTIONS } from '@/services/firebase';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
-const YEARS = [2, 3, 4];
-const TERMS = [1, 2];
 const NPS_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 const getCoursesFromFirebase = async (division: string, year: number, term: number): Promise<string[]> => {
@@ -63,13 +62,14 @@ const getInstructorLabel = (n: number | null) => {
 export default function RateCoursesScreen() {
   const { user, profile } = useAuth();
 
+  // ✅ خذ البيانات من profile مباشرة
   const division = profile?.division ?? 'computer_science';
+  const academicYear = profile?.academicYear ?? 2;
+  const currentTerm = profile?.currentTerm ?? 1;
   const divisionLabel = division === 'computer_science' ? 'Computer Science' : 'Special Mathematics';
   const divisionIcon = division === 'computer_science' ? '💻' : '📐';
 
   const [step, setStep] = useState(1);
-  const [selectedYear, setSelectedYear] = useState<number>(2);
-  const [selectedTerm, setSelectedTerm] = useState<number>(1);
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [instructor, setInstructor] = useState('');
   const [courseRating, setCourseRating] = useState<number | null>(null);
@@ -96,17 +96,17 @@ export default function RateCoursesScreen() {
     loadRatedCourses();
   }, []);
 
+  // ✅ جلب المواد بناءً على academicYear و currentTerm من profile
   useEffect(() => {
     const fetchCourses = async () => {
       setLoadingCourses(true);
-      const courses = await getCoursesFromFirebase(division, selectedYear, selectedTerm);
+      const courses = await getCoursesFromFirebase(division, academicYear, currentTerm);
       setAvailableCourses(courses);
       setLoadingCourses(false);
       setSelectedCourse(null);
     };
-    
     fetchCourses();
-  }, [division, selectedYear, selectedTerm]);
+  }, [division, academicYear, currentTerm]);
 
   const loadRatedCourses = async () => {
     if (!user?.uid) return;
@@ -139,11 +139,7 @@ export default function RateCoursesScreen() {
         );
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-          Alert.alert(
-            '⚠️ Already Rated',
-            `You have already rated "${selectedCourse}" before.\n\nYou can only rate each course once.`,
-            [{ text: 'OK' }]
-          );
+          Alert.alert('⚠️ Already Rated', `You have already rated "${selectedCourse}" before.\n\nYou can only rate each course once.`, [{ text: 'OK' }]);
           setCheckingDuplicate(false);
           return;
         }
@@ -170,8 +166,8 @@ export default function RateCoursesScreen() {
         courseRating: courseRating!,
         instructorRating: instructorRating!,
         comments,
-        year: selectedYear,
-        term: selectedTerm,
+        year: academicYear,
+        term: currentTerm,
         division,
       });
       Alert.alert('Thank you! 🎉', 'Your feedback has been submitted successfully.', [
@@ -198,27 +194,19 @@ export default function RateCoursesScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerGradient}>
+        <TouchableOpacity style={styles.backButton} onPress={goBack}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>⭐ Rate Courses</Text>
+          <Text style={styles.headerSubtitle}>Term {currentTerm} · Year {academicYear}</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }] }}>
-
-          <View style={styles.header}>
-            <TouchableOpacity onPress={goBack} activeOpacity={0.8} style={styles.progressCircleWrap}>
-              <Svg width={SIZE} height={SIZE}>
-                <Circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke="#ede9fe" strokeWidth={3} />
-                <Circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" stroke={strokeColor} strokeWidth={3}
-                  strokeDasharray={`${CIRCUMFERENCE}`} strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round" rotation="-90" origin={`${SIZE / 2}, ${SIZE / 2}`} />
-              </Svg>
-              <View style={[styles.progressCircleInner, { backgroundColor: innerBg }]}>
-                <Text style={[styles.progressCircleText, { color: innerColor }]}>{isComplete ? '✓' : '←'}</Text>
-              </View>
-            </TouchableOpacity>
-            <View style={styles.headerCenter}>
-              <Text style={styles.headerTitle}>Rate a Course</Text>
-              <Text style={styles.headerSub}>Step {step} of {totalSteps}</Text>
-            </View>
-            <View style={{ width: 48 }} />
-          </View>
 
           <View style={styles.divisionBanner}>
             <View style={styles.divisionIcon}><Text style={styles.divisionIconText}>{divisionIcon}</Text></View>
@@ -242,26 +230,9 @@ export default function RateCoursesScreen() {
           {step === 1 && (
             <View>
               <View style={styles.card}>
-                <Text style={styles.sectionLabel}>SELECT YEAR</Text>
-                <View style={styles.yearRow}>
-                  {YEARS.map(y => (
-                    <TouchableOpacity key={y} style={[styles.yearBtn, selectedYear === y && styles.yearBtnActive]}
-                      onPress={() => { setSelectedYear(y); setSelectedCourse(null); }} activeOpacity={0.8}>
-                      <Text style={[styles.yearBtnText, selectedYear === y && styles.yearBtnTextActive]}>Year {y}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.card}>
-                <Text style={styles.sectionLabel}>SELECT TERM</Text>
-                <View style={styles.termRow}>
-                  {TERMS.map(t => (
-                    <TouchableOpacity key={t} style={[styles.termBtn, selectedTerm === t && styles.termBtnActive]}
-                      onPress={() => { setSelectedTerm(t); setSelectedCourse(null); }} activeOpacity={0.8}>
-                      <Text style={[styles.termBtnText, selectedTerm === t && styles.termBtnTextActive]}>Term {t}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <Text style={styles.sectionLabel}>YEAR / TERM</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoText}>Year {academicYear} — Term {currentTerm}</Text>
                 </View>
               </View>
 
@@ -270,11 +241,11 @@ export default function RateCoursesScreen() {
                 {loadingCourses ? (
                   <View style={styles.noCourses}>
                     <ActivityIndicator size="small" color="#7c3aed" />
-                    <Text style={styles.noCoursesText}>Loading courses...</Text>
+                    <Text style={styles.noCoursesText}>Loading courses for Term {currentTerm}...</Text>
                   </View>
                 ) : availableCourses.length === 0 ? (
                   <View style={styles.noCourses}>
-                    <Text style={styles.noCoursesText}>No courses for this selection</Text>
+                    <Text style={styles.noCoursesText}>No courses for Term {currentTerm}</Text>
                     <Text style={styles.noCoursesSubText}>Ask admin to add courses first</Text>
                   </View>
                 ) : (
@@ -285,11 +256,7 @@ export default function RateCoursesScreen() {
                       return (
                         <TouchableOpacity
                           key={i}
-                          style={[
-                            styles.courseItem,
-                            isSelected && styles.courseItemSel,
-                            alreadyRated && styles.courseItemRated,
-                          ]}
+                          style={[styles.courseItem, isSelected && styles.courseItemSel, alreadyRated && styles.courseItemRated]}
                           onPress={() => {
                             if (alreadyRated) {
                               Alert.alert('Already Rated ✓', `You've already rated "${course}".`);
@@ -299,24 +266,12 @@ export default function RateCoursesScreen() {
                           }}
                           activeOpacity={alreadyRated ? 0.5 : 0.8}
                         >
-                          <View style={[
-                            styles.courseNum,
-                            isSelected && styles.courseNumSel,
-                            alreadyRated && styles.courseNumRated,
-                          ]}>
-                            <Text style={[
-                              styles.courseNumText,
-                              isSelected && styles.courseNumTextSel,
-                              alreadyRated && styles.courseNumTextRated,
-                            ]}>
+                          <View style={[styles.courseNum, isSelected && styles.courseNumSel, alreadyRated && styles.courseNumRated]}>
+                            <Text style={[styles.courseNumText, isSelected && styles.courseNumTextSel, alreadyRated && styles.courseNumTextRated]}>
                               {alreadyRated ? '✓' : i + 1}
                             </Text>
                           </View>
-                          <Text style={[
-                            styles.courseName,
-                            isSelected && styles.courseNameSel,
-                            alreadyRated && styles.courseNameRated,
-                          ]}>
+                          <Text style={[styles.courseName, isSelected && styles.courseNameSel, alreadyRated && styles.courseNameRated]}>
                             {course}
                           </Text>
                           {alreadyRated && (
@@ -391,7 +346,7 @@ export default function RateCoursesScreen() {
                 <Text style={styles.summaryTitle}>SUMMARY</Text>
                 <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Course</Text><Text style={styles.summaryValue} numberOfLines={1}>{selectedCourse}</Text></View>
                 <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Instructor</Text><Text style={styles.summaryValue}>{instructor}</Text></View>
-                <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Year / Term</Text><Text style={styles.summaryValue}>Year {selectedYear} — Term {selectedTerm}</Text></View>
+                <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Year / Term</Text><Text style={styles.summaryValue}>Year {academicYear} — Term {currentTerm}</Text></View>
                 <View style={styles.summaryRow}><Text style={styles.summaryLabel}>Division</Text><Text style={styles.summaryValue}>{divisionLabel}</Text></View>
                 <View style={styles.summaryScores}>
                   <View style={styles.scoreBox}><Text style={styles.scoreNum}>{courseRating}</Text><Text style={styles.scoreLabel}>Course</Text></View>
@@ -418,15 +373,8 @@ export default function RateCoursesScreen() {
 
           <View style={styles.navRow}>
             {step < totalSteps ? (
-              <TouchableOpacity
-                style={[styles.nextBtn, checkingDuplicate && styles.btnDisabled]}
-                onPress={goNext}
-                disabled={checkingDuplicate}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.nextBtnText}>
-                  {checkingDuplicate ? 'Checking...' : 'Next →'}
-                </Text>
+              <TouchableOpacity style={[styles.nextBtn, checkingDuplicate && styles.btnDisabled]} onPress={goNext} disabled={checkingDuplicate} activeOpacity={0.85}>
+                <Text style={styles.nextBtnText}>{checkingDuplicate ? 'Checking...' : 'Next →'}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={[styles.nextBtn, loading && styles.btnDisabled]} onPress={handleSubmit} disabled={loading} activeOpacity={0.85}>
@@ -445,13 +393,38 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f6f5ff' },
   content: { padding: 16, paddingTop: 20, paddingBottom: 40 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  headerCenter: { alignItems: 'center', flex: 1 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1e1b4b' },
-  headerSub: { fontSize: 11, color: '#94a3b8', fontWeight: '500', marginTop: 2 },
-  progressCircleWrap: { width: 48, height: 48 },
-  progressCircleInner: { position: 'absolute', top: 4, left: 4, right: 4, bottom: 4, borderRadius: 99, alignItems: 'center', justifyContent: 'center' },
-  progressCircleText: { fontSize: 16, fontWeight: '800' },
+  headerGradient: {
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
 
   divisionBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1e1b4b', borderRadius: 16, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#312e81' },
   divisionIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(124,58,237,0.3)', alignItems: 'center', justifyContent: 'center' },
@@ -474,18 +447,8 @@ const styles = StyleSheet.create({
   highlight: { color: '#7c3aed', fontWeight: '700' },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: '#94a3b8', letterSpacing: 1.2, marginBottom: 12 },
   sectionLabelFocused: { color: '#7c3aed' },
-
-  yearRow: { flexDirection: 'row', gap: 8 },
-  yearBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, backgroundColor: '#f8f7ff', borderWidth: 1.5, borderColor: '#ede9fe', alignItems: 'center' },
-  yearBtnActive: { backgroundColor: '#7c3aed', borderColor: '#7c3aed' },
-  yearBtnText: { fontSize: 12, fontWeight: '700', color: '#94a3b8' },
-  yearBtnTextActive: { color: '#fff' },
-
-  termRow: { flexDirection: 'row', gap: 10 },
-  termBtn: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: '#f8f7ff', borderWidth: 1.5, borderColor: '#ede9fe', alignItems: 'center' },
-  termBtnActive: { backgroundColor: '#4f46e5', borderColor: '#4f46e5' },
-  termBtnText: { fontSize: 13, fontWeight: '700', color: '#94a3b8' },
-  termBtnTextActive: { color: '#fff' },
+  infoRow: { padding: 12, backgroundColor: '#f5f3ff', borderRadius: 12, alignItems: 'center' },
+  infoText: { fontSize: 14, fontWeight: '600', color: '#7c3aed' },
 
   courseList: { gap: 8 },
   courseItem: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: '#fafafa', borderWidth: 1.5, borderColor: '#f1f5f9' },

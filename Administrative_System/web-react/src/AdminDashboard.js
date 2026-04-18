@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 
-function AdminDashboard({ user, onLogout, setView }) {
+function AdminDashboard({ user, onLogout, setView }) { // ✅ ضفنا setView
   const [adminData, setAdminData] = useState(null);
 
   useEffect(() => {
@@ -20,54 +20,53 @@ function AdminDashboard({ user, onLogout, setView }) {
 
   return (
     <div className="admin-page">
-      <div className="dashboard-wrapper">
-<div className="topbar">
-  <div className="bell" onClick={() => setView("notifications")}>
-    🔔
-  </div>
-</div>
-        <h1 className="title">
-          Welcome, {adminData.name}!
-        </h1>
+      <div className="background-overlay"></div>
+      
+      <div className="dashboard-container">
+        <div className="welcome-header">
+          <h1>Welcome Mr. <span>{adminData.name}</span>!</h1>
+          <div className="user-role">{adminData.role}</div>
+        </div>
+        
+        <div className="dashboard-cards">
 
-        <div className="role-badge">ADMIN</div>
-
-        <div className="cards-grid">
-
-          
-          <div className="card" onClick={() => setView("complaints")}>
-            📋
+          <div className="card" onClick={() => alert("Manage Complaints coming soon")}>
+            <div className="card-icon">📋</div>
             <h3>Manage Complaints</h3>
-            <p>View and resolve complaints</p>
+            <p>View and resolve user complaints</p>
           </div>
-
-          <div className="card" onClick={() => setView("users")}>
-            👥
+          
+          {/* ✅ ده المهم */}
+          <div className="card" onClick={() => setView('manage-courses')}>
+            <div className="card-icon">📚</div>
+            <h3>Manage Courses</h3>
+            <p>Add, edit, and manage courses</p>
+          </div>
+          
+          <div className="card" onClick={() => alert("Manage Users coming soon")}>
+            <div className="card-icon">👥</div>
             <h3>Manage Users</h3>
             <p>View and manage user accounts</p>
           </div>
+          
+<div className="card" onClick={() => setView('manage-ratings')}>
+  <div className="card-icon">⭐</div>
+  <h3>Manage Ratings</h3>
+  <p>View courses ratings and feedback</p>
+</div>
 
-         
-          <div className="card" onClick={() => setView("ratings")}>
-            ⭐
-            <h3>Manage Ratings</h3>
-            <p>View course ratings</p>
-          </div>
-
-         
-          <div className="card" onClick={() => setView("courses")}>
-            📚
-            <h3>Manage Courses</h3>
-            <p>Manage courses data</p>
-          </div>
-
-         
         </div>
-
-        <button onClick={onLogout} className="logout-btn">
-          Logout
+        
+        <div className="user-info">
+          <strong>Email:</strong> {adminData.email}<br />
+          <strong>Account Type:</strong> Administrator<br />
+          <strong>Account Created:</strong> {adminData.createdAt}<br />
+          <strong>Last Login:</strong> {adminData.lastLogin}
+        </div>
+        
+        <button onClick={onLogout} className="action-button logout-btn">
+          LOGOUT
         </button>
-
       </div>
     </div>
   );

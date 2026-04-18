@@ -1,3 +1,4 @@
+
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { 
   getAuth, 
@@ -20,6 +21,10 @@ import {
   updateDoc,
   deleteDoc,
   collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
   Timestamp,
 } from "firebase/firestore";
 import { firebaseConfig } from "@/config/firebase";
@@ -28,7 +33,7 @@ const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
   if (existingApps.length > 0) return getApp();
   if (!firebaseConfig?.apiKey) {
-    throw new Error("Firebase config is missing. Add your Firebase options in mobile/config/firebase.ts");
+    throw new Error("Firebase config is missing.");
   }
   return initializeApp(firebaseConfig);
 };
@@ -46,16 +51,39 @@ export const db: Firestore = (() => {
 
 enableNetwork(db).catch(() => {});
 
-export type UserRole = "admin" | "user";
+export type UserRole = "admin" | "user" | "super_admin";
 
 export interface UserProfile {
+  uid?: string;
   email: string;
   displayName?: string | null;
   role: UserRole;
   isApproved?: boolean;
+  isBanned?: boolean;
   department?: string;
   division?: string;
-  academicCode?: string;  
+  academicCode?: string;
+  semester?: number;
+  isBlocked?: boolean;
+  blockDetails?: {
+    reason: string;
+    duration: string;
+    blockedBy: string;
+    blockedByRole: string;
+    blockedAt: Timestamp;
+    expiresAt: Timestamp | null;
+  } | null;
+  academicYear?: number;
+  currentTerm?: number;
+  permissions?: {
+    manage_courses?: boolean;
+    manage_enrollments?: boolean;
+    view_feedback?: boolean;
+    manage_complaints?: boolean;
+    view_users?: boolean;
+    manage_users?: boolean;
+    manage_admins?: boolean;
+  };
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -68,7 +96,225 @@ export const COLLECTIONS = {
   COURSES: "courses",
   FEEDBACK: "feedback",
   ENROLLMENTS: "enrollments",
+  NOTIFICATIONS: "notifications",
 } as const;
+
+export const MAX_STUDENT_ENROLLMENT_COURSES = 5;
+
+export type InAppNotificationType =
+  | "complaint_reply"
+  | "enrollment_edited"
+  | "account_banned"
+  | "account_unbanned";
+
+export interface InAppNotificationRecord {
+  userId: string;
+  type: InAppNotificationType;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: Timestamp;
+  meta?: Record<string, string>;
+}
+
+export interface EnrollmentRecord {
+  userId: string;
+  userEmail?: string | null;
+  courseIds: string[];
+  division: string;
+  academicYear: number;
+  term: number;
+  submitted: boolean;
+  submittedAt: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
+
+export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
+  const usersRef = collection(db, COLLECTIONS.USERS);
+  const snapshot = await getDocs(usersRef);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (UserProfile & { id: string })[];
+}
+
+export async function checkAcademicCodeExists(academicCode: string): Promise<boolean> {
+  const q = query(
+    collection(db, COLLECTIONS.USERS),
+    where("academicCode", "==", academicCode)
+  );
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
+}
+
+export async function promoteToAdmin(userId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
+    role: "admin",
+    isApproved: true,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function demoteFromAdmin(userId: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.USERS, userId), {
+    role: "user",
+    isApproved: true,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function deleteUser(userId: string, currentUserEmail: string): Promise<void> {
+  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+    throw new Error('Only super admins can delete users');
+  }
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const userData = userDoc.data();
+  
+  if (SUPER_ADMINS.includes(userData?.email || '')) {
+    throw new Error('Cannot delete super admin account');
+  }
+  
+  await deleteDoc(userRef);
+}
+
+export async function blockUser(
+  userId: string,
+  reason: string,
+  duration: '2days' | '1week' | '1month' | 'permanent',
+  currentUser: UserProfile
+): Promise<void> {
+  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const targetUser = userDoc.data() as UserProfile;
+  
+  if (targetUser.email === currentUser.email) {
+    throw new Error('You cannot block yourself');
+  }
+  
+  if (SUPER_ADMINS.includes(targetUser.email)) {
+    throw new Error('Cannot block super admin');
+  }
+  
+  if (!isSuperAdmin && currentUser.role !== 'admin') {
+    throw new Error('Only admins can block users');
+  }
+  
+  let expiresAt: Timestamp | null = null;
+  const now = Timestamp.now();
+  
+  switch (duration) {
+    case '2days':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 2 * 24 * 60 * 60 * 1000));
+      break;
+    case '1week':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 7 * 24 * 60 * 60 * 1000));
+      break;
+    case '1month':
+      expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 30 * 24 * 60 * 60 * 1000));
+      break;
+    case 'permanent':
+      expiresAt = null;
+      break;
+  }
+  
+  await updateDoc(userRef, {
+    isBlocked: true,
+    blockDetails: {
+      reason: reason,
+      duration: duration,
+      blockedBy: currentUser.email,
+      blockedByRole: currentUser.role,
+      blockedAt: now,
+      expiresAt: expiresAt,
+    },
+    updatedAt: now,
+  });
+}
+
+export async function unblockUser(userId: string, currentUser: UserProfile): Promise<void> {
+  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const targetUser = userDoc.data() as UserProfile;
+  
+  if (!isSuperAdmin && currentUser.role === 'admin') {
+    if (targetUser.blockDetails?.blockedBy !== currentUser.email) {
+      throw new Error('You can only unblock users you blocked yourself');
+    }
+  }
+  
+  await updateDoc(userRef, {
+    isBlocked: false,
+    blockDetails: null,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function autoUnblockExpiredUsers(): Promise<number> {
+  try {
+    const usersRef = collection(db, COLLECTIONS.USERS);
+    const q = query(usersRef, where("isBlocked", "==", true));
+    const snapshot = await getDocs(q);
+    const now = Timestamp.now();
+    let unblockedCount = 0;
+    
+    for (const userDoc of snapshot.docs) {
+      const userData = userDoc.data();
+      if (userData.blockDetails?.expiresAt && userData.blockDetails.expiresAt < now) {
+        await updateDoc(doc(db, COLLECTIONS.USERS, userDoc.id), {
+          isBlocked: false,
+          blockDetails: null,
+          updatedAt: now,
+        });
+        unblockedCount++;
+      }
+    }
+    
+    return unblockedCount;
+  } catch (error) {
+    console.error("Error in autoUnblockExpiredUsers:", error);
+    return 0;
+  }
+}
+
+export async function updateUserPermissions(
+  userId: string,
+  permissions: {
+    manage_courses: boolean;
+    manage_enrollments: boolean;
+    view_feedback: boolean;
+    manage_complaints: boolean;
+    view_users: boolean;
+    manage_users: boolean;
+    manage_admins: boolean;
+  },
+  currentUserEmail: string
+): Promise<void> {
+  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+    throw new Error('Only super admins can update permissions');
+  }
+  
+  const userRef = doc(db, COLLECTIONS.USERS, userId);
+  const userDoc = await getDoc(userRef);
+  const userData = userDoc.data();
+  
+  if (SUPER_ADMINS.includes(userData?.email || '')) {
+    throw new Error('Cannot change super admin permissions');
+  }
+  
+  await updateDoc(userRef, {
+    permissions: permissions,
+    updatedAt: Timestamp.now(),
+  });
+}
 
 export type CourseRatingPayload = {
   userId: string;
@@ -84,7 +330,6 @@ export type CourseRatingPayload = {
   createdAt: Timestamp;
 };
 
-// ── Submit new rating ─────────────────────────────────────────
 export async function submitCourseRating(
   userId: string,
   userEmail: string,
@@ -115,7 +360,6 @@ export async function submitCourseRating(
   });
 }
 
-// ── Update existing rating ────────────────────────────────────
 export async function updateCourseRating(
   feedbackId: string,
   data: {
@@ -135,64 +379,125 @@ export async function updateCourseRating(
   });
 }
 
-// ── Delete rating ─────────────────────────────────────────────
 export async function deleteCourseRating(feedbackId: string): Promise<void> {
-  const ref = doc(db, COLLECTIONS.FEEDBACK, feedbackId);
-  await deleteDoc(ref);
+  await deleteDoc(doc(db, COLLECTIONS.FEEDBACK, feedbackId));
 }
 
 export const TICKET_TYPES = [
-  { value: "technical_issue", label: "Technical issue" },
+  { value: "harassment", label: "Harassment" },
   { value: "complaint", label: "Complaint" },
+  { value: "technical_issue", label: "Technical Issue" },
   { value: "request", label: "Request" },
-  { value: "other", label: "Other" },
 ] as const;
 
 export type TicketType = (typeof TICKET_TYPES)[number]["value"];
 
-export type TicketPayload = {
+export interface Ticket {
+  id: string;
   userId: string;
-  userEmail: string;
+  userEmail: string | null;
+  isAnonymous?: boolean;
   type: TicketType;
+  priority: string;
   title: string;
   description: string;
-  priority: string;
   status: string;
+  adminReply: string | null;
+  repliedAt: Timestamp | null;
+  repliedBy: string | null;
   createdAt: Timestamp;
-  adminReply?: string;
-  repliedAt?: Timestamp;
-  repliedBy?: string;
-};
+  updatedAt: Timestamp;
+}
+
+export async function getAllTickets(): Promise<(Ticket & { id: string })[]> {
+  const ticketsRef = collection(db, COLLECTIONS.TICKETS);
+  const q = query(ticketsRef, orderBy("createdAt", "desc"));
+  const snapshot = await getDocs(q);
+  const tickets = snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (Ticket & { id: string })[];
+  
+  const priorityOrder: Record<string, number> = { 
+    urgent: 0, 
+    high: 1, 
+    medium: 2, 
+    low: 3 
+  };
+  
+  return tickets.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+}
+
+export async function getTicketsByUser(userId: string): Promise<(Ticket & { id: string })[]> {
+  const q = query(
+    collection(db, COLLECTIONS.TICKETS),
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as (Ticket & { id: string })[];
+}
 
 export async function replyToTicket(
   ticketId: string,
   adminEmail: string,
-  replyText: string
+  replyText: string,
+  newStatus: string = "replied"
 ): Promise<void> {
-  const ref = doc(db, COLLECTIONS.TICKETS, ticketId);
-  await updateDoc(ref, {
+  const now = Timestamp.now();
+  await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
     adminReply: replyText.trim(),
-    repliedAt: Timestamp.now(),
+    repliedAt: now,
     repliedBy: adminEmail,
-    status: "replied",
+    status: newStatus,
+    updatedAt: now,
+  });
+}
+
+export async function updateTicketStatus(
+  ticketId: string,
+  status: string
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
+    status,
+    updatedAt: Timestamp.now(),
   });
 }
 
 export async function submitTicket(
   userId: string,
   userEmail: string,
-  data: { type: TicketType; title: string; description: string; priority: string }
+  data: {
+    type: TicketType;
+    title: string;
+    description: string;
+    isAnonymous?: boolean;
+  }
 ): Promise<void> {
-  const ref = collection(db, COLLECTIONS.TICKETS);
-  await addDoc(ref, {
+  const now = Timestamp.now();
+  let priority = "medium";
+  if (data.type === "harassment") priority = "urgent";
+  if (data.type === "complaint") priority = "high";
+  if (data.type === "technical_issue") priority = "medium";
+  if (data.type === "request") priority = "low";
+
+  await addDoc(collection(db, COLLECTIONS.TICKETS), {
     userId,
-    userEmail,
+    userEmail: userEmail,
+    isAnonymous: data.isAnonymous || false,
     type: data.type,
     title: data.title.trim(),
     description: data.description.trim(),
-    priority: data.priority,
+    priority: priority,
     status: "open",
-    createdAt: Timestamp.now(),
+    adminReply: null,
+    repliedAt: null,
+    repliedBy: null,
+    createdAt: now,
+    updatedAt: now,
   });
 }
 
@@ -202,7 +507,9 @@ export function getUserDocRef(uid: string) {
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const userDoc = await getDoc(getUserDocRef(uid));
-  return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+  if (!userDoc.exists()) return null;
+  const data = userDoc.data() as UserProfile;
+  return { ...data, uid: userDoc.id };
 }
 
 export async function signUpUser(
@@ -214,8 +521,19 @@ export async function signUpUser(
     department?: string;
     division?: string;
     academicCode?: string;
+    semester?: number;
+    academicYear?: number;
+    currentTerm?: number;
   },
 ): Promise<UserCredential> {
+  
+  if (userData?.academicCode) {
+    const exists = await checkAcademicCodeExists(userData.academicCode);
+    if (exists) {
+      throw new Error("Academic code already exists. Please contact support.");
+    }
+  }
+
   const credential = await createUserWithEmailAndPassword(auth, email, password);
   const { uid } = credential.user;
   const now = Timestamp.now();
@@ -225,9 +543,18 @@ export async function signUpUser(
     displayName: userData?.displayName ?? null,
     role,
     isApproved: role === "admin" ? false : true,
-    ...(role === "user" && userData?.department ? { department: userData.department } : {}),
-    ...(role === "user" && userData?.division ? { division: userData.division } : {}),
+    isBlocked: false,
+    isBanned: false,
+    ...(userData?.department ? { department: userData.department } : {}),
+    ...(userData?.division ? { division: userData.division } : {}),
+    ...(userData?.semester !== undefined ? { semester: userData.semester } : {}),
     academicCode: userData?.academicCode ?? null,
+    ...(role === "user" && userData?.academicYear != null
+      ? { academicYear: Number(userData.academicYear) }
+      : {}),
+    ...(role === "user" && userData?.currentTerm != null
+      ? { currentTerm: Number(userData.currentTerm) }
+      : {}),
     createdAt: now,
     updatedAt: now,
   });
@@ -245,4 +572,23 @@ export async function logoutUser(): Promise<void> {
 
 export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
+}
+
+export async function createInAppNotification(
+  data: Omit<InAppNotificationRecord, "createdAt" | "read"> & { read?: boolean },
+): Promise<void> {
+  const ref = collection(db, COLLECTIONS.NOTIFICATIONS);
+  await addDoc(ref, {
+    userId: data.userId,
+    type: data.type,
+    title: data.title,
+    body: data.body,
+    read: data.read ?? false,
+    createdAt: Timestamp.now(),
+    ...(data.meta && Object.keys(data.meta).length > 0 ? { meta: data.meta } : {}),
+  });
+}
+
+export function getEnrollmentDocRef(userId: string) {
+  return doc(db, COLLECTIONS.ENROLLMENTS, userId);
 }

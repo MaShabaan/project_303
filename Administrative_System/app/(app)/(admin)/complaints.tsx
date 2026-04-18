@@ -8,70 +8,58 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Modal,
+  ScrollView,
   TextInput,
 } from 'react-native';
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
-import { db, COLLECTIONS, replyToTicket, type TicketType } from '@/services/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+import { collection, doc, updateDoc, deleteDoc, Timestamp, getDocs, query, orderBy } from 'firebase/firestore';
+import { db, COLLECTIONS, replyToTicket, updateTicketStatus, getAllTickets, type Ticket } from '@/services/firebase';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
-interface Ticket {
-  id: string;
-  userId: string;
-  userEmail: string;
-  type: TicketType;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  createdAt: Timestamp | { toDate: () => Date };
-  adminReply?: string;
-  repliedAt?: Timestamp | { toDate: () => Date };
-  repliedBy?: string;
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  technical_issue: 'Technical issue',
-  complaint: 'Complaint',
-  request: 'Request',
-  other: 'Other',
+const PRIORITY_COLORS = {
+  urgent: { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', label: '🔴 Urgent' },
+  high: { bg: '#fffbeb', border: '#fde68a', text: '#d97706', label: '🟡 High' },
+  medium: { bg: '#eff6ff', border: '#bfdbfe', text: '#2563eb', label: '🔵 Medium' },
+  low: { bg: '#f0fdf4', border: '#bbf7d0', text: '#059669', label: '🟢 Low' },
 };
 
-const PRIORITY_BG: Record<string, string> = {
-  low: '#10b981',
-  medium: '#f59e0b',
-  high: '#ef4444',
-};
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Open' },
+  { value: 'in-progress', label: 'In Progress' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'closed', label: 'Closed' },
+];
 
-function formatDate(t: Ticket['createdAt']): string {
-  if (!t) return '—';
-  const date = t && typeof (t as Timestamp).toDate === 'function' ? (t as Timestamp).toDate() : new Date();
-  return date.toLocaleDateString(undefined, { dateStyle: 'short' }) + ' ' + date.toLocaleTimeString(undefined, { timeStyle: 'short' });
-}
-
-export default function ComplaintsScreen() {
+export default function AdminComplaintsScreen() {
   const { profile } = useAuth();
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [tickets, setTickets] = useState<(Ticket & { id: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [replyingToId, setReplyingToId] = useState<string | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<(Ticket & { id: string }) | null>(null);
+  const [replyModalVisible, setReplyModalVisible] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+
+  const isSuperAdmin = profile?.email === 'mshabaan295@gmail.com' || 
+                       profile?.email === 'hoda17753@gmail.com' || 
+                       profile?.email === 'Tbarckyasir@gmail.com';
+
+  useEffect(() => {
+    loadTickets();
+  }, []);
 
   const loadTickets = async () => {
     try {
-      const ref = collection(db, COLLECTIONS.TICKETS);
-      const snapshot = await getDocs(ref);
-      const list = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      })) as Ticket[];
-      list.sort((a, b) => {
-        const tA = a.createdAt && typeof (a.createdAt as Timestamp).toDate === 'function' ? (a.createdAt as Timestamp).toDate().getTime() : 0;
-        const tB = b.createdAt && typeof (b.createdAt as Timestamp).toDate === 'function' ? (b.createdAt as Timestamp).toDate().getTime() : 0;
-        return tB - tA;
-      });
-      setTickets(list);
-    } catch (error: unknown) {
+      const allTickets = await getAllTickets();
+      setTickets(allTickets);
+    } catch (error) {
       console.error('Error loading tickets:', error);
       Alert.alert('Error', 'Failed to load complaints');
     } finally {
@@ -80,45 +68,175 @@ export default function ComplaintsScreen() {
     }
   };
 
-  useEffect(() => {
-    loadTickets();
-  }, []);
-
   const onRefresh = () => {
     setRefreshing(true);
     loadTickets();
   };
 
-  const handleSendReply = async (ticketId: string) => {
-    const text = replyText.trim();
-    if (!text) {
-      Alert.alert('Error', 'Please enter a reply message');
+  const getDisplayEmail = (ticket: (Ticket & { id: string }) | null) => {
+    if (!ticket) return '';
+    if (isSuperAdmin) {
+      return ticket.userEmail || 'No email';
+    }
+    if (ticket.isAnonymous) {
+      return '🔒 Anonymous';
+    }
+    return ticket.userEmail || 'No email';
+  };
+
+  const openReplyModal = (ticket: Ticket & { id: string }) => {
+    setSelectedTicket(ticket);
+    setReplyText(ticket.adminReply || '');
+    setReplyModalVisible(true);
+  };
+
+  const openEditModal = (ticket: Ticket & { id: string }) => {
+    setSelectedTicket(ticket);
+    setEditTitle(ticket.title);
+    setEditDescription(ticket.description);
+    setEditModalVisible(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editTitle.trim() || !editDescription.trim()) {
+      Alert.alert('Error', 'Title and description are required');
       return;
     }
-    if (!profile?.email) {
-      Alert.alert('Error', 'You must be logged in as admin');
+    if (!selectedTicket) return;
+
+    try {
+      const ticketRef = doc(db, COLLECTIONS.TICKETS, selectedTicket.id);
+      await updateDoc(ticketRef, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        updatedAt: Timestamp.now(),
+      });
+      await loadTickets();
+      setEditModalVisible(false);
+      Alert.alert('Success', 'Complaint updated successfully');
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to update complaint');
+    }
+  };
+
+  const handleDelete = (ticket: Ticket & { id: string }) => {
+    Alert.alert(
+      'Delete Complaint',
+      `Are you sure you want to delete "${ticket.title}"?\n\nThis action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, COLLECTIONS.TICKETS, ticket.id));
+              await loadTickets();
+              Alert.alert('Success', 'Complaint deleted successfully');
+            } catch (error) {
+              console.error(error);
+              Alert.alert('Error', 'Failed to delete complaint');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim()) {
+      Alert.alert('Error', 'Please enter a reply');
       return;
     }
-    
+    if (!selectedTicket) return;
+
     setReplyLoading(true);
     try {
-      await replyToTicket(ticketId, profile.email, text);
-      setReplyingToId(null);
+      await replyToTicket(selectedTicket.id, profile?.email || 'admin', replyText.trim(), 'replied');
+      await loadTickets();
+      setReplyModalVisible(false);
       setReplyText('');
       Alert.alert('Success', 'Reply sent successfully');
-      loadTickets();
-    } catch (e) {
-      console.error(e);
+    } catch (error) {
+      console.error(error);
       Alert.alert('Error', 'Failed to send reply');
     } finally {
       setReplyLoading(false);
     }
   };
 
+  const handleStatusChange = async (ticketId: string, newStatus: string) => {
+    try {
+      await updateTicketStatus(ticketId, newStatus);
+      await loadTickets();
+      Alert.alert('Success', `Status updated to ${newStatus}`);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update status');
+    }
+  };
+
+  const displayEmail = (ticket: Ticket & { id: string }) => {
+    if (isSuperAdmin) {
+      return ticket.userEmail || 'No email';
+    }
+    if (ticket.isAnonymous) {
+      return '🔒 Anonymous';
+    }
+    return ticket.userEmail || 'No email';
+  };
+
+  const filteredTickets = tickets.filter(ticket => {
+    if (filter === 'all') return true;
+    return ticket.status === filter;
+  });
+
+  const renderTicket = ({ item }: { item: Ticket & { id: string } }) => {
+    const priorityKey = item.priority as keyof typeof PRIORITY_COLORS;
+    const priorityStyle = PRIORITY_COLORS[priorityKey] || PRIORITY_COLORS.medium;
+    const date = item.createdAt?.toDate ? item.createdAt.toDate().toLocaleDateString() : 'Unknown date';
+
+    return (
+      <View style={[styles.ticketCard, { borderLeftColor: priorityStyle.text, borderLeftWidth: 4 }]}>
+        <TouchableOpacity style={styles.ticketContent} onPress={() => openReplyModal(item)} activeOpacity={0.7}>
+          <View style={styles.ticketHeader}>
+            <View style={styles.ticketInfo}>
+              <Text style={styles.ticketTitle} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.ticketEmail}>{displayEmail(item)}</Text>
+            </View>
+            <View style={[styles.priorityBadge, { backgroundColor: priorityStyle.bg, borderColor: priorityStyle.border }]}>
+              <Text style={[styles.priorityText, { color: priorityStyle.text }]}>{priorityStyle.label}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.ticketDescription} numberOfLines={2}>{item.description}</Text>
+
+          <View style={styles.ticketFooter}>
+            <Text style={styles.ticketDate}>{date}</Text>
+            <View style={[styles.statusBadge, item.status === 'closed' && styles.statusClosed, item.status === 'replied' && styles.statusReplied]}>
+              <Text style={styles.statusText}>{item.status}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {isSuperAdmin && (
+          <View style={styles.adminActions}>
+            <TouchableOpacity style={styles.editButton} onPress={() => openEditModal(item)}>
+              <Text style={styles.editButtonText}>✏️ Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete(item)}>
+              <Text style={styles.deleteButtonText}>🗑️ Delete</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#764ba2" />
+        <ActivityIndicator size="large" color="#7c3aed" />
         <Text style={styles.loadingText}>Loading complaints...</Text>
       </View>
     );
@@ -126,149 +244,263 @@ export default function ComplaintsScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>📋 Complaints</Text>
+          <Text style={styles.headerSubtitle}>{filteredTickets.length} tickets</Text>
+        </View>
+        <View style={{ width: 40 }} />
+      </LinearGradient>
+
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          <TouchableOpacity
+            style={[styles.filterChip, filter === 'all' && styles.filterChipActive]}
+            onPress={() => setFilter('all')}
+          >
+            <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>All</Text>
+          </TouchableOpacity>
+          {STATUS_OPTIONS.map(opt => (
+            <TouchableOpacity
+              key={opt.value}
+              style={[styles.filterChip, filter === opt.value && styles.filterChipActive]}
+              onPress={() => setFilter(opt.value)}
+            >
+              <Text style={[styles.filterText, filter === opt.value && styles.filterTextActive]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <FlatList
-        data={tickets}
+        data={filteredTickets}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#764ba2']} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#7c3aed']} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No complaints submitted yet.</Text>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyEmoji}>📭</Text>
+            <Text style={styles.emptyText}>No complaints found</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
-              <View style={[styles.badge, { backgroundColor: PRIORITY_BG[item.priority] || '#f59e0b' }]}>
-                <Text style={styles.badgeText}>{item.priority}</Text>
-              </View>
-            </View>
-            <Text style={styles.userEmail}>From: {item.userEmail}</Text>
-            <Text style={styles.type}>{TYPE_LABELS[item.type] || item.type}</Text>
-            <Text style={styles.description}>{item.description}</Text>
-            <View style={styles.meta}>
-              <Text style={styles.metaText}>{formatDate(item.createdAt)}</Text>
-            </View>
-            {item.status && (
-              <Text style={styles.status}>Status: {item.status}</Text>
-            )}
-            {item.adminReply ? (
-              <View style={styles.replyBlock}>
-                <Text style={styles.replyLabel}>Admin reply:</Text>
-                <Text style={styles.replyText}>{item.adminReply}</Text>
-                {item.repliedBy && (
-                  <Text style={styles.repliedBy}>— {item.repliedBy}</Text>
-                )}
-                <TouchableOpacity 
-                  style={styles.editReplyButton}
-                  onPress={() => {
-                    setReplyingToId(item.id);
-                    setReplyText(item.adminReply || '');
-                  }}
-                >
-                  <Text style={styles.editReplyButtonText}>Edit Reply</Text>
-                </TouchableOpacity>
-              </View>
-            ) : replyingToId === item.id ? (
-              <View style={styles.replyForm}>
+        renderItem={renderTicket}
+      />
+
+      <Modal visible={replyModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reply to Complaint</Text>
+              <Text style={styles.modalSubtitle}>{getDisplayEmail(selectedTicket)}</Text>
+              <TouchableOpacity onPress={() => setReplyModalVisible(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.ticketDetails}>
+                <Text style={styles.detailLabel}>Title</Text>
+                <Text style={styles.detailValue}>{selectedTicket?.title}</Text>
+
+                <Text style={styles.detailLabel}>Description</Text>
+                <Text style={styles.detailValue}>{selectedTicket?.description}</Text>
+
+                <Text style={styles.detailLabel}>Status</Text>
+                <View style={styles.statusSelector}>
+                  {STATUS_OPTIONS.map(opt => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      style={[styles.statusOption, selectedTicket?.status === opt.value && styles.statusOptionActive]}
+                      onPress={() => {
+                        if (selectedTicket) {
+                          handleStatusChange(selectedTicket.id, opt.value);
+                          setSelectedTicket({ ...selectedTicket, status: opt.value });
+                        }
+                      }}
+                    >
+                      <Text style={[styles.statusOptionText, selectedTicket?.status === opt.value && styles.statusOptionTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.detailLabel}>Your Reply</Text>
                 <TextInput
                   style={styles.replyInput}
-                  placeholder="Type your reply..."
-                  placeholderTextColor="#9ca3af"
+                  placeholder="Type your reply here..."
+                  placeholderTextColor="#94a3b8"
                   value={replyText}
                   onChangeText={setReplyText}
                   multiline
-                  numberOfLines={4}
+                  numberOfLines={5}
                   textAlignVertical="top"
                 />
-                <View style={styles.replyActions}>
-                  <TouchableOpacity 
-                    style={styles.cancelBtn}
-                    onPress={() => { 
-                      setReplyingToId(null); 
-                      setReplyText(''); 
-                    }}
-                  >
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.sendBtn, replyLoading && styles.sendBtnDisabled]}
-                    onPress={() => handleSendReply(item.id)}
-                    disabled={replyLoading}
-                  >
-                    <Text style={styles.sendBtnText}>
-                      {replyLoading ? 'Sending...' : 'Send Reply'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
               </View>
-            ) : (
-              <TouchableOpacity style={styles.replyButton} onPress={() => setReplyingToId(item.id)}>
-                <Text style={styles.replyButtonText}>Reply to Complaint</Text>
-              </TouchableOpacity>
-            )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setReplyModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sendButton} onPress={handleReply} disabled={replyLoading}>
+                  <Text style={styles.sendButtonText}>{replyLoading ? 'Sending...' : 'Send Reply'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        )}
-      />
+        </View>
+      </Modal>
+
+      <Modal visible={editModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>✏️ Edit Complaint</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.detailLabel}>Title</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="Enter title"
+                placeholderTextColor="#94a3b8"
+              />
+
+              <Text style={styles.detailLabel}>Description</Text>
+              <TextInput
+                style={[styles.editInput, styles.editTextArea]}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="Enter description"
+                placeholderTextColor="#94a3b8"
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={() => setEditModalVisible(false)}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveButton} onPress={handleEdit}>
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#f6f5ff' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f6f5ff' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#666' },
+
+  header: { 
+    paddingTop: 50, 
+    paddingBottom: 25, 
+    paddingHorizontal: 20, 
+    borderBottomLeftRadius: 30, 
+    borderBottomRightRadius: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff' },
+  headerSubtitle: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+
+  filterContainer: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#ede9fe' },
+  filterScroll: { flexDirection: 'row' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f1f5f9', marginRight: 8 },
+  filterChipActive: { backgroundColor: '#7c3aed' },
+  filterText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  filterTextActive: { color: '#fff' },
+
   listContent: { padding: 16, paddingBottom: 32 },
-  empty: { padding: 40, alignItems: 'center' },
-  emptyText: { fontSize: 16, color: '#666' },
-  card: {
+
+  ticketCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
+    overflow: 'hidden',
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  title: { fontSize: 16, fontWeight: '700', color: '#333', flex: 1, marginRight: 8 },
-  userEmail: { fontSize: 12, color: '#764ba2', fontWeight: '500', marginBottom: 6 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 12, fontWeight: '600', color: '#fff' },
-  type: { fontSize: 13, color: '#666', marginBottom: 8 },
-  description: { fontSize: 14, color: '#555', marginBottom: 10, lineHeight: 20 },
-  meta: { flexDirection: 'row', marginTop: 4 },
-  metaText: { fontSize: 12, color: '#888' },
-  status: { fontSize: 12, color: '#666', marginTop: 6 },
-  replyBlock: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' },
-  replyLabel: { fontSize: 12, fontWeight: '600', color: '#764ba2', marginBottom: 4 },
-  replyText: { fontSize: 14, color: '#333' },
-  repliedBy: { fontSize: 12, color: '#888', marginTop: 4 },
-  editReplyButton: { marginTop: 8, alignSelf: 'flex-start' },
-  editReplyButtonText: { color: '#764ba2', fontSize: 12, fontWeight: '500' },
-  replyForm: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' },
-  replyInput: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    color: '#1f2937',
-    backgroundColor: '#f9fafb',
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  replyActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, marginTop: 12 },
-  cancelBtn: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#f3f4f6' },
-  cancelBtnText: { fontSize: 14, color: '#666', fontWeight: '500' },
-  sendBtn: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8, backgroundColor: '#764ba2' },
-  sendBtnDisabled: { opacity: 0.6 },
-  sendBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  replyButton: { marginTop: 12, paddingVertical: 10, paddingHorizontal: 16, backgroundColor: '#764ba2', borderRadius: 8, alignItems: 'center' },
-  replyButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  ticketContent: { padding: 16 },
+  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  ticketInfo: { flex: 1 },
+  ticketTitle: { fontSize: 16, fontWeight: '700', color: '#1e1b4b', marginBottom: 2 },
+  ticketEmail: { fontSize: 12, color: '#94a3b8' },
+  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+  priorityText: { fontSize: 11, fontWeight: '700' },
+  ticketDescription: { fontSize: 13, color: '#555', marginBottom: 12, lineHeight: 18 },
+  ticketFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  ticketDate: { fontSize: 11, color: '#aaa' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: '#f1f5f9' },
+  statusClosed: { backgroundColor: '#fef2f2' },
+  statusReplied: { backgroundColor: '#f0fdf4' },
+  statusText: { fontSize: 11, fontWeight: '600', color: '#64748b' },
+
+  adminActions: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f1f5f9', padding: 12, gap: 12 },
+  editButton: { flex: 1, backgroundColor: '#e0e7ff', paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  editButtonText: { fontSize: 12, fontWeight: '600', color: '#4f46e5' },
+  deleteButton: { flex: 1, backgroundColor: '#fee2e2', paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  deleteButtonText: { fontSize: 12, fontWeight: '600', color: '#dc2626' },
+
+  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
+  emptyEmoji: { fontSize: 48, marginBottom: 16 },
+  emptyText: { fontSize: 16, color: '#94a3b8' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalHeader: { padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  modalSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.8)', position: 'absolute', bottom: 12, left: 20 },
+  modalClose: { padding: 8 },
+  modalCloseText: { fontSize: 18, fontWeight: '600', color: '#fff' },
+  modalBody: { padding: 20 },
+  ticketDetails: { marginBottom: 20 },
+  detailLabel: { fontSize: 12, fontWeight: '600', color: '#64748b', marginBottom: 4, marginTop: 12 },
+  detailValue: { fontSize: 14, color: '#1e1b4b', lineHeight: 20 },
+  statusSelector: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  statusOption: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f1f5f9' },
+  statusOptionActive: { backgroundColor: '#7c3aed' },
+  statusOptionText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  statusOptionTextActive: { color: '#fff' },
+  replyInput: { height: 120, borderRadius: 12, backgroundColor: '#f8f7ff', borderWidth: 1.5, borderColor: '#ede9fe', paddingHorizontal: 16, paddingTop: 14, fontSize: 14, color: '#1e1b4b', textAlignVertical: 'top', marginTop: 8 },
+  editInput: { height: 50, borderRadius: 12, backgroundColor: '#f8f7ff', borderWidth: 1.5, borderColor: '#ede9fe', paddingHorizontal: 16, fontSize: 14, color: '#1e1b4b', marginTop: 8 },
+  editTextArea: { height: 120, paddingTop: 14, textAlignVertical: 'top' },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20, marginBottom: 20 },
+  cancelButton: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center' },
+  cancelButtonText: { fontWeight: '700', color: '#64748b' },
+  sendButton: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#7c3aed', alignItems: 'center' },
+  sendButtonText: { fontWeight: '700', color: '#fff' },
+  saveButton: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#10b981', alignItems: 'center' },
+  saveButtonText: { fontWeight: '700', color: '#fff' },
 });
