@@ -213,41 +213,33 @@ case 'manage-courses':
 
 
   return (
-    <div className="App">
-      <div className="background-overlay"></div>
+  <div className="content-wrapper">
+  <div className="image-container">
+    <img
+      src="/assets/images/science-faculty-logo.jpg"
+      alt="Logo"
+      className="center-image"
+    />
+    <p className="feedback-text">
+      LETS SHARE FEEDBACK, RESOLVE ISSUES
+    </p>
+  </div>
 
-      <div className="content-wrapper">
-        <div className="image-container">
-          <img
-            src="/assets/images/science-faculty-logo.jpg"
-            alt="Logo"
-            className="center-image"
-          />
-          <p className="feedback-text">
-            LETS SHARE FEEDBACK, RESOLVE ISSUES
-          </p>
-        </div>
+  <div className="fieldcontainer">
+    <form onSubmit={handleLogin}>
+      <h2 className="form-title">LOGIN</h2>
 
-        <div className="fieldcontainer">
-          <form onSubmit={handleLogin}>
-            <h2 className="form-title">LOGIN</h2>
+      <input name="email" type="email" placeholder="EMAIL" required />
+      <input name="password" type="password" placeholder="PASSWORD" required />
 
-            <input name="email" type="email" placeholder="EMAIL" required />
-            <input name="password" type="password" placeholder="PASSWORD" required />
+      <button type="submit">LOGIN</button>
 
-            <button type="submit">LOGIN</button>
+      <p onClick={handleForgotPassword}>Forgot Password?</p>
 
-            <p onClick={handleForgotPassword} style={{ cursor: "pointer" }}>
-              Forgot Password?
-            </p>
-
-            <p onClick={() => setView('signup')} style={{ cursor: "pointer" }}>
-              Sign Up
-            </p>
-          </form>
-        </div>
-      </div>
-    </div>
+      <p onClick={() => setView('signup')}>Sign Up</p>
+    </form>
+  </div>
+</div>
   );
 }
 

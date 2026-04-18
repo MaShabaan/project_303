@@ -17,7 +17,7 @@ function RateCourse({ user, onBack }) {
 
   const [submitting, setSubmitting] = useState(false);
 
-  // ✅ HANDLE CHANGE (مرة واحدة بس)
+  
   const handleChange = (e) => {
     setFormData({
       ...formData,
