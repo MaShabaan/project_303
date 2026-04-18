@@ -441,6 +441,7 @@ export async function getTicketsByUser(userId: string): Promise<(Ticket & { id: 
   })) as (Ticket & { id: string })[];
 }
 
+
 export async function replyToTicket(
   ticketId: string,
   adminEmail: string,
@@ -448,15 +449,32 @@ export async function replyToTicket(
   newStatus: string = "replied"
 ): Promise<void> {
   const now = Timestamp.now();
-  await updateDoc(doc(db, COLLECTIONS.TICKETS, ticketId), {
+  
+  const ticketRef = doc(db, COLLECTIONS.TICKETS, ticketId);
+  const ticketSnap = await getDoc(ticketRef);
+  const ticketData = ticketSnap.data();
+  
+  if (!ticketData) {
+    throw new Error("Ticket not found");
+  }
+  
+  await updateDoc(ticketRef, {
     adminReply: replyText.trim(),
     repliedAt: now,
     repliedBy: adminEmail,
     status: newStatus,
     updatedAt: now,
   });
+  
+  await createInAppNotification({
+    userId: ticketData.userId,
+    type: "complaint_reply",
+    title: "📝 Reply to your complaint",
+    body: `Admin replied to "${ticketData.title}"`,
+    read: false,
+    meta: { ticketId },
+  });
 }
-
 export async function updateTicketStatus(
   ticketId: string,
   status: string
@@ -574,8 +592,16 @@ export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
+
 export async function createInAppNotification(
-  data: Omit<InAppNotificationRecord, "createdAt" | "read"> & { read?: boolean },
+  data: {
+    userId: string;
+    type: "complaint_reply" | "enrollment_edited" | "account_banned" | "account_unbanned";
+    title: string;
+    body: string;
+    read: boolean;
+    meta?: Record<string, string>;
+  }
 ): Promise<void> {
   const ref = collection(db, COLLECTIONS.NOTIFICATIONS);
   await addDoc(ref, {
@@ -583,9 +609,9 @@ export async function createInAppNotification(
     type: data.type,
     title: data.title,
     body: data.body,
-    read: data.read ?? false,
+    read: data.read,
     createdAt: Timestamp.now(),
-    ...(data.meta && Object.keys(data.meta).length > 0 ? { meta: data.meta } : {}),
+    ...(data.meta ? { meta: data.meta } : {}),
   });
 }
 
