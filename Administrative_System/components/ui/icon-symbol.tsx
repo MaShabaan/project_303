@@ -22,6 +22,7 @@ const MAPPING = {
   'person.2.fill': 'people',
   'text.bubble.fill': 'chat-bubble',
   'star.fill': 'star',
+  'list.clipboard.fill': 'assignment',
 } as IconMapping;
 
 /**

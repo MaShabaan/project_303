@@ -39,6 +39,8 @@ export default function SignUpScreen() {
   const [academicCode, setAcademicCode] = useState("");
   const [division, setDivision] = useState<string | null>(null);
   const [semester, setSemester] = useState<number | null>(null);
+  const [academicYear, setAcademicYear] = useState(2);
+  const [currentTerm, setCurrentTerm] = useState(1);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [checkingCode, setCheckingCode] = useState(false);
 
@@ -127,7 +129,9 @@ export default function SignUpScreen() {
         department: "Mathematics Department",
         division: division ?? undefined,
         academicCode: academicCode.trim(),
-        semester: semester,
+        semester: semester ?? undefined,
+        academicYear,
+        currentTerm,
       });
 
       Alert.alert("Success", "Registration successful. Please log in.", [
@@ -324,6 +328,58 @@ export default function SignUpScreen() {
                         {s.label}
                       </Text>
                       {semester === s.value && <View style={styles.semesterDot} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>ACADEMIC YEAR</Text>
+                <View style={styles.divisionContainer}>
+                  {[2, 3, 4].map((y) => (
+                    <TouchableOpacity
+                      key={y}
+                      style={[
+                        styles.divisionOption,
+                        academicYear === y && styles.divisionOptionSelected,
+                      ]}
+                      onPress={() => setAcademicYear(y)}
+                      disabled={isLoading}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.divisionLabel,
+                          academicYear === y && styles.divisionLabelSelected,
+                        ]}
+                      >
+                        Year {y}
+                      </Text>
+                      {academicYear === y && <View style={styles.divisionDot} />}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={[styles.label, { marginTop: 18, marginBottom: 10 }]}>CURRENT SEMESTER</Text>
+                <View style={styles.divisionContainer}>
+                  {[1, 2].map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      style={[
+                        styles.divisionOption,
+                        currentTerm === t && styles.divisionOptionSelected,
+                      ]}
+                      onPress={() => setCurrentTerm(t)}
+                      disabled={isLoading}
+                      activeOpacity={0.8}
+                    >
+                      <Text
+                        style={[
+                          styles.divisionLabel,
+                          currentTerm === t && styles.divisionLabelSelected,
+                        ]}
+                      >
+                        Term {t}
+                      </Text>
+                      {currentTerm === t && <View style={styles.divisionDot} />}
                     </TouchableOpacity>
                   ))}
                 </View>
