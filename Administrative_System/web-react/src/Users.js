@@ -1,209 +1,177 @@
-import { useEffect, useState } from "react";
-import "./Users.css";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebaseConfig";
+// web-react/src/pages/Users.jsx
 
-export default function Users({ setView }) {
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../services/firebase';
+import './Users.css';
+
+const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
+
+export default function Users({ user, onBack }) {
   const [users, setUsers] = useState([]);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // all | admins | users
-  const [mainTab, setMainTab] = useState("all-users"); // all-users | blocked
-  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("blockedUsers")) || [];
-    setBlockedUsers(stored);
-  }, []);
+  const isSuperAdmin = SUPER_ADMINS.includes(user?.email);
 
   useEffect(() => {
     loadUsers();
   }, []);
 
   const loadUsers = async () => {
+    setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, "users"));
-
-      const list = snapshot.docs.map((doc) => ({
+      const snapshot = await getDocs(collection(db, 'users'));
+      const list = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-      setUsers(list);
-    } catch (e) {
-      console.error(e);
+      // فلترة السوبر أدمن من القائمة
+      setUsers(list.filter(u => !SUPER_ADMINS.includes(u.email)));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const isAdmin = (user) => user.role === "admin";
-
-  const isBlockedUser = (userId) => {
-    return blockedUsers.some((u) => u.id === userId);
-  };
-
-  const toggleBlockUser = (user) => {
-    // ✅ لا يعمل بلوك للأدمن
-    if (isAdmin(user)) return;
-
-    const alreadyBlocked = isBlockedUser(user.id);
-
-    let updated;
-    if (alreadyBlocked) {
-      updated = blockedUsers.filter((u) => u.id !== user.id);
-    } else {
-      updated = [...blockedUsers, user];
+  const handlePromote = async (userId) => {
+    if (!isSuperAdmin) {
+      alert('Only super admins can promote users');
+      return;
     }
-
-    setBlockedUsers(updated);
-    localStorage.setItem("blockedUsers", JSON.stringify(updated));
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: 'admin' });
+      await loadUsers();
+      alert('User promoted to admin');
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const getBadge = (user) => {
-    if (user.role === "admin") {
-      if (user.isApproved === false) {
-        return <span className="badge pending">Pending</span>;
+  const handleDemote = async (userId) => {
+    if (!isSuperAdmin) {
+      alert('Only super admins can demote users');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', userId), { role: 'user' });
+      await loadUsers();
+      alert('Admin role removed');
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDelete = async (userId) => {
+    if (!isSuperAdmin) {
+      alert('Only super admins can delete users');
+      return;
+    }
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await deleteDoc(doc(db, 'users', userId));
+        await loadUsers();
+        alert('User deleted');
+      } catch (error) {
+        alert(error.message);
       }
-      return <span className="badge admin">Admin</span>;
     }
-
-    return <span className="badge user">User</span>;
   };
 
-  const matchesSearch = (user) => {
-    const name = user.displayName || "";
-    const email = user.email || "";
-
-    return (
-      name.toLowerCase().includes(search.toLowerCase()) ||
-      email.toLowerCase().includes(search.toLowerCase())
-    );
+  const handleBlock = async (userId, isBlocked) => {
+    if (!isSuperAdmin) {
+      alert('Only super admins can block users');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', userId), { isBlocked: !isBlocked });
+      await loadUsers();
+      alert(isBlocked ? 'User unblocked' : 'User blocked');
+    } catch (error) {
+      alert(error.message);
+    }
   };
 
-  const displayedUsers =
-    mainTab === "blocked"
-      ? blockedUsers.filter((user) => matchesSearch(user))
-      : users.filter((user) => {
-          if (!matchesSearch(user)) return false;
-
-          if (filter === "admins") return user.role === "admin";
-          if (filter === "users") return user.role === "user";
-
-          return true;
-        });
+  const filteredUsers = users.filter(u => {
+    const matchSearch = u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase());
+    if (filter === 'admins') return matchSearch && u.role === 'admin';
+    if (filter === 'users') return matchSearch && u.role === 'user';
+    return matchSearch;
+  });
 
   return (
-    <div className="users-page">
-      <div className="top-bar">
-        <button onClick={() => setView("dashboard")} className="back-btn">
-          ←
-        </button>
-        <h2>Admin Dashboard</h2>
-      </div>
-
+    <div className="users-container">
       <div className="users-header">
+        <button className="back-button" onClick={onBack}>← Back</button>
         <h1>Manage Users</h1>
-        <p>
-          {mainTab === "blocked"
-            ? `${blockedUsers.length} blocked users`
-            : `${users.length} users`}
-        </p>
+        <div></div>
       </div>
 
-      <div className="search-box">
+      <div className="users-controls">
         <input
           type="text"
-          placeholder="Search name, email or code..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by email or name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="search-input"
         />
+        <div className="filter-buttons">
+          <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
+          <button className={`filter-btn ${filter === 'admins' ? 'active' : ''}`} onClick={() => setFilter('admins')}>Admins</button>
+          <button className={`filter-btn ${filter === 'users' ? 'active' : ''}`} onClick={() => setFilter('users')}>Users</button>
+        </div>
       </div>
 
-      {/* ✅ التابات الرئيسية */}
-      <div className="main-tabs">
-        <button
-          className={mainTab === "all-users" ? "active" : ""}
-          onClick={() => setMainTab("all-users")}
-        >
-          All Users
-        </button>
-
-        <button
-          className={mainTab === "blocked" ? "active" : ""}
-          onClick={() => setMainTab("blocked")}
-        >
-          🔒 Blocked ({blockedUsers.length})
-        </button>
-      </div>
-
-      {/* ✅ التابات الفرعية تظهر فقط مع All Users */}
-      {mainTab === "all-users" && (
-        <div className="filters">
-          <button
-            onClick={() => setFilter("all")}
-            className={filter === "all" ? "active" : ""}
-          >
-            All
-          </button>
-
-          <button
-            onClick={() => setFilter("admins")}
-            className={filter === "admins" ? "active" : ""}
-          >
-            Admins
-          </button>
-
-          <button
-            onClick={() => setFilter("users")}
-            className={filter === "users" ? "active" : ""}
-          >
-            Users
-          </button>
+      {isSuperAdmin && (
+        <div className="super-admin-badge">
+          🔑 Super Admin — can promote, demote, block, unblock & delete users
         </div>
       )}
 
-      <div className="section-label">
-        {mainTab === "blocked" ? "🔒 Blocked users" : "👥 View only"}
-      </div>
-
-      <div className="users-list">
-        {displayedUsers.length === 0 ? (
-          <p className="no-users">
-            {mainTab === "blocked" ? "No blocked users" : "No users found"}
-          </p>
-        ) : (
-          displayedUsers.map((user) => {
-            const blocked = isBlockedUser(user.id);
-
-            return (
-              <div key={user.id} className="user-card">
-                <div className="user-left">
-                  <div className="avatar">
-                    {(user.displayName || user.email || "U")[0].toUpperCase()}
-                  </div>
-
-                  <div>
-                    <h3>{user.displayName || "No Name"}</h3>
-                    <p>{user.email}</p>
-                  </div>
-                </div>
-
-                <div className="user-actions">
-                  {getBadge(user)}
-
-                  {/* ✅ زر البلوك فقط لليوزر */}
-                  {user.role !== "admin" && (
-                    <button
-                      className={blocked ? "unblock-btn" : "block-btn"}
-                      onClick={() => toggleBlockUser(user)}
-                    >
-                      {blocked ? "Unblock" : "Block"}
-                    </button>
-                  )}
+      {loading ? (
+        <div className="loading">Loading...</div>
+      ) : (
+        <div className="users-list">
+          {filteredUsers.map(u => (
+            <div key={u.id} className={`user-card ${u.isBlocked ? 'blocked' : ''}`}>
+              <div className="user-avatar">
+                {(u.fullName || u.email).charAt(0).toUpperCase()}
+              </div>
+              <div className="user-info">
+                <div className="user-name">{u.fullName || 'No Name'}</div>
+                <div className="user-email">{u.email}</div>
+                <div className="user-meta">
+                  {u.division === 'computer_science' ? '💻 CS' : '📐 Math'}
+                  {u.academicYear ? ` · Year ${u.academicYear}` : ''}
                 </div>
               </div>
-            );
-          })
-        )}
-      </div>
+              <div className={`role-badge ${u.role === 'admin' ? 'admin' : 'user'}`}>
+                {u.role === 'admin' ? 'Admin' : 'User'}
+              </div>
+              <div className="user-actions">
+                {isSuperAdmin && u.role === 'user' && !u.isBlocked && (
+                  <button className="promote-btn" onClick={() => handlePromote(u.id)}>⬆ Make Admin</button>
+                )}
+                {isSuperAdmin && u.role === 'admin' && !u.isBlocked && (
+                  <button className="demote-btn" onClick={() => handleDemote(u.id)}>⬇ Remove Admin</button>
+                )}
+                {isSuperAdmin && !u.isBlocked && (
+                  <button className="block-btn" onClick={() => handleBlock(u.id, false)}>🔒 Block</button>
+                )}
+                {isSuperAdmin && u.isBlocked && (
+                  <button className="unblock-btn" onClick={() => handleBlock(u.id, true)}>🔓 Unblock</button>
+                )}
+                {isSuperAdmin && (
+                  <button className="delete-btn" onClick={() => handleDelete(u.id)}>🗑 Delete</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

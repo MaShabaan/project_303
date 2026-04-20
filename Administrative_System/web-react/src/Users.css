@@ -1,159 +1,184 @@
-.users-page {
-  background: #f5f5f5;
+/* web-react/src/pages/Users.css */
+
+.users-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
   min-height: 100vh;
+  background-color: #f6f5ff;
 }
 
 .users-header {
-  background: #764ba2;
-  color: white;
-  padding: 25px;
-}
-
-.search-box {
-  padding: 15px;
-  background: white;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: none;
-  background: #eee;
-}
-
-.filters {
   display: flex;
-  gap: 10px;
-  padding: 10px 15px;
-  background: white;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
 }
 
-.filters button {
-  padding: 8px 15px;
-  border-radius: 20px;
+.back-button {
+  background: none;
   border: none;
-  background: #eee;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
   cursor: pointer;
 }
 
-.filters .active {
-  background: #764ba2;
+.users-header h1 {
+  font-size: 20px;
+  color: #1e1b4b;
+}
+
+.users-controls {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ede9fe;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-btn {
+  padding: 6px 16px;
+  border: 1px solid #ede9fe;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.filter-btn.active {
+  background: #7c3aed;
   color: white;
+  border-color: #7c3aed;
+}
+
+.super-admin-badge {
+  background-color: #ede9fe;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: #6d28d9;
+  text-align: center;
 }
 
 .users-list {
-  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .user-card {
   background: white;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 10px;
-
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.user-left {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  border: 1px solid #ede9fe;
 }
 
-.avatar {
-  width: 45px;
-  height: 45px;
-  border-radius: 50%;
-  background: #764ba2;
-  color: white;
+.user-card.blocked {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: #7c3aed;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-}
-
-.badge {
-  padding: 6px 12px;
-  border-radius: 12px;
   color: white;
-  font-size: 12px;
-}
-
-.admin {
-  background: #764ba2;
-}
-
-.user {
-  background: #28a745;
-}
-
-.pending {
-  background: orange;
-}
-.main-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  padding: 14px 18px;
-}
-
-.main-tabs button {
-  border: none;
-  border-radius: 14px;
-  padding: 14px 18px;
-  font-size: 16px;
   font-weight: 700;
-  cursor: pointer;
-  background: #eef0f5;
-  color: #777;
+  font-size: 18px;
 }
 
-.main-tabs button.active {
-  background: linear-gradient(90deg, #7c3aed, #8b5cf6);
-  color: white;
+.user-info {
+  flex: 1;
 }
 
-.section-label {
-  margin: 0 18px 14px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: #f3eefc;
-  color: #6b46c1;
-  font-weight: 600;
-  font-size: 14px;
+.user-name {
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.user-email {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.user-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.role-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.role-badge.admin {
+  background-color: #ede9fe;
+  color: #6d28d9;
+}
+
+.role-badge.user {
+  background-color: #f0fdf4;
+  color: #059669;
 }
 
 .user-actions {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
-.block-btn {
+.user-actions button {
+  padding: 6px 12px;
   border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
-  background: #fee2e2;
-  color: #dc2626;
-  font-weight: 700;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
 }
 
-.unblock-btn {
-  border: none;
-  border-radius: 10px;
-  padding: 8px 14px;
-  background: #dcfce7;
-  color: #16a34a;
-  font-weight: 700;
-  cursor: pointer;
-}
+.promote-btn { background-color: #4f46e5; color: white; }
+.demote-btn { background-color: #f59e0b; color: white; }
+.block-btn { background-color: #ef4444; color: white; }
+.unblock-btn { background-color: #10b981; color: white; }
+.delete-btn { background-color: #dc2626; color: white; }
 
-.no-users {
+.loading {
   text-align: center;
-  color: #777;
-  padding: 24px;
+  padding: 40px;
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .user-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .user-actions {
+    justify-content: center;
+  }
 }
