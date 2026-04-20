@@ -1,4 +1,4 @@
-// web-react/src/pages/SubmitTicket.jsx
+
 
 import React, { useState } from 'react';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';

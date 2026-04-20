@@ -1,7 +1,7 @@
-// web-react/src/pages/AdminDashboard.jsx
+
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import './AdminDashboard.css';
 
@@ -15,21 +15,38 @@ export default function AdminDashboard({ user, onNavigate }) {
   const [ratingsCount, setRatingsCount] = useState(0);
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL] = useState(null);
 
   const isSuperAdmin = SUPER_ADMINS.includes(user?.email);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadStats();
+      loadUserProfile();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const data = userDoc.data();
+      setDisplayName(data.displayName || data.fullName || user.email.split('@')[0]);
+      setPhotoURL(data.photoURL || null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const loadStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      // Users
       const usersSnap = await getDocs(collection(db, 'users'));
       setUsersCount(usersSnap.size);
 
-      // Courses
       const coursesSnap = await getDocs(collection(db, 'courses'));
       setCoursesCount(coursesSnap.size);
 
-      // Complaints
       const ticketsSnap = await getDocs(collection(db, 'tickets'));
       setComplaintsCount(ticketsSnap.size);
       
@@ -39,11 +56,9 @@ export default function AdminDashboard({ user, onNavigate }) {
       }).length;
       setPendingComplaints(pending);
 
-      // Ratings
       const ratingsSnap = await getDocs(collection(db, 'feedback'));
       setRatingsCount(ratingsSnap.size);
 
-      // Recent Activity
       const recentTickets = ticketsSnap.docs
         .sort((a, b) => {
           const tA = a.data().createdAt?.toDate?.()?.getTime() ?? 0;
@@ -73,11 +88,6 @@ export default function AdminDashboard({ user, onNavigate }) {
     }
   }, []);
 
-  useEffect(() => {
-    loadStats();
-  }, [loadStats]);
-
-  const displayName = user?.email?.split('@')[0] || 'Admin';
   const avatarLetter = displayName.charAt(0).toUpperCase();
   const roleLabel = isSuperAdmin ? 'Super Admin' : 'Administrator';
 
@@ -100,13 +110,22 @@ export default function AdminDashboard({ user, onNavigate }) {
     <div className="admin-dashboard">
       <div className="dashboard-header">
         <div className="user-info">
-          <div className="avatar">{avatarLetter}</div>
+          {photoURL ? (
+            <img src={photoURL} alt="Profile" className="avatar" />
+          ) : (
+            <div className="avatar">{avatarLetter}</div>
+          )}
           <div>
             <div className="welcome-text">Welcome back, {displayName} 👋</div>
             <div className="role-text">{roleLabel}</div>
           </div>
         </div>
-        <button className="logout-btn" onClick={() => onNavigate('logout')}>Logout</button>
+        <div className="header-actions">
+          <button className="settings-btn" onClick={() => onNavigate('profile')}>
+            ⚙️
+          </button>
+          <button className="logout-btn" onClick={() => onNavigate('logout')}>Logout</button>
+        </div>
       </div>
 
       <div className="stats-row">

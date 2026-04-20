@@ -1,18 +1,22 @@
-// web-react/src/App.js
+
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase';
+import { ThemeProvider, useTheme } from './pages/ThemeContext';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SubmitTicket from './pages/SubmitTicket';
+import Complaints from './pages/Complaints';
+import Users from './pages/Users';
+import ProfileSettings from './pages/ProfileSettings';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [view, setView] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
@@ -41,7 +45,6 @@ function App() {
   }, []);
 
   const handleNavigate = (route) => {
-    console.log('Navigating to:', route); // ← للتأكد
     if (route === 'logout') {
       auth.signOut();
       setView('login');
@@ -56,17 +59,22 @@ function App() {
     return <div className="loading">Loading...</div>;
   }
 
-  // صفحات المصادقة
   if (view === 'login') return <Login onNavigate={handleNavigate} />;
   if (view === 'signup') return <SignUp onNavigate={handleNavigate} />;
   if (view === 'forgot') return <ForgotPassword onNavigate={handleNavigate} />;
-
-  // صفحة تقديم الشكوى
   if (view === 'submit-ticket') {
     return <SubmitTicket user={currentUser} onBack={() => handleNavigate('back')} />;
   }
+  if (view === 'complaints') {
+    return <Complaints user={currentUser} onBack={() => handleNavigate('back')} />;
+  }
+  if (view === 'users') {
+    return <Users user={currentUser} onBack={() => handleNavigate('back')} />;
+  }
+  if (view === 'profile') {
+    return <ProfileSettings user={currentUser} onBack={() => handleNavigate('back')} />;
+  }
 
-  // داشبورد حسب الدور
   if (view === 'dashboard' && currentUser) {
     if (userRole === 'admin' || userRole === 'super_admin') {
       return <AdminDashboard user={currentUser} onNavigate={handleNavigate} />;
@@ -75,6 +83,14 @@ function App() {
   }
 
   return <Login onNavigate={handleNavigate} />;
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
 }
 
 export default App;
