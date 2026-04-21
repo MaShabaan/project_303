@@ -1,7 +1,7 @@
 
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { useCallback, useEffect, useState } from 'react';
 import { db } from '../services/firebase';
 import './AdminDashboard.css';
 
@@ -104,6 +104,7 @@ export default function AdminDashboard({ user, onNavigate }) {
     { icon: '📚', title: 'Courses', sub: 'Add or edit courses', route: 'manage-courses' },
     { icon: '📝', title: 'Enrollments', sub: 'Assign courses', route: 'enrollments' },
     { icon: '⭐', title: 'Feedback', sub: 'View ratings', route: 'feedback' },
+    { icon: '📊', title: 'Statistics', sub: 'View analytics', route: 'statistics' }, 
   ];
 
   return (

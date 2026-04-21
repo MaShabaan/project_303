@@ -1,20 +1,21 @@
-
-
-import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from './services/firebase';
-import { ThemeProvider, useTheme } from './pages/ThemeContext';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
-import UserDashboard from './pages/UserDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import SubmitTicket from './pages/SubmitTicket';
-import Complaints from './pages/Complaints';
-import Users from './pages/Users';
-import ProfileSettings from './pages/ProfileSettings';
+import { useEffect, useState } from 'react';
 import './App.css';
+import AdminDashboard from './pages/AdminDashboard';
+import Complaints from './pages/Complaints';
+import Feedback from './pages/Feedback';
+import ForgotPassword from './pages/ForgotPassword';
+import Login from './pages/Login';
+import ManageCourses from './pages/ManageCourses';
+import ProfileSettings from './pages/ProfileSettings';
+import SignUp from './pages/SignUp';
+import Statistics from './pages/Statistics';
+import SubmitTicket from './pages/SubmitTicket';
+import { ThemeProvider } from './pages/ThemeContext';
+import UserDashboard from './pages/UserDashboard';
+import Users from './pages/Users';
+import { auth, db } from './services/firebase';
 
 function AppContent() {
   const [view, setView] = useState('login');
@@ -58,13 +59,21 @@ function AppContent() {
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
-
+if (view === 'manage-courses') {
+  return <ManageCourses user={currentUser} onBack={() => handleNavigate('back')} />;
+}
   if (view === 'login') return <Login onNavigate={handleNavigate} />;
   if (view === 'signup') return <SignUp onNavigate={handleNavigate} />;
   if (view === 'forgot') return <ForgotPassword onNavigate={handleNavigate} />;
   if (view === 'submit-ticket') {
     return <SubmitTicket user={currentUser} onBack={() => handleNavigate('back')} />;
   }
+  if (view === 'feedback') {
+  return <Feedback user={currentUser} onBack={() => handleNavigate('back')} />;
+}
+if (view === 'statistics') {
+  return <Statistics user={currentUser} onBack={() => handleNavigate('back')} />;
+}
   if (view === 'complaints') {
     return <Complaints user={currentUser} onBack={() => handleNavigate('back')} />;
   }
