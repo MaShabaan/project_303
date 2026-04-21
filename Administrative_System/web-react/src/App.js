@@ -15,6 +15,7 @@ import SubmitTicket from './pages/SubmitTicket';
 import { ThemeProvider } from './pages/ThemeContext';
 import UserDashboard from './pages/UserDashboard';
 import Users from './pages/Users';
+import Enrollments from './pages/Enrollments';
 import { auth, db } from './services/firebase';
 
 function AppContent() {
@@ -83,6 +84,10 @@ if (view === 'statistics') {
   if (view === 'profile') {
     return <ProfileSettings user={currentUser} onBack={() => handleNavigate('back')} />;
   }
+  if (view === 'enrollments') {
+  return <Enrollments user={currentUser} onBack={() => handleNavigate('back')} />;
+  
+}
 
   if (view === 'dashboard' && currentUser) {
     if (userRole === 'admin' || userRole === 'super_admin') {
@@ -90,6 +95,7 @@ if (view === 'statistics') {
     }
     return <UserDashboard user={currentUser} onNavigate={handleNavigate} />;
   }
+  
 
   return <Login onNavigate={handleNavigate} />;
 }

@@ -105,6 +105,7 @@ export default function AdminDashboard({ user, onNavigate }) {
     { icon: '📝', title: 'Enrollments', sub: 'Assign courses', route: 'enrollments' },
     { icon: '⭐', title: 'Feedback', sub: 'View ratings', route: 'feedback' },
     { icon: '📊', title: 'Statistics', sub: 'View analytics', route: 'statistics' }, 
+    
   ];
 
   return (

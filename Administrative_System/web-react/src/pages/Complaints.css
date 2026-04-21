@@ -1,9 +1,11 @@
+/* web-react/src/pages/Complaints.css */
 
 .complaints-container {
+  max-width: 1200px;
+  margin: 0 auto;
   min-height: 100vh;
   background-color: #f6f5ff;
   padding: 20px;
-
 }
 
 .complaints-header {
@@ -13,7 +15,6 @@
   flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 20px;
-
 }
 
 .back-button {
@@ -43,6 +44,12 @@
   background: white;
   cursor: pointer;
   font-size: 12px;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background: #f5f3ff;
+  border-color: #7c3aed;
 }
 
 .filter-btn.active {
@@ -63,6 +70,12 @@
   overflow: hidden;
   border: 1px solid #ede9fe;
   border-left-width: 4px;
+  transition: all 0.2s;
+}
+
+.ticket-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 .ticket-content {
@@ -95,6 +108,7 @@
   border: 1px solid;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .ticket-description {
@@ -143,6 +157,11 @@
   color: #dc2626;
   font-size: 12px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: #fecaca;
 }
 
 .empty-state {
@@ -236,6 +255,8 @@
   border: 1px solid #ede9fe;
   border-radius: 10px;
   font-size: 14px;
+  background-color: white;
+  cursor: pointer;
 }
 
 .reply-textarea {
@@ -247,6 +268,12 @@
   font-family: inherit;
   resize: vertical;
   margin-bottom: 16px;
+  box-sizing: border-box;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: #7c3aed;
 }
 
 .send-btn {
@@ -259,16 +286,106 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.send-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .send-btn:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Dark mode */
+.dark-mode .complaints-container {
+  background-color: #0f0f1a;
+}
+
+.dark-mode .complaints-header h1 {
+  color: #e2e8f0;
+}
+
+.dark-mode .ticket-card {
+  background-color: #1a1a2e;
+  border-color: #2d2d44;
+}
+
+.dark-mode .ticket-title {
+  color: #e2e8f0;
+}
+
+.dark-mode .ticket-description {
+  color: #cbd5e1;
+}
+
+.dark-mode .ticket-email,
+.dark-mode .ticket-date {
+  color: #94a3b8;
+}
+
+.dark-mode .ticket-actions {
+  border-color: #2d2d44;
+}
+
+.dark-mode .modal-content {
+  background-color: #1a1a2e;
+}
+
+.dark-mode .modal-header {
+  border-color: #2d2d44;
+}
+
+.dark-mode .modal-header h3 {
+  color: #e2e8f0;
+}
+
+.dark-mode .ticket-info {
+  background-color: #2d2d44;
+}
+
+.dark-mode .ticket-info div {
+  color: #cbd5e1;
+}
+
+.dark-mode .status-selector select {
+  background-color: #2d2d44;
+  border-color: #3d3d5c;
+  color: #e2e8f0;
+}
+
+.dark-mode .reply-textarea {
+  background-color: #2d2d44;
+  border-color: #3d3d5c;
+  color: #e2e8f0;
+}
+
+.dark-mode .reply-textarea::placeholder {
+  color: #94a3b8;
+}
+
+.dark-mode .filter-btn {
+  background-color: #1a1a2e;
+  border-color: #2d2d44;
+  color: #cbd5e1;
+}
+
+.dark-mode .filter-btn:hover {
+  background-color: #2d2d44;
+}
+
+.dark-mode .filter-btn.active {
+  background: #7c3aed;
+  color: white;
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .complaints-container {
-    padding: 12px;
+    padding: 16px;
   }
   
   .complaints-header {
@@ -281,5 +398,14 @@
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 4px;
+  }
+  
+  .ticket-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .priority-badge {
+    align-self: flex-start;
   }
 }
