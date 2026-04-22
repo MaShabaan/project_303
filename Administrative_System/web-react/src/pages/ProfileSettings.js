@@ -19,10 +19,6 @@ export default function ProfileSettings({ user, onBack }) {
   const [saving, setSaving] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [userData, setUserData] = useState(null);
-  const [division, setDivision] = useState('');
-  const [academicYear, setAcademicYear] = useState(2);
-  const [currentTerm, setCurrentTerm] = useState(1);
-  const [academicCode, setAcademicCode] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -35,10 +31,6 @@ export default function ProfileSettings({ user, onBack }) {
       const data = userDoc.data();
       setUserData(data);
       setDisplayName(data.displayName || data.fullName || user.email.split('@')[0]);
-      setDivision(data.division || 'computer_science');
-      setAcademicYear(data.academicYear || 2);
-      setCurrentTerm(data.currentTerm || 1);
-      setAcademicCode(data.academicCode || '');
     } catch (error) {
       console.error(error);
     } finally {
@@ -54,16 +46,10 @@ export default function ProfileSettings({ user, onBack }) {
     
     setSaving(true);
     try {
-      const updateData = {
+      await updateDoc(doc(db, 'users', user.uid), {
         displayName: displayName.trim(),
-        division: division,
-        academicYear: academicYear,
-        currentTerm: currentTerm,
-        academicCode: academicCode.trim(),
         updatedAt: new Date(),
-      };
-      
-      await updateDoc(doc(db, 'users', user.uid), updateData);
+      });
       alert('Profile updated successfully!');
       onBack();
     } catch (error) {
@@ -78,6 +64,12 @@ export default function ProfileSettings({ user, onBack }) {
     const colors = ['#7c3aed', '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
     const hash = email.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
+  };
+
+  const getDivisionLabel = (division) => {
+    if (division === 'computer_science') return 'Computer Science 💻';
+    if (division === 'special_mathematics') return 'Special Mathematics 📐';
+    return '—';
   };
 
   const roleLabel = userData?.role === 'admin' ? 'Administrator' : userData?.role === 'super_admin' ? 'Super Admin' : 'Student';
@@ -115,7 +107,7 @@ export default function ProfileSettings({ user, onBack }) {
                 {displayName?.charAt(0).toUpperCase() || 'U'}
               </div>
             </div>
-           
+          
           </div>
 
           {/* Info Section */}
@@ -129,83 +121,48 @@ export default function ProfileSettings({ user, onBack }) {
                 placeholder="Enter your name"
               />
             </div>
-
+   
+         
             <div className="field-group">
               <label>Email</label>
               <input type="email" value={user?.email} disabled />
             </div>
 
+     
             <div className="field-group">
               <label>Role</label>
               <input type="text" value={roleLabel} disabled />
             </div>
 
-            {/* Academic Code - for students */}
-            {userData?.role === 'user' && (
+           
+            {userData?.role === 'user' && userData?.academicCode && (
               <div className="field-group">
                 <label>Academic Code</label>
-                <input
-                  type="text"
-                  value={academicCode}
-                  onChange={(e) => setAcademicCode(e.target.value)}
-                  placeholder="e.g. 2027123"
-                  maxLength={7}
-                />
-                <div className="field-hint">7 digits (format: xx27xxx)</div>
+                <input type="text" value={userData.academicCode} disabled />
               </div>
             )}
 
-            {/* Division - for students */}
+           
             {userData?.role === 'user' && (
               <div className="field-group">
                 <label>Division</label>
-                <div className="option-group">
-                  {DIVISIONS.map(d => (
-                    <button
-                      key={d.value}
-                      className={`option-btn ${division === d.value ? 'active' : ''}`}
-                      onClick={() => setDivision(d.value)}
-                    >
-                      {d.icon} {d.label}
-                    </button>
-                  ))}
-                </div>
+                <input type="text" value={getDivisionLabel(userData?.division)} disabled />
               </div>
             )}
 
-            {/* Academic Year - for students */}
-            {userData?.role === 'user' && (
+           
+            {userData?.role === 'user' && userData?.academicYear && (
               <div className="field-group">
                 <label>Academic Year</label>
-                <div className="option-group">
-                  {YEARS.map(y => (
-                    <button
-                      key={y}
-                      className={`option-btn ${academicYear === y ? 'active' : ''}`}
-                      onClick={() => setAcademicYear(y)}
-                    >
-                      Year {y}
-                    </button>
-                  ))}
-                </div>
+                <input type="text" value={`Year ${userData.academicYear}`} disabled />
               </div>
             )}
 
-            {/* Current Term - for students */}
-            {userData?.role === 'user' && (
+           
+            {userData?.role === 'user' && userData?.currentTerm && (
               <div className="field-group">
                 <label>Current Term</label>
-                <div className="option-group">
-                  {TERMS.map(t => (
-                    <button
-                      key={t}
-                      className={`option-btn ${currentTerm === t ? 'active' : ''}`}
-                      onClick={() => setCurrentTerm(t)}
-                    >
-                      Term {t}
-                    </button>
-                  ))}
-                </div>
+                <input type="text" value={`Term ${userData.currentTerm}`} disabled />
               </div>
             )}
 
