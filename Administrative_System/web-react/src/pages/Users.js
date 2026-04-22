@@ -1,5 +1,4 @@
-
-
+// web-react/src/pages/Users.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -7,379 +6,298 @@ import './Users.css';
 
 const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
 
-const autoUnblockExpiredUsers = async () => {
+const autoUnblock = async () => {
   try {
-    const usersRef = collection(db, 'users');
-    const snapshot = await getDocs(usersRef);
+    const snap = await getDocs(collection(db, 'users'));
     const now = Timestamp.now();
-    let unblockedCount = 0;
-    
-    for (const userDoc of snapshot.docs) {
-      const userData = userDoc.data();
-      if (userData.isBlocked === true && userData.blockDetails?.expiresAt) {
-        const expiresAt = userData.blockDetails.expiresAt;
-        if (expiresAt.toDate() < now.toDate()) {
-          await updateDoc(doc(db, 'users', userDoc.id), {
-            isBlocked: false,
-            blockDetails: null,
-            updatedAt: now,
-          });
-          unblockedCount++;
-        }
+    for (const d of snap.docs) {
+      const u = d.data();
+      if (u.isBlocked && u.blockDetails?.expiresAt?.toDate() < now.toDate()) {
+        await updateDoc(doc(db, 'users', d.id), { isBlocked: false, blockDetails: null, updatedAt: now });
       }
     }
-    if (unblockedCount > 0) {
-      console.log(`Auto-unblocked ${unblockedCount} users`);
-    }
-    return unblockedCount;
-  } catch (error) {
-    console.error('Error auto unblocking users:', error);
-    return 0;
-  }
+  } catch (e) { console.error(e); }
+};
+
+const durLabel = (d) => ({ '2days': '2 days', '1week': '1 week', '1month': '1 month', permanent: 'Permanent' }[d] || d);
+
+const remaining = (expiresAt) => {
+  if (!expiresAt) return 'Never expires';
+  try {
+    const diff = expiresAt.toDate() - new Date();
+    if (diff <= 0) return 'Expired';
+    const days = Math.floor(diff / 86400000);
+    if (days > 0) return `${days}d left`;
+    const hrs = Math.floor(diff / 3600000);
+    return hrs > 0 ? `${hrs}h left` : 'Less than 1h';
+  } catch { return '—'; }
 };
 
 export default function Users({ user, onBack }) {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState('all');
-  const [showBlockedOnly, setShowBlockedOnly] = useState(false);
-  
-  // Modal states
-  const [blockModalVisible, setBlockModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [users, setUsers]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [view, setView]             = useState('active');   // active | blocked
+  const [roleFilter, setRoleFilter] = useState('all');      // all | admins | users
+
+  const [blockModal, setBlockModal] = useState(false);
+  const [selUser, setSelUser]       = useState(null);
   const [blockReason, setBlockReason] = useState('');
-  const [blockDuration, setBlockDuration] = useState('2days');
+  const [blockDur, setBlockDur]     = useState('2days');
 
   const isSuperAdmin = SUPER_ADMINS.includes(user?.email);
 
-  useEffect(() => {
-    loadUsers();
-    autoUnblockExpiredUsers();
-  }, []);
+  useEffect(() => { loadUsers(); autoUnblock(); }, []);
 
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, 'users'));
-      const list = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setUsers(list.filter(u => !SUPER_ADMINS.includes(u.email)));
-    } catch (error) {
-      console.error('Error loading users:', error);
-    } finally {
-      setLoading(false);
-    }
+      const snap = await getDocs(collection(db, 'users'));
+      setUsers(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(u => !SUPER_ADMINS.includes(u.email))
+      );
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  const getDurationLabel = (duration) => {
-    switch (duration) {
-      case '2days': return '2 days';
-      case '1week': return '1 week';
-      case '1month': return '1 month';
-      case 'permanent': return 'Permanent';
-      default: return duration;
-    }
-  };
+  const confirm = (msg) => window.confirm(msg);
 
-  const getRemainingTime = (expiresAt) => {
-    if (!expiresAt) return 'Never';
+  const handlePromote = async (uid) => {
+    if (!isSuperAdmin) return alert('Only super admins can promote users');
     try {
-      const now = new Date();
-      const expiry = expiresAt.toDate();
-      if (expiry < now) return 'Expired';
-      const diff = expiry.getTime() - now.getTime();
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      if (days > 0) return `${days} days left`;
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      if (hours > 0) return `${hours} hours left`;
-      return 'Less than an hour';
-    } catch (e) {
-      return 'Unknown';
-    }
-  };
-
-  const handlePromote = async (userId) => {
-    if (!isSuperAdmin) {
-      alert('Only super admins can promote users');
-      return;
-    }
-    try {
-      await updateDoc(doc(db, 'users', userId), { role: 'admin' });
+      await updateDoc(doc(db, 'users', uid), { role: 'admin', updatedAt: Timestamp.now() });
       await loadUsers();
-      alert('User promoted to admin');
-    } catch (error) {
-      alert(error.message);
-    }
+    } catch (e) { alert(e.message); }
   };
 
-  const handleDemote = async (userId) => {
-    if (!isSuperAdmin) {
-      alert('Only super admins can demote users');
-      return;
-    }
+  const handleDemote = async (uid) => {
+    if (!isSuperAdmin) return alert('Only super admins can demote users');
     try {
-      await updateDoc(doc(db, 'users', userId), { role: 'user' });
+      await updateDoc(doc(db, 'users', uid), { role: 'user', updatedAt: Timestamp.now() });
       await loadUsers();
-      alert('Admin role removed');
-    } catch (error) {
-      alert(error.message);
-    }
+    } catch (e) { alert(e.message); }
   };
 
-  const handleDelete = async (userId) => {
-    if (!isSuperAdmin) {
-      alert('Only super admins can delete users');
-      return;
-    }
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      try {
-        await deleteDoc(doc(db, 'users', userId));
-        await loadUsers();
-        alert('User deleted');
-      } catch (error) {
-        alert(error.message);
-      }
-    }
+  const handleDelete = async (uid) => {
+    if (!isSuperAdmin) return alert('Only super admins can delete users');
+    if (!confirm('Delete this user? This cannot be undone.')) return;
+    try {
+      await deleteDoc(doc(db, 'users', uid));
+      await loadUsers();
+    } catch (e) { alert(e.message); }
   };
 
-  const openBlockModal = (user) => {
-    if (!isSuperAdmin) {
-      alert('Only super admins can block users');
-      return;
-    }
-    setSelectedUser(user);
-    setBlockReason('');
-    setBlockDuration('2days');
-    setBlockModalVisible(true);
+  const openBlock = (u) => {
+    if (!isSuperAdmin) return alert('Only super admins can block users');
+    setSelUser(u); setBlockReason(''); setBlockDur('2days'); setBlockModal(true);
   };
 
   const handleBlock = async () => {
-    if (!selectedUser) return;
-    if (!blockReason.trim()) {
-      alert('Please enter a reason for blocking');
-      return;
-    }
-    
+    if (!selUser || !blockReason.trim()) return alert('Please enter a reason');
     try {
       const now = Timestamp.now();
-      let expiresAt = null;
-      
-      switch (blockDuration) {
-        case '2days':
-          expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 2 * 24 * 60 * 60 * 1000));
-          break;
-        case '1week':
-          expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 7 * 24 * 60 * 60 * 1000));
-          break;
-        case '1month':
-          expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 30 * 24 * 60 * 60 * 1000));
-          break;
-        case 'permanent':
-          expiresAt = null;
-          break;
-        default:
-          expiresAt = Timestamp.fromDate(new Date(now.toDate().getTime() + 2 * 24 * 60 * 60 * 1000));
-      }
-      
-      const userRef = doc(db, 'users', selectedUser.id);
-      await updateDoc(userRef, {
+      const durMs = { '2days': 2*86400000, '1week': 7*86400000, '1month': 30*86400000 };
+      const expiresAt = blockDur === 'permanent' ? null
+        : Timestamp.fromDate(new Date(now.toDate().getTime() + durMs[blockDur]));
+      await updateDoc(doc(db, 'users', selUser.id), {
         isBlocked: true,
         blockDetails: {
-          reason: blockReason.trim(),
-          duration: blockDuration,
-          blockedBy: user?.email || 'admin',
-          blockedByRole: user?.role || 'admin',
-          blockedAt: now,
-          expiresAt: expiresAt,
+          reason: blockReason.trim(), duration: blockDur,
+          blockedBy: user?.email, blockedAt: now, expiresAt,
         },
         updatedAt: now,
       });
-      
-      setBlockModalVisible(false);
-      setSelectedUser(null);
-      setBlockReason('');
+      setBlockModal(false);
       await loadUsers();
-      alert(`User blocked successfully for ${getDurationLabel(blockDuration)}`);
-    } catch (error) {
-      console.error('Block error:', error);
-      alert('Failed to block user: ' + error.message);
-    }
+    } catch (e) { alert('Failed: ' + e.message); }
   };
 
-  const handleUnblock = async (userId) => {
-    if (!isSuperAdmin) {
-      alert('Only super admins can unblock users');
-      return;
-    }
+  const handleUnblock = async (uid) => {
+    if (!isSuperAdmin) return alert('Only super admins can unblock users');
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        isBlocked: false,
-        blockDetails: null,
-        updatedAt: Timestamp.now(),
-      });
+      await updateDoc(doc(db, 'users', uid), { isBlocked: false, blockDetails: null, updatedAt: Timestamp.now() });
       await loadUsers();
-      alert('User unblocked successfully');
-    } catch (error) {
-      alert(error.message);
-    }
+    } catch (e) { alert(e.message); }
   };
 
-  const filteredUsers = users.filter(u => {
-    const matchSearch = u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (u.displayName || u.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (u.academicCode || '').includes(searchTerm);
-    
-    if (showBlockedOnly) {
-      return matchSearch && u.isBlocked === true;
-    }
-    
-    if (filter === 'admins') return matchSearch && u.role === 'admin' && !u.isBlocked;
-    if (filter === 'users') return matchSearch && u.role === 'user' && !u.isBlocked;
+  const filtered = users.filter(u => {
+    const matchSearch =
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.displayName || u.fullName || '').toLowerCase().includes(search.toLowerCase()) ||
+      (u.academicCode || '').includes(search);
+
+    if (view === 'blocked') return matchSearch && u.isBlocked;
+    if (roleFilter === 'admins') return matchSearch && !u.isBlocked && u.role === 'admin';
+    if (roleFilter === 'users')  return matchSearch && !u.isBlocked && u.role === 'user';
     return matchSearch && !u.isBlocked;
   });
 
-  const blockedCount = users.filter(u => u.isBlocked === true).length;
+  const stats = [
+    { lbl: 'TOTAL',   num: users.length,                                     ac: '#7c3aed' },
+    { lbl: 'ADMINS',  num: users.filter(u => u.role === 'admin').length,      ac: '#4f46e5' },
+    { lbl: 'USERS',   num: users.filter(u => u.role === 'user').length,       ac: '#10b981' },
+    { lbl: 'BLOCKED', num: users.filter(u => u.isBlocked).length,             ac: '#ef4444' },
+  ];
 
   return (
-    <div className="users-container">
-      <div className="users-header">
-        <button className="back-button" onClick={onBack}>← Back</button>
-        <h1>👥 Manage Users</h1>
-        <div></div>
+    <div className="users-page">
+
+      {/* Top Bar */}
+      <div className="users-topbar">
+        <button className="users-back-btn" onClick={onBack}>← Back</button>
+        <span className="users-topbar-title">👥 Manage Users</span>
+        <span className="users-topbar-count">{filtered.length}</span>
       </div>
 
+      {/* Controls */}
       <div className="users-controls">
         <input
+          className="users-search"
           type="text"
-          className="search-input"
-          placeholder="Search by email, name or code..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search name, email or code..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
         />
-        
-        <div className="toggle-container">
-          <button 
-            className={`toggle-btn ${!showBlockedOnly ? 'active' : ''}`}
-            onClick={() => setShowBlockedOnly(false)}
-          >
-            All Users
-          </button>
-          <button 
-            className={`toggle-btn ${showBlockedOnly ? 'active' : ''}`}
-            onClick={() => setShowBlockedOnly(true)}
-          >
-            🔒 Blocked ({blockedCount})
+
+        {/* Active / Blocked */}
+        <div className="seg-group">
+          <button className={`seg-btn ${view === 'active' ? 'active' : ''}`} onClick={() => setView('active')}>Active</button>
+          <button className={`seg-btn ${view === 'blocked' ? 'active' : ''}`} onClick={() => setView('blocked')}>
+            🔒 Blocked ({users.filter(u => u.isBlocked).length})
           </button>
         </div>
 
-        {!showBlockedOnly && (
-          <div className="filter-buttons">
-            <button className={`filter-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All</button>
-            <button className={`filter-btn ${filter === 'admins' ? 'active' : ''}`} onClick={() => setFilter('admins')}>Admins</button>
-            <button className={`filter-btn ${filter === 'users' ? 'active' : ''}`} onClick={() => setFilter('users')}>Users</button>
+        {/* Role filter — only when showing active */}
+        {view === 'active' && (
+          <div className="seg-group">
+            {['all', 'admins', 'users'].map(f => (
+              <button
+                key={f}
+                className={`seg-btn ${roleFilter === f ? 'active' : ''}`}
+                onClick={() => setRoleFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
+      {/* Super Admin Banner */}
       {isSuperAdmin && (
-        <div className="super-admin-badge">
-          🔑 Super Admin — can promote, demote, block, unblock & delete users
+        <div className="sa-banner">
+          🔑 Super Admin — promote, demote, block, unblock &amp; delete users
         </div>
       )}
 
-      {loading ? (
-        <div className="loading">Loading...</div>
-      ) : filteredUsers.length === 0 ? (
-        <div className="empty-state">📭 No users found</div>
-      ) : (
-        <div className="users-list">
-          {filteredUsers.map(u => (
-            <div key={u.id} className={`user-card ${u.isBlocked ? 'blocked' : ''}`}>
-              <div className="user-avatar">
-                {(u.displayName || u.fullName || u.email).charAt(0).toUpperCase()}
-              </div>
-              <div className="user-info">
-                <div className="user-name">{u.displayName || u.fullName || 'No Name'}</div>
-                <div className="user-email">{u.email}</div>
-                <div className="user-meta">
-                  {u.academicCode && <span>Code: {u.academicCode} · </span>}
-                  {u.division === 'computer_science' ? '💻 CS' : u.division === 'special_mathematics' ? '📐 Math' : ''}
-                  {u.academicYear ? ` · Year ${u.academicYear}` : ''}
-                  {u.currentTerm ? ` · Term ${u.currentTerm}` : ''}
-                </div>
-                {u.isBlocked && u.blockDetails && (
-                  <div className="blocked-info">
-                    🔒 Blocked: {u.blockDetails.reason} ({getDurationLabel(u.blockDetails.duration)})
-                    {u.blockDetails.expiresAt && ` · ${getRemainingTime(u.blockDetails.expiresAt)}`}
-                  </div>
-                )}
-              </div>
-              <div className={`role-badge ${u.role === 'admin' ? 'admin' : 'user'}`}>
-                {u.role === 'admin' ? 'Admin' : 'User'}
-              </div>
-              <div className="user-actions">
-                {isSuperAdmin && u.role === 'user' && !u.isBlocked && (
-                  <button className="promote-btn" onClick={() => handlePromote(u.id)}>⬆ Make Admin</button>
-                )}
-                {isSuperAdmin && u.role === 'admin' && !u.isBlocked && (
-                  <button className="demote-btn" onClick={() => handleDemote(u.id)}>⬇ Remove Admin</button>
-                )}
-                {isSuperAdmin && !u.isBlocked && (
-                  <button className="block-btn" onClick={() => openBlockModal(u)}>🔒 Block</button>
-                )}
-                {isSuperAdmin && u.isBlocked && (
-                  <button className="unblock-btn" onClick={() => handleUnblock(u.id)}>🔓 Unblock</button>
-                )}
-                {isSuperAdmin && (
-                  <button className="delete-btn" onClick={() => handleDelete(u.id)}>🗑 Delete</button>
-                )}
-              </div>
+      {/* Body */}
+      <div className="users-body">
+
+        {/* Stats */}
+        <div className="users-stats">
+          {stats.map(s => (
+            <div key={s.lbl} className="u-stat" style={{ '--ac': s.ac }}>
+              <div className="u-stat-num">{s.num}</div>
+              <div className="u-stat-lbl">{s.lbl}</div>
             </div>
           ))}
         </div>
-      )}
 
-      {/* Block Modal */}
-      {blockModalVisible && selectedUser && (
-        <div className="modal-overlay" onClick={() => setBlockModalVisible(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>🔒 Block User</h3>
-              <button className="modal-close" onClick={() => setBlockModalVisible(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="modal-user-info">
-                <strong>{selectedUser.displayName || selectedUser.fullName || selectedUser.email}</strong>
-                <span>{selectedUser.email}</span>
-              </div>
-              
-              <div className="input-group">
-                <label>Reason for blocking *</label>
-                <textarea
-                  className="modal-textarea"
-                  placeholder="Enter reason..."
-                  value={blockReason}
-                  onChange={(e) => setBlockReason(e.target.value)}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="input-group">
-                <label>Block duration</label>
-                <div className="duration-options">
-                  <button className={`duration-btn ${blockDuration === '2days' ? 'active' : ''}`} onClick={() => setBlockDuration('2days')}>2 days</button>
-                  <button className={`duration-btn ${blockDuration === '1week' ? 'active' : ''}`} onClick={() => setBlockDuration('1week')}>1 week</button>
-                  <button className={`duration-btn ${blockDuration === '1month' ? 'active' : ''}`} onClick={() => setBlockDuration('1month')}>1 month</button>
-                  <button className={`duration-btn ${blockDuration === 'permanent' ? 'active' : ''}`} onClick={() => setBlockDuration('permanent')}>Permanent</button>
+        {/* Content */}
+        {loading ? (
+          <div className="u-loading">
+            <div className="u-spinner" />
+            <div style={{ color: '#94a3b8', fontSize: 13 }}>Loading users...</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="u-empty">
+            <div className="u-empty-icon">📭</div>
+            <div className="u-empty-text">No users found</div>
+            <div className="u-empty-sub">Try adjusting the filters</div>
+          </div>
+        ) : (
+          <div className="users-grid">
+            {filtered.map(u => (
+              <div key={u.id} className={`u-card ${u.isBlocked ? 'is-blocked' : ''}`}>
+                <div className="u-card-top">
+                  <div className="u-avatar">
+                    {(u.displayName || u.fullName || u.email).charAt(0).toUpperCase()}
+                  </div>
+                  <div className="u-info">
+                    <div className="u-name">{u.displayName || u.fullName || 'No Name'}</div>
+                    <div className="u-email">{u.email}</div>
+                    <div className="u-meta">
+                      {u.academicCode && <span className="u-meta-tag">🎓 {u.academicCode}</span>}
+                      {u.division === 'computer_science' && <span className="u-meta-tag">💻 CS</span>}
+                      {u.division === 'special_mathematics' && <span className="u-meta-tag">📐 Math</span>}
+                      {u.semester && <span className="u-meta-tag">Sem {u.semester}</span>}
+                    </div>
+                    {u.isBlocked && u.blockDetails && (
+                      <div className="u-blocked-info">
+                        🔒 {u.blockDetails.reason}
+                        {u.blockDetails.expiresAt && ` · ${remaining(u.blockDetails.expiresAt)}`}
+                      </div>
+                    )}
+                  </div>
+                  <div className={`u-role-badge ${u.role === 'admin' ? 'u-role-admin' : 'u-role-user'}`}>
+                    {u.role === 'admin' ? 'Admin' : 'User'}
+                  </div>
+                </div>
+
+                <div className="u-actions">
+                  {isSuperAdmin && u.role === 'user'  && !u.isBlocked && <button className="u-btn btn-promote"  onClick={() => handlePromote(u.id)}>⬆ Make Admin</button>}
+                  {isSuperAdmin && u.role === 'admin' && !u.isBlocked && <button className="u-btn btn-demote"   onClick={() => handleDemote(u.id)}>⬇ Remove Admin</button>}
+                  {isSuperAdmin && !u.isBlocked                        && <button className="u-btn btn-block"    onClick={() => openBlock(u)}>🔒 Block</button>}
+                  {isSuperAdmin && u.isBlocked                         && <button className="u-btn btn-unblock"  onClick={() => handleUnblock(u.id)}>🔓 Unblock</button>}
+                  {isSuperAdmin                                         && <button className="u-btn btn-delete"   onClick={() => handleDelete(u.id)}>🗑 Delete</button>}
                 </div>
               </div>
-              
-              <div className="modal-buttons">
-                <button className="cancel-btn" onClick={() => setBlockModalVisible(false)}>Cancel</button>
-                <button className="block-submit-btn" onClick={handleBlock}>Block User</button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Block Modal */}
+      {blockModal && selUser && (
+        <div className="u-modal-overlay" onClick={() => setBlockModal(false)}>
+          <div className="u-modal" onClick={e => e.stopPropagation()}>
+            <div className="u-modal-head">
+              <span className="u-modal-head-title">🔒 Block User</span>
+              <button className="u-modal-close" onClick={() => setBlockModal(false)}>✕</button>
+            </div>
+            <div className="u-modal-body">
+              <div className="u-modal-user">
+                <div className="u-modal-user-name">{selUser.displayName || selUser.fullName || 'No Name'}</div>
+                <div className="u-modal-user-email">{selUser.email}</div>
+              </div>
+
+              <label className="u-field-label">Reason *</label>
+              <textarea
+                className="u-textarea"
+                placeholder="Enter reason for blocking..."
+                value={blockReason}
+                onChange={e => setBlockReason(e.target.value)}
+                rows={3}
+              />
+
+              <label className="u-field-label" style={{ marginTop: 16 }}>Duration</label>
+              <div className="duration-grid">
+                {['2days', '1week', '1month', 'permanent'].map(d => (
+                  <button
+                    key={d}
+                    className={`dur-btn ${blockDur === d ? 'active' : ''}`}
+                    onClick={() => setBlockDur(d)}
+                  >
+                    {durLabel(d)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="u-modal-footer">
+                <button className="u-cancel-btn" onClick={() => setBlockModal(false)}>Cancel</button>
+                <button className="u-block-submit-btn" onClick={handleBlock}>Block User</button>
               </div>
             </div>
           </div>

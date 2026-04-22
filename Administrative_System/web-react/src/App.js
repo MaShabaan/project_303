@@ -15,8 +15,12 @@ import SubmitTicket from './pages/SubmitTicket';
 import { ThemeProvider } from './pages/ThemeContext';
 import UserDashboard from './pages/UserDashboard';
 import Users from './pages/Users';
+import RateCourse from './pages/RateCourse';
 import Enrollments from './pages/Enrollments';
+import MyRatings from './pages/MyRatings';
+
 import { auth, db } from './services/firebase';
+
 
 function AppContent() {
   const [view, setView] = useState('login');
@@ -89,6 +93,12 @@ if (view === 'statistics') {
   
 }
 
+ if (view === 'rate-course') {
+  return <RateCourse onBack={() => handleNavigate('back')} />; // ← من غير user
+}
+if (view === 'my-ratings') {
+  return <MyRatings onBack={() => handleNavigate('back')} />;
+}
   if (view === 'dashboard' && currentUser) {
     if (userRole === 'admin' || userRole === 'super_admin') {
       return <AdminDashboard user={currentUser} onNavigate={handleNavigate} />;

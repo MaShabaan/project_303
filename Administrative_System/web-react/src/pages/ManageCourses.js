@@ -1,13 +1,12 @@
-// web-react/src/pages/ManageCourses.jsx
 
-import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import './ManageCourses.css';
 
 const DIVISIONS = [
-  { id: 'computer_science', label: 'Computer Science', icon: '💻' },
-  { id: 'special_mathematics', label: 'Special Mathematics', icon: '📐' },
+  { value: 'computer_science', label: 'Computer Science', icon: '💻' },
+  { value: 'special_mathematics', label: 'Special Mathematics', icon: '📐' },
 ];
 const YEARS = [2, 3, 4];
 const TERMS = [1, 2];
@@ -15,20 +14,23 @@ const TERMS = [1, 2];
 export default function ManageCourses({ user, onBack }) {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterDivision, setFilterDivision] = useState('all');
-  const [filterYear, setFilterYear] = useState(null);
-  const [filterTerm, setFilterTerm] = useState(null);
-  
-  // Modal states
-  const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState('');
+  const [divisionFilter, setDivisionFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
+  const [termFilter, setTermFilter] = useState('all');
+
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
-  const [courseName, setCourseName] = useState('');
-  const [courseCode, setCourseCode] = useState('');
-  const [division, setDivision] = useState('computer_science');
-  const [year, setYear] = useState(2);
-  const [term, setTerm] = useState(1);
+  const [formData, setFormData] = useState({
+    courseName: '',
+    courseCode: '',
+    division: 'computer_science',
+    year: 2,
+    term: 1,
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [deletingCourse, setDeletingCourse] = useState(null);
 
   useEffect(() => {
     loadCourses();
@@ -50,285 +52,291 @@ export default function ManageCourses({ user, onBack }) {
     }
   };
 
-  const handleAddCourse = async () => {
-    if (!courseName.trim()) {
+  const handleSubmit = async () => {
+    if (!formData.courseName.trim()) {
       alert('Please enter course name');
       return;
     }
-    
     setSubmitting(true);
     try {
-      await addDoc(collection(db, 'courses'), {
-        courseName: courseName.trim(),
-        courseCode: courseCode.trim() || '',
-        division,
-        year: Number(year),
-        term: Number(term),
-        createdAt: new Date(),
-      });
-      
-      setModalVisible(false);
-      resetForm();
-      await loadCourses();
-      alert('Course added successfully!');
-    } catch (error) {
-      console.error(error);
-      alert('Failed to add course');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleUpdateCourse = async () => {
-    if (!editingCourse) return;
-    if (!courseName.trim()) {
-      alert('Please enter course name');
-      return;
-    }
-    
-    setSubmitting(true);
-    try {
-      const courseRef = doc(db, 'courses', editingCourse.id);
-      await updateDoc(courseRef, {
-        courseName: courseName.trim(),
-        courseCode: courseCode.trim() || '',
-        division,
-        year: Number(year),
-        term: Number(term),
-        updatedAt: new Date(),
-      });
-      
-      setModalVisible(false);
-      setEditingCourse(null);
-      resetForm();
-      await loadCourses();
-      alert('Course updated successfully!');
-    } catch (error) {
-      console.error(error);
-      alert('Failed to update course');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (courseId, courseName) => {
-    if (window.confirm(`Delete "${courseName}"? This action cannot be undone.`)) {
-      try {
-        await deleteDoc(doc(db, 'courses', courseId));
-        await loadCourses();
-        alert('Course deleted successfully');
-      } catch (error) {
-        console.error(error);
-        alert('Failed to delete course');
+      if (editingCourse) {
+        await updateDoc(doc(db, 'courses', editingCourse.id), {
+          courseName: formData.courseName.trim(),
+          courseCode: formData.courseCode.trim(),
+          division: formData.division,
+          year: formData.year,
+          term: formData.term,
+          updatedAt: new Date(),
+        });
+        alert('Course updated successfully');
+      } else {
+        await addDoc(collection(db, 'courses'), {
+          courseName: formData.courseName.trim(),
+          courseCode: formData.courseCode.trim(),
+          division: formData.division,
+          year: formData.year,
+          term: formData.term,
+          createdAt: new Date(),
+        });
+        alert('Course added successfully');
       }
+      setModalOpen(false);
+      resetForm();
+      await loadCourses();
+    } catch (error) {
+      console.error('Error saving course:', error);
+      alert('Failed to save course');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const openAddModal = () => {
-    setEditingCourse(null);
-    resetForm();
-    setModalVisible(true);
+  const handleDelete = async () => {
+    if (!deletingCourse) return;
+    try {
+      await deleteDoc(doc(db, 'courses', deletingCourse.id));
+      await loadCourses();
+      setDeleteModal(false);
+      setDeletingCourse(null);
+      alert('Course deleted successfully');
+    } catch (error) {
+      console.error('Error deleting course:', error);
+      alert('Failed to delete course');
+    }
   };
 
   const openEditModal = (course) => {
     setEditingCourse(course);
-    setCourseName(course.courseName);
-    setCourseCode(course.courseCode || '');
-    setDivision(course.division);
-    setYear(course.year);
-    setTerm(course.term);
-    setModalVisible(true);
+    setFormData({
+      courseName: course.courseName || '',
+      courseCode: course.courseCode || '',
+      division: course.division || 'computer_science',
+      year: course.year || 2,
+      term: course.term || 1,
+    });
+    setModalOpen(true);
   };
 
   const resetForm = () => {
-    setCourseName('');
-    setCourseCode('');
-    setDivision('computer_science');
-    setYear(2);
-    setTerm(1);
+    setEditingCourse(null);
+    setFormData({
+      courseName: '',
+      courseCode: '',
+      division: 'computer_science',
+      year: 2,
+      term: 1,
+    });
   };
 
   const filteredCourses = courses.filter(course => {
-    const matchSearch = course.courseName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (course.courseCode || '').toLowerCase().includes(searchTerm.toLowerCase());
-    if (filterDivision !== 'all' && course.division !== filterDivision) return false;
-    if (filterYear && course.year !== filterYear) return false;
-    if (filterTerm && course.term !== filterTerm) return false;
+    const matchSearch = course.courseName?.toLowerCase().includes(search.toLowerCase()) ||
+                        course.courseCode?.toLowerCase().includes(search.toLowerCase());
+    if (divisionFilter !== 'all' && course.division !== divisionFilter) return false;
+    if (yearFilter !== 'all' && course.year !== parseInt(yearFilter)) return false;
+    if (termFilter !== 'all' && course.term !== parseInt(termFilter)) return false;
     return matchSearch;
   });
 
-  const stats = {
-    total: courses.length,
-    cs: courses.filter(c => c.division === 'computer_science').length,
-    math: courses.filter(c => c.division === 'special_mathematics').length,
-  };
+  const stats = [
+    { lbl: 'TOTAL', num: courses.length, ac: '#7c3aed' },
+    { lbl: 'CS', num: courses.filter(c => c.division === 'computer_science').length, ac: '#4f46e5' },
+    { lbl: 'MATH', num: courses.filter(c => c.division === 'special_mathematics').length, ac: '#10b981' },
+    { lbl: 'ACTIVE', num: courses.filter(c => c.year && c.term).length, ac: '#f59e0b' },
+  ];
 
   return (
-    <div className="courses-container">
-      <div className="courses-header">
-        <button className="back-button" onClick={onBack}>← Back</button>
-        <h1>📚 Manage Courses</h1>
-        <button className="add-btn" onClick={openAddModal}>+ Add Course</button>
+    <div className="courses-page">
+      {/* Top Bar */}
+      <div className="courses-topbar">
+        <button className="courses-back-btn" onClick={onBack}>← Back</button>
+        <span className="courses-topbar-title">📚 Manage Courses</span>
+        <span className="courses-topbar-count">{filteredCourses.length}</span>
+        <button className="courses-add-btn" onClick={() => { resetForm(); setModalOpen(true); }}>+ Add Course</button>
       </div>
 
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-num">{stats.total}</div>
-          <div className="stat-label">TOTAL COURSES</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num">{stats.cs}</div>
-          <div className="stat-label">💻 COMPUTER SCIENCE</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-num">{stats.math}</div>
-          <div className="stat-label">📐 SPECIAL MATH</div>
-        </div>
-      </div>
-
-      <div className="controls">
+      {/* Controls */}
+      <div className="courses-controls">
         <input
+          className="courses-search"
           type="text"
-          className="search-input"
           placeholder="Search by course name or code..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
         />
-        
-        <div className="filters">
-          <select className="filter-select" value={filterDivision} onChange={(e) => setFilterDivision(e.target.value)}>
+
+        <div className="seg-group">
+          <select className="filter-select" value={divisionFilter} onChange={e => setDivisionFilter(e.target.value)}>
             <option value="all">All Divisions</option>
             <option value="computer_science">💻 Computer Science</option>
             <option value="special_mathematics">📐 Special Mathematics</option>
           </select>
-          
-          <select className="filter-select" value={filterYear || ''} onChange={(e) => setFilterYear(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">All Years</option>
+          <select className="filter-select" value={yearFilter} onChange={e => setYearFilter(e.target.value)}>
+            <option value="all">All Years</option>
             <option value="2">Year 2</option>
             <option value="3">Year 3</option>
             <option value="4">Year 4</option>
           </select>
-          
-          <select className="filter-select" value={filterTerm || ''} onChange={(e) => setFilterTerm(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">All Terms</option>
+          <select className="filter-select" value={termFilter} onChange={e => setTermFilter(e.target.value)}>
+            <option value="all">All Terms</option>
             <option value="1">Term 1</option>
             <option value="2">Term 2</option>
           </select>
         </div>
       </div>
 
-      {loading ? (
-        <div className="loading">Loading...</div>
-      ) : filteredCourses.length === 0 ? (
-        <div className="empty-state">📭 No courses found</div>
-      ) : (
-        <div className="courses-list">
-          {filteredCourses.map(course => (
-            <div key={course.id} className="course-card">
-              <div className="course-icon">
-                {course.division === 'computer_science' ? '💻' : '📐'}
-              </div>
-              <div className="course-info">
-                <div className="course-name">{course.courseName}</div>
-                {course.courseCode && <div className="course-code">{course.courseCode}</div>}
-                <div className="course-meta">
-                  <span className={`division-badge ${course.division}`}>
-                    {course.division === 'computer_science' ? 'CS' : 'Math'}
-                  </span>
-                  <span>Year {course.year}</span>
-                  <span>Term {course.term}</span>
-                </div>
-              </div>
-              <div className="course-actions">
-                <button className="edit-btn" onClick={() => openEditModal(course)}>✏️ Edit</button>
-                <button className="delete-btn" onClick={() => handleDelete(course.id, course.courseName)}>🗑 Delete</button>
-              </div>
+      {/* Body */}
+      <div className="courses-body">
+        {/* Stats */}
+        <div className="courses-stats">
+          {stats.map(s => (
+            <div key={s.lbl} className="c-stat" style={{ '--ac': s.ac }}>
+              <div className="c-stat-num">{s.num}</div>
+              <div className="c-stat-lbl">{s.lbl}</div>
             </div>
           ))}
         </div>
-      )}
+
+        {/* Courses List */}
+        {loading ? (
+          <div className="c-loading">
+            <div className="c-spinner" />
+            <div>Loading courses...</div>
+          </div>
+        ) : filteredCourses.length === 0 ? (
+          <div className="c-empty">
+            <div className="c-empty-icon">📚</div>
+            <div className="c-empty-text">No courses found</div>
+          </div>
+        ) : (
+          <div className="courses-grid">
+            {filteredCourses.map(course => {
+              const divisionIcon = course.division === 'computer_science' ? '💻' : '📐';
+              const divisionLabel = course.division === 'computer_science' ? 'CS' : 'Math';
+              return (
+                <div key={course.id} className="course-card">
+                  <div className="course-card-header">
+                    <div className="course-icon">{divisionIcon}</div>
+                    <div className="course-info">
+                      <div className="course-name">{course.courseName}</div>
+                      {course.courseCode && <div className="course-code">{course.courseCode}</div>}
+                    </div>
+                    <div className="course-division-badge">
+                      {divisionIcon} {divisionLabel}
+                    </div>
+                  </div>
+                  <div className="course-meta">
+                    <span className="course-meta-item">📅 Year {course.year}</span>
+                    <span className="course-meta-item">📖 Term {course.term}</span>
+                  </div>
+                  <div className="course-actions">
+                    <button className="course-edit-btn" onClick={() => openEditModal(course)}>✏️ Edit</button>
+                    <button className="course-delete-btn" onClick={() => { setDeletingCourse(course); setDeleteModal(true); }}>🗑 Delete</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Add/Edit Modal */}
-      {modalVisible && (
-        <div className="modal-overlay" onClick={() => { setModalVisible(false); setEditingCourse(null); resetForm(); }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>{editingCourse ? '✏️ Edit Course' : '➕ Add New Course'}</h3>
-              <button className="modal-close" onClick={() => { setModalVisible(false); setEditingCourse(null); resetForm(); }}>✕</button>
+      {modalOpen && (
+        <div className="c-modal-overlay" onClick={() => setModalOpen(false)}>
+          <div className="c-modal" onClick={e => e.stopPropagation()}>
+            <div className="c-modal-head">
+              <span className="c-modal-title">{editingCourse ? '✏️ Edit Course' : '➕ Add New Course'}</span>
+              <button className="c-modal-close" onClick={() => setModalOpen(false)}>✕</button>
             </div>
-            <div className="modal-body">
+            <div className="c-modal-body">
               <div className="input-group">
-                <label>Course Name *</label>
+                <label className="input-label">Course Name *</label>
                 <input
-                  type="text"
                   className="modal-input"
+                  type="text"
                   placeholder="e.g. Linear Algebra 1"
-                  value={courseName}
-                  onChange={(e) => setCourseName(e.target.value)}
+                  value={formData.courseName}
+                  onChange={e => setFormData({ ...formData, courseName: e.target.value })}
                 />
               </div>
-              
               <div className="input-group">
-                <label>Course Code (optional)</label>
+                <label className="input-label">Course Code (optional)</label>
                 <input
-                  type="text"
                   className="modal-input"
+                  type="text"
                   placeholder="e.g. MATH201"
-                  value={courseCode}
-                  onChange={(e) => setCourseCode(e.target.value)}
+                  value={formData.courseCode}
+                  onChange={e => setFormData({ ...formData, courseCode: e.target.value })}
                 />
               </div>
-              
               <div className="input-group">
-                <label>Division</label>
-                <div className="division-options">
+                <label className="input-label">Division</label>
+                <div className="option-group">
                   {DIVISIONS.map(d => (
                     <button
-                      key={d.id}
-                      className={`division-option ${division === d.id ? 'active' : ''}`}
-                      onClick={() => setDivision(d.id)}
+                      key={d.value}
+                      className={`option-btn ${formData.division === d.value ? 'active' : ''}`}
+                      onClick={() => setFormData({ ...formData, division: d.value })}
                     >
                       {d.icon} {d.label}
                     </button>
                   ))}
                 </div>
               </div>
-              
               <div className="input-group">
-                <label>Year</label>
-                <div className="year-options">
+                <label className="input-label">Year</label>
+                <div className="option-group">
                   {YEARS.map(y => (
                     <button
                       key={y}
-                      className={`year-option ${year === y ? 'active' : ''}`}
-                      onClick={() => setYear(y)}
+                      className={`option-btn ${formData.year === y ? 'active' : ''}`}
+                      onClick={() => setFormData({ ...formData, year: y })}
                     >
                       Year {y}
                     </button>
                   ))}
                 </div>
               </div>
-              
               <div className="input-group">
-                <label>Term</label>
-                <div className="term-options">
+                <label className="input-label">Term</label>
+                <div className="option-group">
                   {TERMS.map(t => (
                     <button
                       key={t}
-                      className={`term-option ${term === t ? 'active' : ''}`}
-                      onClick={() => setTerm(t)}
+                      className={`option-btn ${formData.term === t ? 'active' : ''}`}
+                      onClick={() => setFormData({ ...formData, term: t })}
                     >
                       Term {t}
                     </button>
                   ))}
                 </div>
               </div>
-              
-              <div className="modal-buttons">
-                <button className="cancel-btn" onClick={() => { setModalVisible(false); setEditingCourse(null); resetForm(); }}>Cancel</button>
-                <button className="submit-btn" onClick={editingCourse ? handleUpdateCourse : handleAddCourse} disabled={submitting}>
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button className="submit-btn" onClick={handleSubmit} disabled={submitting}>
                   {submitting ? 'Saving...' : (editingCourse ? 'Update Course' : 'Add Course')}
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteModal && deletingCourse && (
+        <div className="c-modal-overlay" onClick={() => setDeleteModal(false)}>
+          <div className="c-modal" onClick={e => e.stopPropagation()}>
+            <div className="c-modal-head">
+              <span className="c-modal-title">🗑 Delete Course</span>
+              <button className="c-modal-close" onClick={() => setDeleteModal(false)}>✕</button>
+            </div>
+            <div className="c-modal-body">
+              <div className="delete-warning">
+                <div className="delete-course-name">{deletingCourse.courseName}</div>
+                <div className="delete-message">Are you sure you want to delete this course? This action cannot be undone.</div>
+              </div>
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setDeleteModal(false)}>Cancel</button>
+                <button className="delete-confirm-btn" onClick={handleDelete}>Delete</button>
               </div>
             </div>
           </div>

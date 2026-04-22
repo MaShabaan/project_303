@@ -1,7 +1,6 @@
 
-
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import './AdminDashboard.css';
 
@@ -104,13 +103,13 @@ export default function AdminDashboard({ user, onNavigate }) {
     { icon: '📚', title: 'Courses', sub: 'Add or edit courses', route: 'manage-courses' },
     { icon: '📝', title: 'Enrollments', sub: 'Assign courses', route: 'enrollments' },
     { icon: '⭐', title: 'Feedback', sub: 'View ratings', route: 'feedback' },
-    { icon: '📊', title: 'Statistics', sub: 'View analytics', route: 'statistics' }, 
-    
+    { icon: '📊', title: 'Statistics', sub: 'View analytics', route: 'statistics' },
   ];
 
   return (
     <div className="admin-dashboard">
-      <div className="dashboard-header">
+      {/* Top Bar */}
+      <div className="dashboard-topbar">
         <div className="user-info">
           {photoURL ? (
             <img src={photoURL} alt="Profile" className="avatar" />
@@ -123,13 +122,12 @@ export default function AdminDashboard({ user, onNavigate }) {
           </div>
         </div>
         <div className="header-actions">
-          <button className="settings-btn" onClick={() => onNavigate('profile')}>
-            ⚙️
-          </button>
+          <button className="settings-btn" onClick={() => onNavigate('profile')}>⚙️</button>
           <button className="logout-btn" onClick={() => onNavigate('logout')}>Logout</button>
         </div>
       </div>
 
+      {/* Stats Row */}
       <div className="stats-row">
         {stats.map((stat, i) => (
           <div key={i} className="stat-card" style={{ backgroundColor: stat.bg }}>
@@ -141,6 +139,7 @@ export default function AdminDashboard({ user, onNavigate }) {
         ))}
       </div>
 
+      {/* Quick Actions */}
       <div className="actions-section">
         <div className="section-title">QUICK ACTIONS</div>
         <div className="actions-grid">
@@ -154,6 +153,7 @@ export default function AdminDashboard({ user, onNavigate }) {
         </div>
       </div>
 
+      {/* Recent Activity */}
       <div className="activity-section">
         <div className="section-title">RECENT ACTIVITY</div>
         {recentActivity.length === 0 ? (
@@ -180,6 +180,7 @@ export default function AdminDashboard({ user, onNavigate }) {
         )}
       </div>
 
+      {/* Admin Tips */}
       <div className="tips-section">
         <div className="tips-title">💡 ADMIN TIPS</div>
         <div className="tips-text">• Reply to complaints promptly to keep users informed.</div>

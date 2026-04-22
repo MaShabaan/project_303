@@ -1,15 +1,49 @@
-// web-react/src/pages/Statistics.jsx
 
+
+import React, { useState, useEffect } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { useEffect, useState } from 'react';
 import { db } from '../services/firebase';
 import './Statistics.css';
+
+const getRatingColor = (rating) => {
+  if (rating <= 3) return '#dc2626';
+  if (rating <= 6) return '#f59e0b';
+  return '#10b981';
+};
+
+
+const SimplePieChart = ({ distribution, total }) => {
+  const excellent = distribution?.excellent || 0;
+  const good = distribution?.good || 0;
+  const average = distribution?.average || 0;
+  const poor = distribution?.poor || 0;
+  
+  const totalCount = excellent + good + average + poor;
+  if (totalCount === 0) return <div className="pie-placeholder">No ratings yet</div>;
+  
+  return (
+    <div className="simple-pie-container">
+      <div className="simple-pie-bars">
+        <div className="bar excellent" style={{ width: `${(excellent / totalCount) * 100}%` }} />
+        <div className="bar good" style={{ width: `${(good / totalCount) * 100}%` }} />
+        <div className="bar average" style={{ width: `${(average / totalCount) * 100}%` }} />
+        <div className="bar poor" style={{ width: `${(poor / totalCount) * 100}%` }} />
+      </div>
+      <div className="simple-pie-legend">
+        <span><span className="dot excellent" /> Excellent ({excellent})</span>
+        <span><span className="dot good" /> Good ({good})</span>
+        <span><span className="dot average" /> Average ({average})</span>
+        <span><span className="dot poor" /> Poor ({poor})</span>
+      </div>
+    </div>
+  );
+};
 
 export default function Statistics({ user, onBack }) {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState([]);
   const [instructors, setInstructors] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [selectedCourseId, setSelectedCourseId] = useState(null);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [courseStats, setCourseStats] = useState(null);
   const [instructorStats, setInstructorStats] = useState(null);
@@ -26,34 +60,24 @@ export default function Statistics({ user, onBack }) {
   }, []);
 
   useEffect(() => {
-    if (selectedCourse) {
-      loadCourseStats(selectedCourse);
-    }
-  }, [selectedCourse]);
+    if (selectedCourseId) loadCourseStats(selectedCourseId);
+  }, [selectedCourseId]);
 
   useEffect(() => {
-    if (selectedInstructor) {
-      loadInstructorStats(selectedInstructor);
-    }
+    if (selectedInstructor) loadInstructorStats(selectedInstructor);
   }, [selectedInstructor]);
 
   const loadAllData = async () => {
     setLoading(true);
     try {
-      // Load courses list
       const coursesSnap = await getDocs(collection(db, 'courses'));
-      const coursesList = coursesSnap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const coursesList = coursesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setCourses(coursesList);
 
-      // Load instructors from feedback
       const feedbackSnap = await getDocs(collection(db, 'feedback'));
       const instructorsList = [...new Set(feedbackSnap.docs.map(doc => doc.data().instructor))];
       setInstructors(instructorsList.filter(i => i));
 
-      // Users stats
       const usersSnap = await getDocs(collection(db, 'users'));
       const users = usersSnap.docs.map(d => d.data());
       const usersStats = {
@@ -63,7 +87,6 @@ export default function Statistics({ user, onBack }) {
         blocked: users.filter(u => u.isBlocked === true).length,
       };
 
-      // Complaints stats
       const ticketsSnap = await getDocs(collection(db, 'tickets'));
       const tickets = ticketsSnap.docs.map(d => d.data());
       const complaintsStats = {
@@ -74,7 +97,6 @@ export default function Statistics({ user, onBack }) {
         closed: tickets.filter(t => t.status === 'closed').length,
       };
 
-      // Courses stats
       const coursesData = coursesSnap.docs.map(d => d.data());
       const coursesStats = {
         total: coursesData.length,
@@ -87,7 +109,6 @@ export default function Statistics({ user, onBack }) {
         }
       };
 
-      // Feedback stats
       const feedbacks = feedbackSnap.docs.map(d => d.data());
       let totalCourse = 0;
       let totalInstructor = 0;
@@ -98,7 +119,6 @@ export default function Statistics({ user, onBack }) {
         const instrR = fb.instructorRating ?? fb.rating ?? 0;
         totalCourse += courseR;
         totalInstructor += instrR;
-        
         const avg = (courseR + instrR) / 2;
         if (avg >= 8) distribution.excellent++;
         else if (avg >= 6) distribution.good++;
@@ -113,7 +133,6 @@ export default function Statistics({ user, onBack }) {
         distribution
       };
 
-      // Enrollments stats
       const enrollmentsSnap = await getDocs(collection(db, 'enrollments'));
       const enrollments = enrollmentsSnap.docs.map(d => d.data());
       const totalEnrollments = enrollments.reduce((sum, e) => sum + (e.courseIds?.length || 0), 0);
@@ -138,10 +157,13 @@ export default function Statistics({ user, onBack }) {
 
   const loadCourseStats = async (courseId) => {
     try {
+      const course = courses.find(c => c.id === courseId);
+      if (!course) return;
+      
       const feedbackSnap = await getDocs(collection(db, 'feedback'));
       const feedbacks = feedbackSnap.docs
         .map(d => d.data())
-        .filter(fb => fb.courseName === courseId);
+        .filter(fb => fb.courseName === course.courseName);
       
       if (feedbacks.length === 0) {
         setCourseStats(null);
@@ -157,7 +179,6 @@ export default function Statistics({ user, onBack }) {
         const instrR = fb.instructorRating ?? fb.rating ?? 0;
         totalCourse += courseR;
         totalInstructor += instrR;
-        
         const avg = (courseR + instrR) / 2;
         if (avg >= 8) distribution.excellent++;
         else if (avg >= 6) distribution.good++;
@@ -166,7 +187,7 @@ export default function Statistics({ user, onBack }) {
       });
       
       setCourseStats({
-        name: courseId,
+        name: course.courseName,
         total: feedbacks.length,
         avgCourse: (totalCourse / feedbacks.length).toFixed(1),
         avgInstructor: (totalInstructor / feedbacks.length).toFixed(1),
@@ -198,7 +219,6 @@ export default function Statistics({ user, onBack }) {
         const instrR = fb.instructorRating ?? fb.rating ?? 0;
         totalCourse += courseR;
         totalInstructor += instrR;
-        
         const avg = (courseR + instrR) / 2;
         if (avg >= 8) distribution.excellent++;
         else if (avg >= 6) distribution.good++;
@@ -220,347 +240,215 @@ export default function Statistics({ user, onBack }) {
 
   const getPercent = (value, total) => total ? ((value / total) * 100).toFixed(0) : 0;
 
- // Pie chart component - updated version
-const PieChart = ({ data, size = 200 }) => {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
-  
-  if (!data || data.length === 0) {
-    return <div className="pie-placeholder">No data available</div>;
-  }
-  
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  
-  if (total === 0) {
-    return <div className="pie-placeholder">No ratings yet</div>;
-  }
-  
-  let startAngle = -90;
-  const radius = size / 2;
-  const centerX = radius;
-  const centerY = radius;
-  
-  const getPath = (value, index) => {
-    if (value === 0) return null;
-    
-    const angle = (value / total) * 360;
-    const endAngle = startAngle + angle;
-    const startRad = (startAngle * Math.PI) / 180;
-    const endRad = (endAngle * Math.PI) / 180;
-    
-    const x1 = centerX + radius * Math.cos(startRad);
-    const y1 = centerY + radius * Math.sin(startRad);
-    const x2 = centerX + radius * Math.cos(endRad);
-    const y2 = centerY + radius * Math.sin(endRad);
-    
-    const largeArcFlag = angle > 180 ? 1 : 0;
-    
-    const path = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
-    startAngle = endAngle;
-    
-    return path;
-  };
-  
-  // Reset start angle for each render
-  startAngle = -90;
-  
-  // If only one segment (100%), draw a full circle
-  if (data.length === 1) {
-    return (
-      <div className="pie-chart-container">
-        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r={radius}
-            fill={colors[0]}
-            stroke="#fff"
-            strokeWidth="2"
-          />
-        </svg>
-        <div className="pie-legend">
-          <div className="pie-legend-item">
-            <div className="pie-legend-color" style={{ backgroundColor: colors[0] }}></div>
-            
-           
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="pie-chart-container">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {data.map((item, index) => {
-          const path = getPath(item.value, index);
-          if (!path) return null;
-          const isHovered = hoveredIndex === index;
-          return (
-            <g key={index}>
-              <path
-                d={path}
-                fill={colors[index % colors.length]}
-                stroke="#fff"
-                strokeWidth="2"
-                style={{ 
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  transform: isHovered ? 'scale(1.02)' : 'scale(1)',
-                  transformOrigin: `${centerX}px ${centerY}px`
-                }}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-            </g>
-          );
-        })}
-      </svg>
-      <div className="pie-legend">
-        {data.map((item, i) => (
-          <div key={i} className="pie-legend-item">
-            <div className="pie-legend-color" style={{ backgroundColor: colors[i % colors.length] }}></div>
-            <span>{item.label}</span>
-            <span className="pie-legend-percent">
-              {total > 0 ? ((item.value / total) * 100).toFixed(0) : 0}%
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-  const renderPieChart = (distribution, total) => {
-    const data = [
-      { label: 'Excellent', value: distribution.excellent, color: '#10b981' },
-      { label: 'Good', value: distribution.good, color: '#3b82f6' },
-      { label: 'Average', value: distribution.average, color: '#f59e0b' },
-      { label: 'Poor', value: distribution.poor, color: '#ef4444' }
-    ].filter(d => d.value > 0);
-    
-    return (
-      <div className="pie-chart-container">
-        <PieChart data={data} size={180} />
-        <div className="pie-legend">
-          {data.map((item, i) => (
-            <div key={i} className="pie-legend-item">
-              <div className="pie-legend-color" style={{ backgroundColor: item.color }}></div>
-              <span>{item.label}</span>
-              <span className="pie-legend-percent">{getPercent(item.value, total)}%</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
   if (loading) {
     return (
-      <div className="statistics-container">
-        <div className="statistics-header">
-          <button className="back-button" onClick={onBack}>← Back</button>
-          <h1>📊 Statistics</h1>
-          <div></div>
+      <div className="stats-page">
+        <div className="stats-topbar">
+          <button className="stats-back-btn" onClick={onBack}>← Back</button>
+          <span className="stats-topbar-title">📊 Statistics</span>
         </div>
-        <div className="loading">Loading statistics...</div>
+        <div className="stats-loading">
+          <div className="stats-spinner" />
+          <div>Loading statistics...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="statistics-container">
-      <div className="statistics-header">
-        <button className="back-button" onClick={onBack}>← Back</button>
-        <h1>📊 Statistics Dashboard</h1>
-        <div></div>
+    <div className="stats-page">
+      <div className="stats-topbar">
+        <button className="stats-back-btn" onClick={onBack}>← Back</button>
+        <span className="stats-topbar-title">📊 Statistics Dashboard</span>
       </div>
 
-      {/* Course Selector */}
-      <div className="selector-card">
-        <h3>📚 Course Statistics</h3>
-        <div className="selector-wrapper">
-          <select 
-            className="selector-select"
-            value={selectedCourse || ''}
-            onChange={(e) => setSelectedCourse(e.target.value || null)}
-          >
-            <option value="">Select a course...</option>
-            {courses.map(course => (
-              <option key={course.id} value={course.courseName}>
-                {course.courseName} ({course.courseCode || ''})
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {selectedCourse && courseStats ? (
-          <div className="stats-detail">
-            <div className="stats-detail-header">
-              <h4>{courseStats.name}</h4>
-              <span className="stats-detail-total">{courseStats.total} reviews</span>
-            </div>
-            <div className="stats-detail-grid">
-              <div className="stats-detail-item">
-                <div className="stats-detail-value">{courseStats.avgCourse}</div>
-                <div className="stats-detail-label">Avg Course Rating</div>
-                <div className="stats-detail-max">/10</div>
-              </div>
-              <div className="stats-detail-item">
-                <div className="stats-detail-value">{courseStats.avgInstructor}</div>
-                <div className="stats-detail-label">Avg Instructor Rating</div>
-                <div className="stats-detail-max">/10</div>
-              </div>
-            </div>
-            <div className="stats-chart-row">
-              {renderPieChart(courseStats.distribution, courseStats.total)}
-            </div>
+      <div className="stats-body">
+        {/* Course Selector */}
+        <div className="stats-card">
+          <h3 className="stats-card-title">📚 Course Statistics</h3>
+          <div className="stats-selector-wrapper">
+            <select 
+              className="stats-select"
+              value={selectedCourseId || ''}
+              onChange={(e) => setSelectedCourseId(e.target.value || null)}
+            >
+              <option value="">Select a course...</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.courseName} {course.courseCode ? `(${course.courseCode})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
-        ) : selectedCourse && !courseStats ? (
-          <div className="stats-detail-empty">No feedback available for this course yet.</div>
-        ) : null}
-      </div>
-
-      {/* Instructor Selector */}
-      <div className="selector-card">
-        <h3>👨‍🏫 Instructor Statistics</h3>
-        <div className="selector-wrapper">
-          <select 
-            className="selector-select"
-            value={selectedInstructor || ''}
-            onChange={(e) => setSelectedInstructor(e.target.value || null)}
-          >
-            <option value="">Select an instructor...</option>
-            {instructors.map(instructor => (
-              <option key={instructor} value={instructor}>{instructor}</option>
-            ))}
-          </select>
-        </div>
-        
-        {selectedInstructor && instructorStats ? (
-          <div className="stats-detail">
-            <div className="stats-detail-header">
-              <h4>{instructorStats.name}</h4>
-              <span className="stats-detail-total">{instructorStats.total} reviews</span>
-            </div>
-            <div className="stats-detail-grid">
-              <div className="stats-detail-item">
-                <div className="stats-detail-value">{instructorStats.avgCourse}</div>
-                <div className="stats-detail-label">Avg Course Rating</div>
-                <div className="stats-detail-max">/10</div>
+          
+          {selectedCourseId && courseStats ? (
+            <div className="stats-detail">
+              <div className="stats-detail-header">
+                <h4>{courseStats.name}</h4>
+                <span className="stats-detail-total">{courseStats.total} reviews</span>
               </div>
-              <div className="stats-detail-item">
-                <div className="stats-detail-value">{instructorStats.avgInstructor}</div>
-                <div className="stats-detail-label">Avg Instructor Rating</div>
-                <div className="stats-detail-max">/10</div>
+              <div className="stats-detail-grid">
+                <div className="stats-detail-item">
+                  <div className="stats-detail-value">{courseStats.avgCourse}</div>
+                  <div className="stats-detail-label">Avg Course Rating</div>
+                  <div className="stats-detail-max">/10</div>
+                </div>
+                <div className="stats-detail-item">
+                  <div className="stats-detail-value">{courseStats.avgInstructor}</div>
+                  <div className="stats-detail-label">Avg Instructor Rating</div>
+                  <div className="stats-detail-max">/10</div>
+                </div>
+              </div>
+              <div className="stats-chart-row">
+                <SimplePieChart distribution={courseStats.distribution} total={courseStats.total} />
               </div>
             </div>
-            <div className="stats-chart-row">
-              {renderPieChart(instructorStats.distribution, instructorStats.total)}
+          ) : selectedCourseId && !courseStats ? (
+            <div className="stats-detail-empty">No feedback available for this course yet.</div>
+          ) : null}
+        </div>
+
+        {/* Instructor Selector */}
+        <div className="stats-card">
+          <h3 className="stats-card-title">👨‍🏫 Instructor Statistics</h3>
+          <div className="stats-selector-wrapper">
+            <select 
+              className="stats-select"
+              value={selectedInstructor || ''}
+              onChange={(e) => setSelectedInstructor(e.target.value || null)}
+            >
+              <option value="">Select an instructor...</option>
+              {instructors.map(instructor => (
+                <option key={instructor} value={instructor}>{instructor}</option>
+              ))}
+            </select>
+          </div>
+          
+          {selectedInstructor && instructorStats ? (
+            <div className="stats-detail">
+              <div className="stats-detail-header">
+                <h4>{instructorStats.name}</h4>
+                <span className="stats-detail-total">{instructorStats.total} reviews</span>
+              </div>
+              <div className="stats-detail-grid">
+                <div className="stats-detail-item">
+                  <div className="stats-detail-value">{instructorStats.avgCourse}</div>
+                  <div className="stats-detail-label">Avg Course Rating</div>
+                  <div className="stats-detail-max">/10</div>
+                </div>
+                <div className="stats-detail-item">
+                  <div className="stats-detail-value">{instructorStats.avgInstructor}</div>
+                  <div className="stats-detail-label">Avg Instructor Rating</div>
+                  <div className="stats-detail-max">/10</div>
+                </div>
+              </div>
+              <div className="stats-chart-row">
+                <SimplePieChart distribution={instructorStats.distribution} total={instructorStats.total} />
+              </div>
+            </div>
+          ) : selectedInstructor && !instructorStats ? (
+            <div className="stats-detail-empty">No feedback available for this instructor yet.</div>
+          ) : null}
+        </div>
+
+        {/* Users Overview */}
+        <div className="stats-card-full">
+          <div className="stats-card-header">
+            <h2>👥 Users Overview</h2>
+            <span className="stats-total">{globalStats.users.total} Total</span>
+          </div>
+          <div className="stats-grid-4">
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.users.students}</div>
+              <div className="stats-label">Students</div>
+              <div className="stats-percent">{getPercent(globalStats.users.students, globalStats.users.total)}%</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.users.admins}</div>
+              <div className="stats-label">Admins</div>
+              <div className="stats-percent">{getPercent(globalStats.users.admins, globalStats.users.total)}%</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.users.blocked}</div>
+              <div className="stats-label">Blocked</div>
+              <div className="stats-percent">{getPercent(globalStats.users.blocked, globalStats.users.total)}%</div>
             </div>
           </div>
-        ) : selectedInstructor && !instructorStats ? (
-          <div className="stats-detail-empty">No feedback available for this instructor yet.</div>
-        ) : null}
-      </div>
+          <div className="stats-progress-bar">
+            <div className="stats-progress students" style={{ width: `${getPercent(globalStats.users.students, globalStats.users.total)}%` }} />
+            <div className="stats-progress admins" style={{ width: `${getPercent(globalStats.users.admins, globalStats.users.total)}%` }} />
+            <div className="stats-progress blocked" style={{ width: `${getPercent(globalStats.users.blocked, globalStats.users.total)}%` }} />
+          </div>
+          <div className="stats-progress-legend">
+            <span><span className="legend-dot students" /> Students</span>
+            <span><span className="legend-dot admins" /> Admins</span>
+            <span><span className="legend-dot blocked" /> Blocked</span>
+          </div>
+        </div>
 
-      {/* Global Statistics */}
-      <div className="stat-card-full">
-        <div className="stat-card-header">
-          <h2>👥 Users Overview</h2>
-          <span className="stat-total">{globalStats.users.total} Total</span>
-        </div>
-        <div className="stat-grid-4">
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.users.students}</div>
-            <div className="stat-label">Students</div>
-            <div className="stat-percent">{getPercent(globalStats.users.students, globalStats.users.total)}%</div>
+        {/* Complaints Overview */}
+        <div className="stats-card-full">
+          <div className="stats-card-header">
+            <h2>📋 Complaints Overview</h2>
+            <span className="stats-total">{globalStats.complaints.total} Total</span>
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.users.admins}</div>
-            <div className="stat-label">Admins</div>
-            <div className="stat-percent">{getPercent(globalStats.users.admins, globalStats.users.total)}%</div>
+          <div className="stats-grid-4">
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.complaints.open}</div>
+              <div className="stats-label">Open</div>
+              <div className="stats-percent">{getPercent(globalStats.complaints.open, globalStats.complaints.total)}%</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.complaints.inProgress}</div>
+              <div className="stats-label">In Progress</div>
+              <div className="stats-percent">{getPercent(globalStats.complaints.inProgress, globalStats.complaints.total)}%</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.complaints.replied}</div>
+              <div className="stats-label">Replied</div>
+              <div className="stats-percent">{getPercent(globalStats.complaints.replied, globalStats.complaints.total)}%</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.complaints.closed}</div>
+              <div className="stats-label">Closed</div>
+              <div className="stats-percent">{getPercent(globalStats.complaints.closed, globalStats.complaints.total)}%</div>
+            </div>
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.users.blocked}</div>
-            <div className="stat-label">Blocked</div>
-            <div className="stat-percent">{getPercent(globalStats.users.blocked, globalStats.users.total)}%</div>
+          <div className="stats-progress-bar">
+            <div className="stats-progress open" style={{ width: `${getPercent(globalStats.complaints.open, globalStats.complaints.total)}%` }} />
+            <div className="stats-progress in-progress" style={{ width: `${getPercent(globalStats.complaints.inProgress, globalStats.complaints.total)}%` }} />
+            <div className="stats-progress replied" style={{ width: `${getPercent(globalStats.complaints.replied, globalStats.complaints.total)}%` }} />
+            <div className="stats-progress closed" style={{ width: `${getPercent(globalStats.complaints.closed, globalStats.complaints.total)}%` }} />
+          </div>
+          <div className="stats-progress-legend">
+            <span><span className="legend-dot open" /> Open</span>
+            <span><span className="legend-dot in-progress" /> In Progress</span>
+            <span><span className="legend-dot replied" /> Replied</span>
+            <span><span className="legend-dot closed" /> Closed</span>
           </div>
         </div>
-        <div className="progress-bar">
-          <div className="progress-segment students" style={{ width: `${getPercent(globalStats.users.students, globalStats.users.total)}%` }}></div>
-          <div className="progress-segment admins" style={{ width: `${getPercent(globalStats.users.admins, globalStats.users.total)}%` }}></div>
-          <div className="progress-segment blocked" style={{ width: `${getPercent(globalStats.users.blocked, globalStats.users.total)}%` }}></div>
-        </div>
-        <div className="progress-legend">
-          <span><span className="legend-dot students"></span> Students</span>
-          <span><span className="legend-dot admins"></span> Admins</span>
-          <span><span className="legend-dot blocked"></span> Blocked</span>
-        </div>
-      </div>
 
-      {/* Complaints Statistics */}
-      <div className="stat-card-full">
-        <div className="stat-card-header">
-          <h2>📋 Complaints Overview</h2>
-          <span className="stat-total">{globalStats.complaints.total} Total</span>
-        </div>
-        <div className="stat-grid-4">
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.complaints.open}</div>
-            <div className="stat-label">Open</div>
-            <div className="stat-percent">{getPercent(globalStats.complaints.open, globalStats.complaints.total)}%</div>
+        {/* Global Feedback */}
+        <div className="stats-card-full">
+          <div className="stats-card-header">
+            <h2>⭐ Global Feedback Overview</h2>
+            <span className="stats-total">{globalStats.feedback.total} Reviews</span>
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.complaints.inProgress}</div>
-            <div className="stat-label">In Progress</div>
-            <div className="stat-percent">{getPercent(globalStats.complaints.inProgress, globalStats.complaints.total)}%</div>
+          <div className="stats-grid-2">
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.feedback.avgCourse}</div>
+              <div className="stats-label">Avg Course Rating</div>
+              <div className="stats-max">/10</div>
+            </div>
+            <div className="stats-item">
+              <div className="stats-value">{globalStats.feedback.avgInstructor}</div>
+              <div className="stats-label">Avg Instructor Rating</div>
+              <div className="stats-max">/10</div>
+            </div>
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.complaints.replied}</div>
-            <div className="stat-label">Replied</div>
-            <div className="stat-percent">{getPercent(globalStats.complaints.replied, globalStats.complaints.total)}%</div>
+          <div className="stats-chart-row">
+            <SimplePieChart distribution={globalStats.feedback.distribution} total={globalStats.feedback.total} />
           </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.complaints.closed}</div>
-            <div className="stat-label">Closed</div>
-            <div className="stat-percent">{getPercent(globalStats.complaints.closed, globalStats.complaints.total)}%</div>
-          </div>
-        </div>
-        <div className="progress-bar">
-          <div className="progress-segment open" style={{ width: `${getPercent(globalStats.complaints.open, globalStats.complaints.total)}%` }}></div>
-          <div className="progress-segment in-progress" style={{ width: `${getPercent(globalStats.complaints.inProgress, globalStats.complaints.total)}%` }}></div>
-          <div className="progress-segment replied" style={{ width: `${getPercent(globalStats.complaints.replied, globalStats.complaints.total)}%` }}></div>
-          <div className="progress-segment closed" style={{ width: `${getPercent(globalStats.complaints.closed, globalStats.complaints.total)}%` }}></div>
-        </div>
-        <div className="progress-legend">
-          <span><span className="legend-dot open"></span> Open</span>
-          <span><span className="legend-dot in-progress"></span> In Progress</span>
-          <span><span className="legend-dot replied"></span> Replied</span>
-          <span><span className="legend-dot closed"></span> Closed</span>
-        </div>
-      </div>
-
-      {/* Global Feedback Statistics */}
-      <div className="stat-card-full">
-        <div className="stat-card-header">
-          <h2>⭐ Global Feedback Overview</h2>
-          <span className="stat-total">{globalStats.feedback.total} Reviews</span>
-        </div>
-        <div className="stat-grid-2">
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.feedback.avgCourse}</div>
-            <div className="stat-label">Avg Course Rating</div>
-            <div className="stat-max">/10</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-value">{globalStats.feedback.avgInstructor}</div>
-            <div className="stat-label">Avg Instructor Rating</div>
-            <div className="stat-max">/10</div>
-          </div>
-        </div>
-        <div className="stats-chart-row">
-          {renderPieChart(globalStats.feedback.distribution, globalStats.feedback.total)}
         </div>
       </div>
     </div>

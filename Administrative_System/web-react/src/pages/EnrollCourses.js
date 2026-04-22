@@ -15,11 +15,8 @@ import "./EnrollCourses.css";
 
 const ACCENT = "#764ba2";
 
-// You'll need to add this helper function to your firebase service
-const getEnrollmentDocRef = (userId) => doc(db, COLLECTIONS.ENROLLMENTS, userId);
 
-// Add this to your firebase.js COLLECTIONS object
-// ENROLLMENTS: "enrollments",
+const getEnrollmentDocRef = (userId) => doc(db, COLLECTIONS.ENROLLMENTS, userId);
 
 export default function EnrollCourses({ user, profile, onBack }) {
   const division = profile?.division ?? "computer_science";
