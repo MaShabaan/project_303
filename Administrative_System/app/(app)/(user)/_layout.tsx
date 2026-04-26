@@ -27,48 +27,16 @@ export default function UserLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
-        headerTitle: "Home",
-        headerStyle: { backgroundColor: "#FFFFFF" },
-        headerTintColor: "#333333",
-        headerLeft: () => (
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Image
-              source={require("@/assets/images/back-arrow.png")}
-              style={styles.backArrow}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        ),
-        headerRight: () => (
-          <View style={styles.headerRight}>
-            <NotificationBellButton href="./notifications" />
-          </View>
-        ),
+        headerShown: false,
       }}
     >
-      <Stack.Screen name="index" options={{ title: "Home" }} />
-      <Stack.Screen name="rate-courses" options={{ title: "Rate Courses" }} />
-      <Stack.Screen name="submit-complaint" options={{ title: "Submit Complaint" }} />
-      <Stack.Screen name="my-complaints" options={{ title: "My Complaints" }} />
-      <Stack.Screen name="my-ratings" options={{ title: "My Ratings" }} />
-      <Stack.Screen name="enroll-courses" options={{ title: "Course enrollment" }} />
-      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Stack.Screen name="index" />
+      <Stack.Screen name="rate-courses" />
+      <Stack.Screen name="submit-complaint" />
+      <Stack.Screen name="my-complaints" />
+      <Stack.Screen name="my-ratings" />
+      <Stack.Screen name="enroll-courses" />
+      <Stack.Screen name="notifications" />
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  backButton: {
-    padding: 12,
-    marginLeft: 4,
-  },
-  backArrow: {
-    width: 24,
-    height: 24,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-});
