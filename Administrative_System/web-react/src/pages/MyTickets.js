@@ -200,14 +200,17 @@ export default function MyTickets({ onBack }) {
 
   return (
     <div className="my-tickets-page">
-      <div className="my-tickets-topbar">
-        <button className="my-tickets-back-btn" onClick={onBack}>← Back</button>
-        <span className="my-tickets-title">📋 My Complaints</span>
-        <div className="topbar-right">
-          {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
-          <span className="my-tickets-count">{tickets.length} total</span>
-        </div>
-      </div>
+  
+<div className="my-tickets-topbar">
+  <button className="my-tickets-back-btn" onClick={onBack}>
+    ← Back
+  </button>
+  <span className="my-tickets-title">📋 My Complaints</span>
+  <div className="topbar-right">
+    {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+    <span className="my-tickets-count">{tickets.length} total</span>
+  </div>
+</div>
 
       <div className="my-tickets-body">
         <div className="my-tickets-stats">

@@ -22,6 +22,7 @@ import Feedback from './pages/Feedback';
 import Statistics from './pages/Statistics';
 import ProfileSettings from './pages/ProfileSettings';
 import MyTickets from './pages/MyTickets';
+
 import './App.css';
 
 function AppContent() {
@@ -110,6 +111,7 @@ function AppContent() {
   if (view === 'my-tickets') {
   return <MyTickets onBack={() => handleNavigate('back')} />;
 }
+
   // Dashboard
   if (view === 'dashboard' && currentUser) {
     if (userRole === 'admin' || userRole === 'super_admin') {
