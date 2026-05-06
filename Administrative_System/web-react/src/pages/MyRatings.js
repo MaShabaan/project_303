@@ -1,349 +1,378 @@
-
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, updateDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './ThemeContext';
 import './MyRatings.css';
 
-const NPS_SCALE = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-const getRatingColor = (rating) => {
-  if (rating <= 3) return { bg: '#fef2f2', border: '#fecaca', text: '#dc2626' };
-  if (rating <= 6) return { bg: '#fffbeb', border: '#fde68a', text: '#d97706' };
-  return { bg: '#f0fdf4', border: '#bbf7d0', text: '#10b981' };
-};
-
-const getNpsColor = (n) => {
-  if (n <= 3) return { bg: '#fef2f2', border: '#fecaca', text: '#dc2626', activeBg: '#ef4444' };
-  if (n <= 6) return { bg: '#fffbeb', border: '#fde68a', text: '#d97706', activeBg: '#f59e0b' };
-  return { bg: '#f0fdf4', border: '#bbf7d0', text: '#059669', activeBg: '#10b981' };
-};
-
-const getNpsLabel = (n) => {
-  if (n === null) return '';
-  if (n <= 3) return '😞 Not satisfied';
-  if (n <= 6) return '😐 Average';
-  if (n <= 8) return '😊 Good';
-  return '🤩 Excellent!';
+const RATING_COLORS = {
+  1: { bg: '#fef2f2', text: '#dc2626', label: 'Very Poor' },
+  2: { bg: '#fef2f2', text: '#dc2626', label: 'Poor' },
+  3: { bg: '#fef2f2', text: '#dc2626', label: 'Below Average' },
+  4: { bg: '#fffbeb', text: '#d97706', label: 'Below Average' },
+  5: { bg: '#fffbeb', text: '#d97706', label: 'Average' },
+  6: { bg: '#fffbeb', text: '#d97706', label: 'Above Average' },
+  7: { bg: '#f0fdf4', text: '#10b981', label: 'Good' },
+  8: { bg: '#f0fdf4', text: '#10b981', label: 'Very Good' },
+  9: { bg: '#f0fdf4', text: '#10b981', label: 'Excellent' },
+  10: { bg: '#f0fdf4', text: '#059669', label: 'Outstanding' },
 };
 
 function formatDate(timestamp) {
   if (!timestamp) return '—';
-  const date = timestamp.toDate();
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  try {
+    const date = timestamp.toDate();
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric'
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function getDaysDifference(date) {
+  const today = new Date();
+  const diffTime = today - date;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
 }
 
 export default function MyRatings({ onBack }) {
   const { user } = useAuth();
   const [ratings, setRatings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [editingRating, setEditingRating] = useState(null);
-  const [editInstructor, setEditInstructor] = useState('');
   const [editCourseRating, setEditCourseRating] = useState(null);
   const [editInstructorRating, setEditInstructorRating] = useState(null);
   const [editComments, setEditComments] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [dateFilter, setDateFilter] = useState('all');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [uniqueCourses, setUniqueCourses] = useState([]);
 
   useEffect(() => {
-    loadRatings();
-  }, [user]);
-
-  const loadRatings = async () => {
     if (!user?.uid) return;
+
     setLoading(true);
-    try {
-      const q = query(
-        collection(db, 'feedback'),
-        where('userId', '==', user.uid)
-      );
-      const snapshot = await getDocs(q);
-      const list = snapshot.docs.map(doc => ({
+    const q = query(collection(db, 'feedback'), where('userId', '==', user.uid));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const myRatings = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
+        isPinned: doc.data().isPinned || false
       }));
-      list.sort((a, b) => {
+      
+      myRatings.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
         const dateA = a.createdAt?.toDate?.() || new Date(0);
         const dateB = b.createdAt?.toDate?.() || new Date(0);
         return dateB - dateA;
       });
-      setRatings(list);
-    } catch (error) {
-      console.error('Error loading ratings:', error);
-    } finally {
+      
+      setRatings(myRatings);
+      const courses = [...new Set(myRatings.map(r => r.courseName))];
+      setUniqueCourses(courses);
+      
       setLoading(false);
+    }, (error) => {
+      console.error('Error loading ratings:', error);
+      setLoading(false);
+    });
+    
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  const handlePin = async (ratingId, isPinned) => {
+    try {
+      await updateDoc(doc(db, 'feedback', ratingId), {
+        isPinned: !isPinned
+      });
+    } catch (error) {
+      console.error('Error pinning rating:', error);
     }
   };
 
-  const handleDelete = async (rating) => {
-    if (window.confirm(`Delete your rating for "${rating.courseName}"?`)) {
-      try {
-        await deleteDoc(doc(db, 'feedback', rating.id));
-        await loadRatings();
-        alert('Rating deleted successfully');
-      } catch (error) {
-        console.error(error);
-        alert('Failed to delete rating');
-      }
+  const handleDelete = async () => {
+    if (!selectedRating) return;
+    try {
+      await deleteDoc(doc(db, 'feedback', selectedRating.id));
+      setShowDeleteModal(false);
+      setSelectedRating(null);
+    } catch (error) {
+      console.error('Error deleting rating:', error);
+      alert('❌ Failed to delete rating');
     }
   };
 
   const openEditModal = (rating) => {
     setEditingRating(rating);
-    setEditInstructor(rating.instructor || '');
-    setEditCourseRating(rating.courseRating ?? rating.rating ?? null);
-    setEditInstructorRating(rating.instructorRating ?? rating.rating ?? null);
+    setEditCourseRating(rating.courseRating || rating.rating || null);
+    setEditInstructorRating(rating.instructorRating || rating.rating || null);
     setEditComments(rating.comments || '');
-    setEditModalOpen(true);
+    setShowEditModal(true);
   };
 
-  const handleUpdate = async () => {
-    if (!editInstructor.trim()) {
-      alert('Please enter instructor name');
+  const handleEdit = async () => {
+    if (editCourseRating === null || editInstructorRating === null) {
+      alert('Please select both ratings');
       return;
     }
-    if (editCourseRating === null) {
-      alert('Please select a course rating');
-      return;
-    }
-    if (editInstructorRating === null) {
-      alert('Please select an instructor rating');
-      return;
-    }
-
-    setSubmitting(true);
+    
     try {
-      const ratingRef = doc(db, 'feedback', editingRating.id);
-      await updateDoc(ratingRef, {
-        instructor: editInstructor.trim(),
+      await updateDoc(doc(db, 'feedback', editingRating.id), {
         courseRating: editCourseRating,
         instructorRating: editInstructorRating,
         comments: editComments,
-        updatedAt: new Date(),
+        updatedAt: new Date()
       });
-      setEditModalOpen(false);
-      await loadRatings();
-      alert('Rating updated successfully');
+      setShowEditModal(false);
+      setEditingRating(null);
+      alert('✅ Rating updated successfully');
     } catch (error) {
-      console.error(error);
-      alert('Failed to update rating');
-    } finally {
-      setSubmitting(false);
+      console.error('Error updating rating:', error);
+      alert('❌ Failed to update rating');
     }
   };
 
-  const getDivisionLabel = (division) => {
-    if (division === 'computer_science') return '💻 Computer Science';
-    if (division === 'special_mathematics') return '📐 Special Mathematics';
-    return '';
-  };
+  const filteredRatings = ratings.filter(rating => {
+    if (dateFilter !== 'all') {
+      const date = rating.createdAt?.toDate() || new Date();
+      const daysDiff = getDaysDifference(date);
+      if (dateFilter === 'week' && daysDiff > 7) return false;
+      if (dateFilter === 'month' && daysDiff > 30) return false;
+      if (dateFilter === 'year' && daysDiff > 365) return false;
+    }
+    if (courseFilter !== 'all' && rating.courseName !== courseFilter) return false;
+    return true;
+  });
 
-  const totalRatings = ratings.length;
-  const avgCourse = totalRatings > 0
-    ? (ratings.reduce((sum, r) => sum + (r.courseRating ?? r.rating ?? 0), 0) / totalRatings).toFixed(1)
+  const avgCourse = ratings.length > 0 
+    ? (ratings.reduce((s, r) => s + (r.courseRating || r.rating || 0), 0) / ratings.length).toFixed(1) 
     : '—';
-  const avgInstructor = totalRatings > 0
-    ? (ratings.reduce((sum, r) => sum + (r.instructorRating ?? r.rating ?? 0), 0) / totalRatings).toFixed(1)
+  const avgInstructor = ratings.length > 0 
+    ? (ratings.reduce((s, r) => s + (r.instructorRating || r.rating || 0), 0) / ratings.length).toFixed(1) 
     : '—';
+  const filteredAvgCourse = filteredRatings.length > 0 
+    ? (filteredRatings.reduce((s, r) => s + (r.courseRating || r.rating || 0), 0) / filteredRatings.length).toFixed(1) 
+    : '—';
+  const filteredAvgInstructor = filteredRatings.length > 0 
+    ? (filteredRatings.reduce((s, r) => s + (r.instructorRating || r.rating || 0), 0) / filteredRatings.length).toFixed(1) 
+    : '—';
+
+  const stats = [
+    { label: 'Total', value: filteredRatings.length, total: ratings.length, color: '#7c3aed', icon: '⭐' },
+    { label: 'Avg Course', value: filteredAvgCourse, total: avgCourse, color: '#f59e0b', icon: '📚' },
+    { label: 'Avg Instructor', value: filteredAvgInstructor, total: avgInstructor, color: '#10b981', icon: '👨‍🏫' },
+  ];
 
   if (loading) {
     return (
-      <div className="my-ratings-container">
-        <div className="my-ratings-header">
-          <button className="back-button" onClick={onBack}>← Back</button>
-          <h1>⭐ My Ratings</h1>
-          <div></div>
+      <div className="my-ratings-page">
+        <div className="my-ratings-topbar">
+          <button className="my-ratings-back-btn" onClick={onBack}>← Back</button>
+          <span className="my-ratings-title">⭐ My Ratings</span>
         </div>
-        <div className="loading">Loading your ratings...</div>
+        <div className="my-ratings-loading">
+          <div className="my-ratings-spinner" />
+          <div>Loading your ratings...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="my-ratings-container">
-      <div className="my-ratings-header">
-        <button className="back-button" onClick={onBack}>← Back</button>
-        <h1>⭐ My Ratings</h1>
-        <div></div>
+    <div className="my-ratings-page">
+      <div className="my-ratings-topbar">
+        <button className="my-ratings-back-btn" onClick={onBack}>← Back</button>
+        <span className="my-ratings-title">⭐ My Ratings</span>
+        <span className="my-ratings-count">{ratings.length} total</span>
       </div>
 
-      {totalRatings > 0 && (
-        <div className="stats-row">
-          <div className="stat-card">
-            <div className="stat-num">{totalRatings}</div>
-            <div className="stat-label">TOTAL RATINGS</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-num">{avgCourse}</div>
-            <div className="stat-label">AVG COURSE</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-num">{avgInstructor}</div>
-            <div className="stat-label">AVG INSTRUCTOR</div>
-          </div>
-        </div>
-      )}
-
-      {ratings.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">⭐</div>
-          <div className="empty-title">No ratings yet</div>
-          <div className="empty-text">You haven't rated any courses yet.</div>
-        </div>
-      ) : (
-        <div className="ratings-list">
-          {ratings.map((rating, index) => {
-            const courseR = rating.courseRating ?? rating.rating ?? 0;
-            const instrR = rating.instructorRating ?? rating.rating ?? 0;
-            const avg = ((courseR + instrR) / 2).toFixed(1);
-            const courseColors = getRatingColor(courseR);
-            const instrColors = getRatingColor(instrR);
-            const avgColors = getRatingColor(parseFloat(avg));
-            const divisionInfo = getDivisionLabel(rating.division);
-            const avatarLetter = rating.courseName?.charAt(0).toUpperCase() || 'C';
-            const avatarColors = ['#7c3aed', '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
-            const avatarColor = avatarColors[index % avatarColors.length];
-
-            return (
-              <div key={rating.id} className="rating-card">
-                <div className="rating-header">
-                  <div className="course-avatar" style={{ backgroundColor: avatarColor }}>
-                    {avatarLetter}
-                  </div>
-                  <div className="course-info">
-                    <div className="course-name">{rating.courseName}</div>
-                    <div className="instructor-name">{rating.instructor}</div>
-                    {divisionInfo && <div className="division-info">{divisionInfo}</div>}
-                    {rating.year && rating.term && (
-                      <div className="course-meta">Year {rating.year} · Term {rating.term}</div>
-                    )}
-                  </div>
-                  <div className="rating-date">{formatDate(rating.createdAt)}</div>
-                </div>
-
-                <div className="ratings-row">
-                  <div className="rating-item" style={{ backgroundColor: courseColors.bg, borderColor: courseColors.border }}>
-                    <div className="rating-label">COURSE</div>
-                    <div className="rating-value" style={{ color: courseColors.text }}>{courseR}</div>
-                    <div className="rating-max">/10</div>
-                  </div>
-                  <div className="rating-item" style={{ backgroundColor: instrColors.bg, borderColor: instrColors.border }}>
-                    <div className="rating-label">INSTRUCTOR</div>
-                    <div className="rating-value" style={{ color: instrColors.text }}>{instrR}</div>
-                    <div className="rating-max">/10</div>
-                  </div>
-                  <div className="rating-item" style={{ backgroundColor: avgColors.bg, borderColor: avgColors.border }}>
-                    <div className="rating-label">AVERAGE</div>
-                    <div className="rating-value" style={{ color: avgColors.text }}>{avg}</div>
-                    <div className="rating-max">/10</div>
-                  </div>
-                </div>
-
-                {rating.comments && (
-                  <div className="comments-section">
-                    <div className="comments-label">💬 Your Feedback</div>
-                    <div className="comments-text">"{rating.comments}"</div>
-                  </div>
+      <div className="my-ratings-body">
+        <div className="my-ratings-stats">
+          {stats.map(stat => (
+            <div key={stat.label} className="stat-card" style={{ borderTopColor: stat.color }}>
+              <div className="stat-icon">{stat.icon}</div>
+              <div className="stat-info">
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-label">{stat.label}</div>
+                {stat.total !== stat.value && stat.total !== '—' && (
+                  <div className="stat-total">of {stat.total}</div>
                 )}
-
-                <div className="rating-actions">
-                  <button className="edit-btn" onClick={() => openEditModal(rating)}>✏️ Edit</button>
-                  <button className="delete-btn" onClick={() => handleDelete(rating)}>🗑️ Delete</button>
-                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
-      )}
 
-      {/* Edit Modal */}
-      {editModalOpen && editingRating && (
-        <div className="modal-overlay" onClick={() => setEditModalOpen(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="advanced-filters">
+          <select 
+            className="filter-select"
+            value={courseFilter}
+            onChange={(e) => setCourseFilter(e.target.value)}
+          >
+            <option value="all">All Courses</option>
+            {uniqueCourses.map(course => (
+              <option key={course} value={course}>{course}</option>
+            ))}
+          </select>
+
+          <select 
+            className="filter-select"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          >
+            <option value="all">All Time</option>
+            <option value="week">Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+            <option value="year">Last Year</option>
+          </select>
+        </div>
+
+        {filteredRatings.length === 0 ? (
+          <div className="my-ratings-empty">
+            <div className="empty-icon">⭐</div>
+            <div className="empty-title">No ratings found</div>
+            <div className="empty-text">Try changing the filters.</div>
+          </div>
+        ) : (
+          <div className="my-ratings-list">
+            {filteredRatings.map(rating => {
+              const courseRating = rating.courseRating || rating.rating || 0;
+              const instructorRating = rating.instructorRating || rating.rating || 0;
+              const avgRating = ((courseRating + instructorRating) / 2).toFixed(1);
+              const courseStyle = RATING_COLORS[Math.round(courseRating)] || RATING_COLORS[5];
+              const instructorStyle = RATING_COLORS[Math.round(instructorRating)] || RATING_COLORS[5];
+              const avgStyle = RATING_COLORS[Math.round(avgRating)] || RATING_COLORS[5];
+              
+              return (
+                <div key={rating.id} className={`rating-card ${rating.isPinned ? 'pinned' : ''}`}>
+                  {rating.isPinned && <div className="pinned-badge">📌 Pinned</div>}
+                  
+                  <div className="rating-header">
+                    <div className="course-info">
+                      <div className="course-name">{rating.courseName}</div>
+                      <div className="instructor-name">👨‍🏫 {rating.instructor}</div>
+                    </div>
+                    <div className="rating-date">{formatDate(rating.createdAt)}</div>
+                  </div>
+
+                  <div className="ratings-row">
+                    <div className="rating-item" style={{ backgroundColor: courseStyle.bg }}>
+                      <div className="rating-label">📚 Course</div>
+                      <div className="rating-value" style={{ color: courseStyle.text }}>{courseRating}</div>
+                      <div className="rating-max">/10</div>
+                      <div className="rating-label-small">{courseStyle.label}</div>
+                    </div>
+                    <div className="rating-item" style={{ backgroundColor: instructorStyle.bg }}>
+                      <div className="rating-label">👨‍🏫 Instructor</div>
+                      <div className="rating-value" style={{ color: instructorStyle.text }}>{instructorRating}</div>
+                      <div className="rating-max">/10</div>
+                      <div className="rating-label-small">{instructorStyle.label}</div>
+                    </div>
+                    <div className="rating-item" style={{ backgroundColor: avgStyle.bg }}>
+                      <div className="rating-label">📊 Average</div>
+                      <div className="rating-value" style={{ color: avgStyle.text }}>{avgRating}</div>
+                      <div className="rating-max">/10</div>
+                      <div className="rating-label-small">{avgStyle.label}</div>
+                    </div>
+                  </div>
+
+                  {rating.comments && (
+                    <div className="comments-section">
+                      <div className="comments-label">💬 Your Feedback</div>
+                      <div className="comments-text">"{rating.comments}"</div>
+                    </div>
+                  )}
+
+                  <div className="rating-actions">
+                    <button 
+                      className={`action-btn pin-btn ${rating.isPinned ? 'active' : ''}`}
+                      onClick={() => handlePin(rating.id, rating.isPinned)}
+                      title={rating.isPinned ? 'Unpin' : 'Pin'}
+                    >
+                      📌
+                    </button>
+                    <button className="action-btn edit-btn" onClick={() => openEditModal(rating)}>✏️</button>
+                    <button className="action-btn delete-btn" onClick={() => { setSelectedRating(rating); setShowDeleteModal(true); }}>🗑️</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {showDeleteModal && selectedRating && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>✏️ Edit Rating</h3>
-              <button className="modal-close" onClick={() => setEditModalOpen(false)}>✕</button>
+              <div className="modal-title">🗑️ Delete Rating</div>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
             </div>
             <div className="modal-body">
-              <div className="modal-course-info">
-                <strong>{editingRating.courseName}</strong>
+              <div className="delete-warning">
+                <div className="delete-icon">⚠️</div>
+                <div className="delete-text">Are you sure you want to delete your rating for</div>
+                <div className="delete-course">{selectedRating.courseName}</div>
+                <div className="delete-sub">This action cannot be undone.</div>
+              </div>
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+                <button className="delete-btn" onClick={handleDelete}>Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && editingRating && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-content edit-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">✏️ Edit Rating</div>
+              <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="edit-course-name">{editingRating.courseName}</div>
+              
+              <div className="edit-field">
+                <label>Course Rating (1-10)</label>
+                <div className="rating-input-group">
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={editCourseRating || 5}
+                    onChange={(e) => setEditCourseRating(parseInt(e.target.value))}
+                  />
+                  <span className="rating-value-display">{editCourseRating || 5}</span>
+                </div>
               </div>
 
-              <div className="input-group">
-                <label>Instructor Name</label>
-                <input
-                  type="text"
-                  className="modal-input"
-                  value={editInstructor}
-                  onChange={(e) => setEditInstructor(e.target.value)}
-                  placeholder="Instructor name"
-                />
+              <div className="edit-field">
+                <label>Instructor Rating (1-10)</label>
+                <div className="rating-input-group">
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="1"
+                    value={editInstructorRating || 5}
+                    onChange={(e) => setEditInstructorRating(parseInt(e.target.value))}
+                  />
+                  <span className="rating-value-display">{editInstructorRating || 5}</span>
+                </div>
               </div>
 
-              <div className="input-group">
-                <label>Course Rating</label>
-                <div className="nps-grid">
-                  {NPS_SCALE.map(n => {
-                    const colors = getNpsColor(n);
-                    const isSelected = editCourseRating === n;
-                    return (
-                      <button
-                        key={n}
-                        className={`nps-btn ${isSelected ? 'selected' : ''}`}
-                        style={{
-                          backgroundColor: isSelected ? colors.activeBg : colors.bg,
-                          borderColor: colors.border
-                        }}
-                        onClick={() => setEditCourseRating(n)}
-                      >
-                        <span style={{ color: isSelected ? '#fff' : colors.text }}>{n}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="nps-labels">
-                  <span>Poor</span>
-                  <span>Excellent</span>
-                </div>
-                {editCourseRating !== null && (
-                  <div className="nps-result">{getNpsLabel(editCourseRating)}</div>
-                )}
-              </div>
-
-              <div className="input-group">
-                <label>Instructor Rating</label>
-                <div className="nps-grid">
-                  {NPS_SCALE.map(n => {
-                    const colors = getNpsColor(n);
-                    const isSelected = editInstructorRating === n;
-                    return (
-                      <button
-                        key={n}
-                        className={`nps-btn ${isSelected ? 'selected' : ''}`}
-                        style={{
-                          backgroundColor: isSelected ? colors.activeBg : colors.bg,
-                          borderColor: colors.border
-                        }}
-                        onClick={() => setEditInstructorRating(n)}
-                      >
-                        <span style={{ color: isSelected ? '#fff' : colors.text }}>{n}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="nps-labels">
-                  <span>Poor</span>
-                  <span>Excellent</span>
-                </div>
-                {editInstructorRating !== null && (
-                  <div className="nps-result">{getNpsLabel(editInstructorRating)}</div>
-                )}
-              </div>
-
-              <div className="input-group">
+              <div className="edit-field">
                 <label>Comments (optional)</label>
                 <textarea
-                  className="modal-textarea"
                   value={editComments}
                   onChange={(e) => setEditComments(e.target.value)}
                   placeholder="Share your feedback..."
@@ -351,11 +380,9 @@ export default function MyRatings({ onBack }) {
                 />
               </div>
 
-              <div className="modal-buttons">
-                <button className="cancel-btn" onClick={() => setEditModalOpen(false)}>Cancel</button>
-                <button className="save-btn" onClick={handleUpdate} disabled={submitting}>
-                  {submitting ? 'Saving...' : 'Save Changes'}
-                </button>
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setShowEditModal(false)}>Cancel</button>
+                <button className="save-btn" onClick={handleEdit}>Save Changes</button>
               </div>
             </div>
           </div>
