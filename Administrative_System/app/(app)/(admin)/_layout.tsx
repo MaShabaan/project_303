@@ -149,10 +149,7 @@ export default function AdminLayout() {
       <Stack.Screen name="users" />
       <Stack.Screen name="approvals" />
       <Stack.Screen name="statistics" options={{ title: "Statistics" }} />
-      <Stack.Screen
-        name="../ai-assistant"
-        options={{ title: "AI Assistant" }}
-      />
+      <Stack.Screen name="ai-assistant" options={{ title: "AI Assistant" }} />
     </Stack>
   );
 }

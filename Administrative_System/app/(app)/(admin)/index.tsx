@@ -1,5 +1,3 @@
-// app/(app)/(admin)/dashboard.tsx
-
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
@@ -132,6 +130,7 @@ export default function AdminDashboardScreen() {
     { icon: '📝', title: 'Enrollments', sub: 'Assign courses', bg: '#f0fdf4', border: '#bbf7d0', route: './enrollments' as const },
     { icon: '⭐', title: 'Feedback', sub: 'View ratings', bg: '#eff6ff', border: '#bfdbfe', route: './feedback' as const },
     { icon: '📊', title: 'Statistics', sub: 'View analytics', bg: '#f5f3ff', border: '#c4b5fd', route: './statistics' as const },
+    { icon: '🤖', title: 'AI Assistant', sub: 'Chat with AI', bg: '#f5f3ff', border: '#e9d5ff', route: './ai-assistant' as const },
   ];
 
   return (
