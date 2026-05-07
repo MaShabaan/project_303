@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc, Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
@@ -58,19 +56,28 @@ export default function RateCourse({ onBack }) {
       const enrollmentRef = doc(db, 'enrollments', user.uid);
       const enrollmentSnap = await getDoc(enrollmentRef);
       
-      let enrolledCourseIds = [];
+      let enrolledCourses = [];
       if (enrollmentSnap.exists()) {
-        enrolledCourseIds = enrollmentSnap.data().courseIds || [];
+        const data = enrollmentSnap.data();
+   
+        if (data.courses && Array.isArray(data.courses)) {
+          enrolledCourses = data.courses;
+        } 
+    
+        else if (data.courseIds && Array.isArray(data.courseIds)) {
+          enrolledCourses = data.courseIds.map(courseId => ({ courseId }));
+        }
       }
       
-      if (enrolledCourseIds.length === 0) {
+      if (enrolledCourses.length === 0) {
         setAvailableCourses([]);
         setLoadingCourses(false);
         return;
       }
       
       const coursesList = [];
-      for (const courseId of enrolledCourseIds) {
+      for (const enrolled of enrolledCourses) {
+        const courseId = enrolled.courseId;
         const courseRef = doc(db, 'courses', courseId);
         const courseSnap = await getDoc(courseRef);
         if (courseSnap.exists()) {

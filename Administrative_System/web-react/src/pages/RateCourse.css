@@ -27,7 +27,6 @@
   font-family: var(--font-body);
 }
 
-/* Top Bar */
 .rate-course-topbar {
   background: var(--navy);
   height: 60px;
@@ -71,14 +70,14 @@
   color: #c4b5fd;
 }
 
-/* Body */
+
 .rate-course-body {
   max-width: 800px;
   margin: 0 auto;
   padding: clamp(16px, 2.5vw, 28px) clamp(16px, 4vw, 36px) 60px;
 }
 
-/* Steps */
+
 .rate-course-steps {
   display: flex;
   align-items: center;
@@ -127,7 +126,7 @@
   background: var(--purple);
 }
 
-/* Info Card */
+
 .rate-course-info-card {
   background: linear-gradient(135deg, var(--purple-lt) 0%, var(--bg) 100%);
   border-radius: var(--radius-md);
@@ -142,7 +141,7 @@
   line-height: 1.5;
 }
 
-/* Cards */
+
 .rate-course-card {
   background: var(--surface);
   border-radius: var(--radius-md);
@@ -162,7 +161,6 @@
   text-transform: uppercase;
 }
 
-/* Course List */
 .course-list {
   display: flex;
   flex-direction: column;
@@ -252,7 +250,7 @@
   font-weight: 600;
 }
 
-/* Form Input */
+
 .form-input {
   width: 100%;
   padding: 12px 16px;
@@ -290,7 +288,7 @@
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
 }
 
-/* Step Title */
+
 .step-title {
   font-size: 18px;
   font-weight: 800;
@@ -309,7 +307,7 @@
   color: var(--purple);
 }
 
-/* NPS Grid */
+
 .nps-grid {
   display: flex;
   flex-wrap: wrap;
@@ -350,7 +348,6 @@
   color: var(--purple);
 }
 
-/* Summary Card */
 .summary-card {
   background: linear-gradient(135deg, var(--navy) 0%, #2d2a5e 100%);
   border-radius: var(--radius-md);
@@ -422,7 +419,7 @@
   margin: 0 16px;
 }
 
-/* Navigation */
+
 .nav-row {
   margin-top: 8px;
 }
@@ -452,7 +449,7 @@
   transform: none;
 }
 
-/* Empty State */
+
 .empty-courses {
   text-align: center;
   padding: 40px 20px;
@@ -481,7 +478,7 @@
   color: var(--muted);
 }
 
-/* Dark Mode */
+
 .dark-mode .rate-course-page {
   background: #0f0f1a;
 }
@@ -516,7 +513,7 @@
 }
 
 .dark-mode .rate-course-info-card {
-  background: linear-gradient(135deg, #2d2d44 0%, #1a1a2e 100%);
+  background: linear-gradient(135deg, #e1e1e7 0%, #e6e6e7 100%);
 }
 
 .dark-mode .empty-text {
@@ -534,7 +531,7 @@
   color: #fff;
 }
 
-/* Responsive */
+
 @media (max-width: 640px) {
   .rate-course-body {
     padding: 16px;
@@ -565,4 +562,25 @@
   .course-name {
     flex: 1;
   }
+}
+
+.dark-mode .next-btn {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.dark-mode .next-btn:hover {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  transform: translateY(-1px);
+}
+
+.dark-mode .next-btn:active {
+  transform: scale(0.98);
+}
+
+.dark-mode .next-btn:disabled {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+  opacity: 0.6;
+  cursor: not-allowed;
 }

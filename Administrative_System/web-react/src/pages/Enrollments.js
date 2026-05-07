@@ -1,11 +1,9 @@
-
-
 import React, { useState, useEffect } from 'react';
 import {
   collection, getDocs, doc, getDoc,
   updateDoc, setDoc, Timestamp, query, where,
 } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { db, getGroupsByCourse } from '../services/firebase';
 import './Enrollments.css';
 
 const DIVISION_LABEL = {
@@ -19,22 +17,32 @@ export default function Enrollments({ user, onBack }) {
   const [loading, setLoading]               = useState(true);
   const [selectedId, setSelectedId]         = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [selectedCourses, setSelectedCourses] = useState(new Set());
+  const [selectedEnrollments, setSelectedEnrollments] = useState({});
   const [saving, setSaving]                 = useState(false);
   const [search, setSearch]                 = useState('');
+  const [groupsCache, setGroupsCache]       = useState({});
+  const [loadingGroups, setLoadingGroups]   = useState({});
   
-  // Requests state
-  const [requests, setRequests]             = useState([]);
-  const [showRequests, setShowRequests]     = useState(false);
-  const [processingRequest, setProcessingRequest] = useState(false);
-
-  // Warning modal state
-  const [warnModal, setWarnModal]           = useState(false);
-  const [warnedCourse, setWarnedCourse]     = useState(null);
+  const [filterYear, setFilterYear]         = useState('all');
+  const [filterTerm, setFilterTerm]         = useState('all');
+  const [filterDivision, setFilterDivision] = useState('all');
+  
+  const [transferRequests, setTransferRequests] = useState([]);
+  const [showTransferRequests, setShowTransferRequests] = useState(false);
+  const [processingTransfer, setProcessingTransfer] = useState(false);
+  
+  const [enrollmentRequests, setEnrollmentRequests] = useState([]);
+  const [showEnrollmentRequests, setShowEnrollmentRequests] = useState(false);
+  const [processingEnrollmentRequest, setProcessingEnrollmentRequest] = useState(false);
+  
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [currentCourseForGroup, setCurrentCourseForGroup] = useState(null);
+  const [tempGroupSelection, setTempGroupSelection] = useState(null);
 
   useEffect(() => { 
     loadData(); 
-    loadRequests();
+    loadTransferRequests();
+    loadEnrollmentRequests();
   }, []);
 
   useEffect(() => {
@@ -58,14 +66,25 @@ export default function Enrollments({ user, onBack }) {
     finally { setLoading(false); }
   };
 
-  const loadRequests = async () => {
+  const loadTransferRequests = async () => {
+    try {
+      const q = query(collection(db, 'transferRequests'), where('status', '==', 'pending'));
+      const snapshot = await getDocs(q);
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setTransferRequests(list);
+    } catch (error) {
+      console.error('Error loading transfer requests:', error);
+    }
+  };
+
+  const loadEnrollmentRequests = async () => {
     try {
       const q = query(collection(db, 'enrollmentRequests'), where('status', '==', 'pending'));
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRequests(list);
+      setEnrollmentRequests(list);
     } catch (error) {
-      console.error('Error loading requests:', error);
+      console.error('Error loading enrollment requests:', error);
     }
   };
 
@@ -74,48 +93,65 @@ export default function Enrollments({ user, onBack }) {
     setSelectedStudent(student);
     try {
       const snap = await getDoc(doc(db, 'enrollments', studentId));
-      setSelectedCourses(new Set(snap.exists() ? snap.data().courseIds || [] : []));
-    } catch { setSelectedCourses(new Set()); }
+      if (snap.exists()) {
+        const data = snap.data();
+        const enrollmentsMap = {};
+        if (data.courses && Array.isArray(data.courses)) {
+          data.courses.forEach(c => {
+            enrollmentsMap[c.courseId] = c.groupId;
+          });
+        } else if (data.courseIds && Array.isArray(data.courseIds)) {
+          data.courseIds.forEach(courseId => {
+            enrollmentsMap[courseId] = null;
+          });
+        }
+        setSelectedEnrollments(enrollmentsMap);
+      } else {
+        setSelectedEnrollments({});
+      }
+    } catch { 
+      setSelectedEnrollments({});
+    }
   };
 
-  const toggleCourse = (course) => {
-    if (selectedCourses.has(course.id)) {
-      setSelectedCourses(prev => {
-        const next = new Set(prev);
-        next.delete(course.id);
-        return next;
-      });
-      return;
+  const loadGroupsForCourse = async (courseId) => {
+    if (groupsCache[courseId]) return;
+    setLoadingGroups(prev => ({ ...prev, [courseId]: true }));
+    try {
+      const groupsList = await getGroupsByCourse(courseId);
+      setGroupsCache(prev => ({ ...prev, [courseId]: groupsList }));
+    } catch (error) {
+      console.error('Error loading groups:', error);
+    } finally {
+      setLoadingGroups(prev => ({ ...prev, [courseId]: false }));
     }
-
-    const studentDivision = selectedStudent?.division;
-
-    if (
-      studentDivision &&
-      course.division &&
-      course.division !== studentDivision
-    ) {
-      setWarnedCourse(course);
-      setWarnModal(true);
-      return;
-    }
-
-    setSelectedCourses(prev => {
-      const next = new Set(prev);
-      next.add(course.id);
-      return next;
-    });
   };
 
-  const forceEnroll = () => {
-    if (!warnedCourse) return;
-    setSelectedCourses(prev => {
-      const next = new Set(prev);
-      next.add(warnedCourse.id);
-      return next;
+  const openGroupSelector = (course) => {
+    setCurrentCourseForGroup(course);
+    setTempGroupSelection(selectedEnrollments[course.id] || null);
+    loadGroupsForCourse(course.id);
+    setGroupModalOpen(true);
+  };
+
+  const confirmGroupSelection = () => {
+    if (currentCourseForGroup) {
+      setSelectedEnrollments(prev => ({
+        ...prev,
+        [currentCourseForGroup.id]: tempGroupSelection
+      }));
+    }
+    setGroupModalOpen(false);
+    setCurrentCourseForGroup(null);
+    setTempGroupSelection(null);
+  };
+
+  const removeEnrollment = (courseId) => {
+    setSelectedEnrollments(prev => {
+      const newEnrollments = { ...prev };
+      delete newEnrollments[courseId];
+      return newEnrollments;
     });
-    setWarnModal(false);
-    setWarnedCourse(null);
   };
 
   const saveEnrollment = async () => {
@@ -124,56 +160,171 @@ export default function Enrollments({ user, onBack }) {
     try {
       const now = Timestamp.now();
       const ref = doc(db, 'enrollments', selectedId);
-      const snap = await getDoc(ref);
+      
+      const coursesArray = [];
+      
+      for (const [courseId, groupId] of Object.entries(selectedEnrollments)) {
+        if (!groupId) continue;
+        
+        const course = courses.find(c => c.id === courseId);
+        if (!course) continue;
+        
+        let group = null;
+        if (groupsCache[courseId]) {
+          group = groupsCache[courseId].find(g => g.id === groupId);
+        } else {
+          const courseGroups = await getGroupsByCourse(courseId);
+          group = courseGroups.find(g => g.id === groupId);
+        }
+        
+        coursesArray.push({
+          courseId: course.id,
+          courseName: course.courseName,
+          courseCode: course.courseCode || '',
+          year: course.year,
+          term: course.term,
+          division: course.division,
+          groupId: group?.id,
+          groupName: group?.groupName,
+          day: group?.day,
+          time: group?.time,
+          room: group?.room,
+          maxStudents: group?.maxStudents,
+          enrolledAt: now,
+        });
+      }
+      
       const data = {
-        userId:      selectedId,
-        userEmail:   selectedStudent?.email || null,
-        courseIds:   Array.from(selectedCourses),
-        division:    selectedStudent?.division || 'computer_science',
+        userId: selectedId,
+        userEmail: selectedStudent?.email || null,
+        userName: selectedStudent?.displayName || selectedStudent?.fullName || selectedStudent?.email?.split('@')[0],
+        courses: coursesArray,
+        division: selectedStudent?.division || 'computer_science',
         academicYear: selectedStudent?.academicYear || 2,
-        term:        selectedStudent?.currentTerm || 1,
-        submitted:   true,
+        term: selectedStudent?.currentTerm || 1,
+        submitted: true,
         submittedAt: now,
-        updatedAt:   now,
+        updatedAt: now,
       };
-      snap.exists()
-        ? await updateDoc(ref, data)
-        : await setDoc(ref, { ...data, createdAt: now });
-      alert('Enrollment saved successfully!');
+      
+      const existingSnap = await getDoc(ref);
+      if (!existingSnap.exists()) {
+        data.createdAt = now;
+      }
+      
+      await setDoc(ref, data, { merge: true });
+      alert(`✅ Successfully enrolled ${coursesArray.length} course(s) for ${selectedStudent?.email}`);
+      
+      await loadEnrollment(selectedId);
+      
     } catch (e) {
-      console.error(e);
-      alert('Failed to save enrollment');
-    } finally { setSaving(false); }
+      console.error('Error saving enrollment:', e);
+      alert('❌ Failed to save enrollment: ' + e.message);
+    } finally { 
+      setSaving(false); 
+    }
   };
 
-  const handleRequest = async (requestId, studentId, requestedCourses, action) => {
-    setProcessingRequest(true);
+  const handleTransferRequest = async (requestId, studentId, courseId, newGroupId, action) => {
+    setProcessingTransfer(true);
     const now = Timestamp.now();
     try {
       if (action === 'approve') {
         const enrollmentRef = doc(db, 'enrollments', studentId);
         const enrollmentSnap = await getDoc(enrollmentRef);
-        const currentCourses = enrollmentSnap.exists() ? enrollmentSnap.data().courseIds || [] : [];
-        const newCourses = [...new Set([...currentCourses, ...requestedCourses])];
+        
+        if (enrollmentSnap.exists()) {
+          const currentCourses = enrollmentSnap.data().courses || [];
+          const updatedCourses = currentCourses.map(c => 
+            c.courseId === courseId ? { ...c, groupId: newGroupId, updatedAt: now } : c
+          );
+          
+          await updateDoc(enrollmentRef, { 
+            courses: updatedCourses,
+            updatedAt: now 
+          });
+        }
+        
+        await updateDoc(doc(db, 'transferRequests', requestId), {
+          status: 'approved',
+          processedAt: now,
+          processedBy: user?.email,
+        });
+        
+        alert('Transfer request approved!');
+        await loadEnrollment(studentId);
+        await loadTransferRequests();
+        
+      } else if (action === 'reject') {
+        await updateDoc(doc(db, 'transferRequests', requestId), {
+          status: 'rejected',
+          processedAt: now,
+          processedBy: user?.email,
+        });
+        alert('Transfer request rejected');
+        await loadTransferRequests();
+      }
+    } catch (error) {
+      console.error('Error processing transfer:', error);
+      alert('Failed to process request');
+    } finally {
+      setProcessingTransfer(false);
+    }
+  };
+
+  const handleEnrollmentRequest = async (requestId, studentId, requestData, action) => {
+    setProcessingEnrollmentRequest(true);
+    const now = Timestamp.now();
+    try {
+      if (action === 'approve') {
+        const enrollmentRef = doc(db, 'enrollments', studentId);
+        const enrollmentSnap = await getDoc(enrollmentRef);
+        
+        let currentCourses = [];
+        if (enrollmentSnap.exists()) {
+          currentCourses = enrollmentSnap.data().courses || [];
+        }
+        
+        // Get course details from requestData
+        const courseId = requestData.courseId;
+        if (courseId) {
+          const course = courses.find(c => c.id === courseId);
+          
+          // Check if course already exists
+          const existingCourseIds = new Set(currentCourses.map(c => c.courseId));
+          
+          if (!existingCourseIds.has(courseId)) {
+            const newCourse = {
+              courseId: courseId,
+              courseName: course?.courseName || requestData.courseName || 'Course',
+              courseCode: course?.courseCode || '',
+              year: course?.year || requestData.courseYear || 2,
+              term: course?.term || requestData.term || 1,
+              division: course?.division,
+              groupId: null,
+              groupName: null,
+              day: null,
+              time: null,
+              room: null,
+              enrolledAt: now,
+            };
+            
+            currentCourses.push(newCourse);
+          }
+        }
         
         const data = {
           userId: studentId,
-          userEmail: selectedStudent?.email || null,
-          courseIds: newCourses,
-          division: selectedStudent?.division || 'computer_science',
-          academicYear: selectedStudent?.academicYear || 2,
-          term: selectedStudent?.currentTerm || 1,
-          submitted: true,
-          submittedAt: now,
+          courses: currentCourses,
           updatedAt: now,
         };
         
         if (!enrollmentSnap.exists()) {
           data.createdAt = now;
-          await setDoc(enrollmentRef, data);
-        } else {
-          await updateDoc(enrollmentRef, data);
+          data.userEmail = requestData.userEmail || (await getDoc(doc(db, 'users', studentId))).data()?.email;
         }
+        
+        await setDoc(enrollmentRef, data, { merge: true });
         
         await updateDoc(doc(db, 'enrollmentRequests', requestId), {
           status: 'approved',
@@ -181,12 +332,9 @@ export default function Enrollments({ user, onBack }) {
           processedBy: user?.email,
         });
         
-        alert('Request approved and enrollment updated!');
-        
-        if (selectedId === studentId) {
-          await loadEnrollment(studentId);
-        }
-        await loadRequests();
+        alert('✅ Request approved!');
+        await loadEnrollment(studentId);
+        await loadEnrollmentRequests();
         
       } else if (action === 'reject') {
         await updateDoc(doc(db, 'enrollmentRequests', requestId), {
@@ -194,21 +342,39 @@ export default function Enrollments({ user, onBack }) {
           processedAt: now,
           processedBy: user?.email,
         });
-        alert('Request rejected');
-        await loadRequests();
+        alert('❌ Request rejected');
+        await loadEnrollmentRequests();
       }
     } catch (error) {
-      console.error('Error processing request:', error);
+      console.error('Error processing enrollment request:', error);
       alert('Failed to process request');
     } finally {
-      setProcessingRequest(false);
+      setProcessingEnrollmentRequest(false);
     }
   };
 
-  const filtered = students.filter(s =>
-    s.email.toLowerCase().includes(search.toLowerCase()) ||
-    (s.displayName || s.fullName || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const getFilteredStudents = () => {
+    let result = [...students];
+    
+    if (filterYear !== 'all') {
+      result = result.filter(s => String(s.academicYear) === String(filterYear));
+    }
+    if (filterTerm !== 'all') {
+      result = result.filter(s => String(s.currentTerm) === String(filterTerm));
+    }
+    if (filterDivision !== 'all') {
+      result = result.filter(s => s.division === filterDivision);
+    }
+    if (search) {
+      result = result.filter(s => 
+        (s.email || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.displayName || s.fullName || '').toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    return result;
+  };
+
+  const filteredStudents = getFilteredStudents();
 
   const studentLabel = selectedStudent
     ? (selectedStudent.displayName || selectedStudent.fullName || selectedStudent.email?.split('@')[0])
@@ -216,40 +382,219 @@ export default function Enrollments({ user, onBack }) {
 
   const studentDiv = selectedStudent?.division;
   const studentDivInfo = studentDiv ? DIVISION_LABEL[studentDiv] : null;
-  const studentYear = selectedStudent?.academicYear || 2;
-  const studentTerm = selectedStudent?.currentTerm || 1;
 
-  const matchingCourses = courses.filter(c => !studentDiv || c.division === studentDiv);
-  const otherCourses    = courses.filter(c => studentDiv && c.division !== studentDiv);
+  const getOrganizedCourses = () => {
+    if (!selectedStudent) return { sameLevelCourses: [], lowerLevelCourses: [] };
+    
+    const studentYear = selectedStudent.academicYear || 2;
+    const studentTerm = selectedStudent.currentTerm || 1;
+    
+    const allCourses = courses.filter(c => 
+      c.term === studentTerm &&
+      c.year <= studentYear
+    );
+    
+    const sameLevelCourses = allCourses.filter(c => c.year === studentYear);
+    const lowerLevelCourses = allCourses.filter(c => c.year < studentYear).sort((a, b) => b.year - a.year);
+    
+    return { sameLevelCourses, lowerLevelCourses };
+  };
+
+  const { sameLevelCourses, lowerLevelCourses } = getOrganizedCourses();
+
+  const stats = {
+    total: filteredStudents.length,
+    cs: filteredStudents.filter(s => s.division === 'computer_science').length,
+    math: filteredStudents.filter(s => s.division === 'special_mathematics').length,
+  };
+
+  const renderCoursesSection = (coursesList, title, icon, isCurrentLevel = true) => {
+    if (coursesList.length === 0) return null;
+    
+    const groupedByYear = {};
+    coursesList.forEach(course => {
+      if (!groupedByYear[course.year]) {
+        groupedByYear[course.year] = [];
+      }
+      groupedByYear[course.year].push(course);
+    });
+    
+    return (
+      <div className="year-group">
+        <div className={`year-group-header ${isCurrentLevel ? 'current-year' : 'lower-year'}`}>
+          <span className="year-icon">{icon}</span>
+          <span className="year-title">{title}</span>
+          <span className="year-badge">{isCurrentLevel ? 'Current Level' : 'Lower Level'}</span>
+        </div>
+        
+        {Object.keys(groupedByYear)
+          .sort((a, b) => parseInt(b) - parseInt(a))
+          .map(year => (
+            <div key={year} className="sub-year-group">
+              <div className="sub-year-header">
+                <span className="sub-year-title">Year {year}</span>
+              </div>
+              <div className="courses-year-group">
+                {groupedByYear[year].map(course => {
+                  const isEnrolled = selectedEnrollments.hasOwnProperty(course.id);
+                  const selectedGroupId = selectedEnrollments[course.id];
+                  const courseGroups = groupsCache[course.id] || [];
+                  const selectedGroup = courseGroups.find(g => g.id === selectedGroupId);
+                  const isSameDivision = course.division === studentDiv;
+                  const otherDivInfo = course.division ? DIVISION_LABEL[course.division] : null;
+                  
+                  return (
+                    <div 
+                      key={course.id} 
+                      className={`course-row ${isEnrolled ? 'is-enrolled' : ''} ${!isSameDivision ? 'course-row-other-division' : ''}`}
+                    >
+                      <div className="course-info-section">
+                        <div className="course-name">
+                          {course.courseName}
+                          {!isSameDivision && otherDivInfo && (
+                            <span className="other-division-badge">
+                              ⚠️ {otherDivInfo.icon} {otherDivInfo.label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="course-meta">
+                          {course.courseCode && <span className="course-tag">{course.courseCode}</span>}
+                          <span>Year {course.year}</span>
+                          <span>Term {course.term}</span>
+                        </div>
+                        {isEnrolled && selectedGroup && (
+                          <div className="enrolled-group-badge">
+                            📅 Currently in: {selectedGroup.groupName} · {selectedGroup.day} {selectedGroup.time} · Room {selectedGroup.room}
+                          </div>
+                        )}
+                        {!isEnrolled && courseGroups.length > 0 && (
+                          <div className="available-groups-hint">
+                            📋 Available groups: {courseGroups.map(g => g.groupName).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="course-actions-section">
+                        {!isEnrolled ? (
+                          <button 
+                            className="enroll-btn"
+                            onClick={() => openGroupSelector(course)}
+                          >
+                            + Enroll
+                          </button>
+                        ) : (
+                          <div className="enrolled-actions">
+                            <button 
+                              className="change-group-btn"
+                              onClick={() => openGroupSelector(course)}
+                            >
+                              🔄 Change Group
+                            </button>
+                            <button 
+                              className="remove-btn"
+                              onClick={() => removeEnrollment(course.id)}
+                            >
+                              ✖ Remove
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
+  const totalRequests = transferRequests.length + enrollmentRequests.length;
 
   return (
     <div className="enroll-page">
 
-      {/* Top Bar */}
       <div className="enroll-topbar">
         <button className="enroll-back-btn" onClick={onBack}>← Back</button>
         <span className="enroll-topbar-title">📝 Course Enrollment Management</span>
-        {requests.length > 0 && (
-          <button className="requests-badge" onClick={() => setShowRequests(true)}>
-            📢 {requests.length} Pending Request{requests.length > 1 ? 's' : ''}
+        {totalRequests > 0 && (
+          <button className="requests-badge" onClick={() => setShowEnrollmentRequests(true)}>
+            📢 {totalRequests} Pending Request{totalRequests > 1 ? 's' : ''}
           </button>
         )}
       </div>
 
-      {/* Body */}
       <div className="enroll-body">
 
-        {/* ── Students Panel ── */}
+        {/* Students Panel */}
         <div className="panel panel-students">
           <div className="panel-head">
             <div className="panel-head-row">
               <span className="panel-head-title">👨‍🎓 Students</span>
-              <span className="panel-count">{filtered.length}</span>
+              <span className="panel-count">{filteredStudents.length} / {students.length}</span>
             </div>
+            
+            <div className="student-filters">
+              <div className="filter-row">
+                <select 
+                  className="filter-select"
+                  value={filterYear}
+                  onChange={(e) => setFilterYear(e.target.value)}
+                >
+                  <option value="all">🎓 All Years</option>
+                  <option value="2">🎓 Year 2</option>
+                  <option value="3">🎓 Year 3</option>
+                  <option value="4">🎓 Year 4</option>
+                </select>
+                
+                <select 
+                  className="filter-select"
+                  value={filterTerm}
+                  onChange={(e) => setFilterTerm(e.target.value)}
+                >
+                  <option value="all">📅 All Terms</option>
+                  <option value="1">📅 Term 1</option>
+                  <option value="2">📅 Term 2</option>
+                </select>
+                
+                <select 
+                  className="filter-select"
+                  value={filterDivision}
+                  onChange={(e) => setFilterDivision(e.target.value)}
+                >
+                  <option value="all">📚 All Divisions</option>
+                  <option value="computer_science">💻 Computer Science</option>
+                  <option value="special_mathematics">📐 Special Mathematics</option>
+                </select>
+              </div>
+              
+              <div className="filter-stats-row">
+                <div className="filter-stats">
+                  <span className="stat-badge">📊 Total: {stats.total}</span>
+                  <span className="stat-badge cs">💻 CS: {stats.cs}</span>
+                  <span className="stat-badge math">📐 Math: {stats.math}</span>
+                </div>
+                
+                {(filterYear !== 'all' || filterTerm !== 'all' || filterDivision !== 'all' || search) && (
+                  <button 
+                    className="clear-filters-btn"
+                    onClick={() => {
+                      setFilterYear('all');
+                      setFilterTerm('all');
+                      setFilterDivision('all');
+                      setSearch('');
+                    }}
+                  >
+                    ✖ Clear Filters
+                  </button>
+                )}
+              </div>
+            </div>
+            
             <input
               className="panel-search"
               type="text"
-              placeholder="Search students..."
+              placeholder="🔍 Search by name or email..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -261,44 +606,46 @@ export default function Enrollments({ user, onBack }) {
                 <div className="spinner" />
                 <div className="panel-empty-text">Loading...</div>
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filteredStudents.length === 0 ? (
               <div className="panel-empty">
                 <div className="panel-empty-icon">🔍</div>
                 <div className="panel-empty-text">No students found</div>
               </div>
-            ) : filtered.map(s => {
-              const divInfo = s.division ? DIVISION_LABEL[s.division] : null;
-              return (
-                <div
-                  key={s.id}
-                  className={`student-row ${selectedId === s.id ? 'is-selected' : ''}`}
-                  onClick={() => setSelectedId(s.id)}
-                >
-                  <div className="student-avatar">
-                    {(s.displayName || s.fullName || s.email).charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="student-name">{s.displayName || s.fullName || 'No Name'}</div>
-                    <div className="student-email">{s.email}</div>
-                    <div className="student-info-row">
-                      {divInfo && (
-                        <span className="student-div-tag" style={{ color: divInfo.color }}>
-                          {divInfo.icon} {divInfo.label}
-                        </span>
-                      )}
-                      <span className="student-year-term">
-                        📅 Year {s.academicYear || 2} · Term {s.currentTerm || 1}
-                      </span>
+            ) : (
+              filteredStudents.map(s => {
+                const divInfo = s.division ? DIVISION_LABEL[s.division] : null;
+                return (
+                  <div
+                    key={s.id}
+                    className={`student-row ${selectedId === s.id ? 'is-selected' : ''}`}
+                    onClick={() => setSelectedId(s.id)}
+                  >
+                    <div className="student-avatar">
+                      {(s.displayName || s.fullName || s.email || 'U').charAt(0).toUpperCase()}
                     </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="student-name">{s.displayName || s.fullName || 'No Name'}</div>
+                      <div className="student-email">{s.email}</div>
+                      <div className="student-info-row">
+                        {divInfo && (
+                          <span className="student-div-tag" style={{ color: divInfo.color }}>
+                            {divInfo.icon} {divInfo.label}
+                          </span>
+                        )}
+                        <span className="student-year-term">
+                          📅 Year {s.academicYear || 2} · Term {s.currentTerm || 1}
+                        </span>
+                      </div>
+                    </div>
+                    {selectedId === s.id && <span className="student-check">✓</span>}
                   </div>
-                  {selectedId === s.id && <span className="student-check">✓</span>}
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
 
-        {/* ── Courses Panel ── */}
+        {/* Courses Panel */}
         <div className="panel panel-courses">
           {!selectedId ? (
             <div className="panel-empty">
@@ -311,99 +658,46 @@ export default function Enrollments({ user, onBack }) {
             <>
               <div className="panel-head">
                 <div className="panel-head-row">
-                  <span className="panel-head-title">📚 Courses for {studentLabel}</span>
-                  <span className="panel-count">{selectedCourses.size} selected</span>
+                  <span className="panel-head-title">
+                    📚 Courses for {studentLabel}
+                  </span>
+                  <span className="panel-count">{Object.keys(selectedEnrollments).length} enrolled</span>
                 </div>
+
                 <div className="student-info-banner">
+                  <span className="student-badge">
+                    🎓 Student: {studentLabel}
+                  </span>
                   <span className="student-badge">
                     {studentDivInfo?.icon} {studentDivInfo?.label}
                   </span>
                   <span className="student-badge">
-                    📅 Year {studentYear} · Term {studentTerm}
+                    📅 Current: Year {selectedStudent?.academicYear || 2} · Term {selectedStudent?.currentTerm || 1}
                   </span>
                 </div>
-                {studentDivInfo && (
-                  <div className="student-div-banner" style={{ '--div-color': studentDivInfo.color }}>
-                    <span>{studentDivInfo.icon} {studentDivInfo.label}</span>
-                    <span className="div-banner-note">Courses from other divisions will show a warning</span>
-                  </div>
-                )}
+
+                <div className="division-legend">
+                  <span className="legend-same">✅ Same Division</span>
+                  <span className="legend-other">⚠️ Other Division</span>
+                </div>
               </div>
 
               <div className="courses-scroll">
-
-                {/* Matching division courses */}
-                {matchingCourses.length > 0 && (
-                  <>
-                    {studentDiv && (
-                      <div className="courses-section-label">
-                        {studentDivInfo?.icon} {studentDivInfo?.label} Courses
-                      </div>
-                    )}
-                    {matchingCourses.map(course => {
-                      const sel = selectedCourses.has(course.id);
-                      return (
-                        <div
-                          key={course.id}
-                          className={`course-row ${sel ? 'is-selected' : ''}`}
-                          onClick={() => toggleCourse(course)}
-                        >
-                          <div className="course-checkbox">
-                            <span className="course-checkbox-tick">✓</span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="course-name">{course.courseName || course.name}</div>
-                            <div className="course-meta">
-                              {course.courseCode && <span className="course-tag">{course.courseCode}</span>}
-                              <span>Year {course.year}</span>
-                              <span>Term {course.term}</span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </>
+                {renderCoursesSection(
+                  sameLevelCourses, 
+                  `Same Level · Year ${selectedStudent?.academicYear || 2} · Term ${selectedStudent?.currentTerm || 1}`, 
+                  '🎓', 
+                  true
                 )}
-
-                {/* Other division courses */}
-                {otherCourses.length > 0 && (
-                  <>
-                    <div className="courses-section-label courses-section-other">
-                      ⚠️ Other Division Courses
-                    </div>
-                    {otherCourses.map(course => {
-                      const sel = selectedCourses.has(course.id);
-                      const otherDivInfo = DIVISION_LABEL[course.division];
-                      return (
-                        <div
-                          key={course.id}
-                          className={`course-row course-row-other ${sel ? 'is-selected' : ''}`}
-                          onClick={() => toggleCourse(course)}
-                        >
-                          <div className="course-checkbox">
-                            <span className="course-checkbox-tick">✓</span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div className="course-name">{course.courseName || course.name}</div>
-                            <div className="course-meta">
-                              {course.courseCode && <span className="course-tag">{course.courseCode}</span>}
-                              <span>Year {course.year}</span>
-                              <span>Term {course.term}</span>
-                              {otherDivInfo && (
-                                <span className="course-tag course-tag-other">
-                                  {otherDivInfo.icon} {otherDivInfo.label}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="course-warn-icon" title="Different division">⚠️</div>
-                        </div>
-                      );
-                    })}
-                  </>
+                
+                {renderCoursesSection(
+                  lowerLevelCourses, 
+                  `Lower Levels · Up to Year ${(selectedStudent?.academicYear || 2) - 1} · Term ${selectedStudent?.currentTerm || 1}`, 
+                  '📖', 
+                  false
                 )}
-
-                {courses.length === 0 && (
+                
+                {sameLevelCourses.length === 0 && lowerLevelCourses.length === 0 && (
                   <div className="panel-empty">
                     <div className="panel-empty-icon">📭</div>
                     <div className="panel-empty-text">No courses available</div>
@@ -413,7 +707,7 @@ export default function Enrollments({ user, onBack }) {
 
               <div className="save-bar">
                 <button className="save-btn" onClick={saveEnrollment} disabled={saving}>
-                  {saving ? 'Saving...' : '💾 Save Enrollment'}
+                  {saving ? 'Saving...' : '💾 Save All Changes'}
                 </button>
               </div>
             </>
@@ -421,118 +715,176 @@ export default function Enrollments({ user, onBack }) {
         </div>
       </div>
 
-      {/* Requests Modal */}
-      {showRequests && (
-        <div className="requests-overlay" onClick={() => setShowRequests(false)}>
-          <div className="requests-modal" onClick={e => e.stopPropagation()}>
-            <div className="requests-modal-header">
-              <h3>📢 Enrollment Change Requests</h3>
-              <button className="requests-modal-close" onClick={() => setShowRequests(false)}>✕</button>
+      {/* Enrollment Change Requests Modal */}
+      {showEnrollmentRequests && (
+        <div className="modal-overlay" onClick={() => setShowEnrollmentRequests(false)}>
+          <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">📢 Pending Requests</span>
+              <button className="modal-close" onClick={() => setShowEnrollmentRequests(false)}>✕</button>
             </div>
-            <div className="requests-modal-body">
-              {requests.length === 0 ? (
-                <div className="no-requests">No pending requests</div>
-              ) : (
-                requests.map(req => {
-                  const student = students.find(s => s.id === req.userId);
-                  const requestedCourseNames = req.currentCourses?.map(id => {
-                    const course = courses.find(c => c.id === id);
-                    return course?.courseName || id;
-                  }) || [];
-                  
-                  return (
-                    <div key={req.id} className="request-card">
-                      <div className="request-header">
-                        <div className="request-student">
-                          <strong>{req.userName || student?.displayName || student?.fullName || 'Student'}</strong>
-                          <span className="request-email">{req.userEmail}</span>
+            <div className="modal-body">
+              {/* Transfer Requests Section */}
+              {transferRequests.length > 0 && (
+                <>
+                  <h4 style={{ marginBottom: '12px', color: 'var(--purple)' }}>🔄 Group Transfer Requests ({transferRequests.length})</h4>
+                  {transferRequests.map(req => {
+                    const student = students.find(s => s.id === req.studentId);
+                    const course = courses.find(c => c.id === req.courseId);
+                    const oldGroup = groupsCache[req.courseId]?.find(g => g.id === req.oldGroupId);
+                    const newGroup = groupsCache[req.courseId]?.find(g => g.id === req.newGroupId);
+                    
+                    return (
+                      <div key={req.id} className="transfer-request-card">
+                        <div className="request-header">
+                          <div className="request-student">
+                            <strong>{student?.displayName || student?.fullName || 'Student'}</strong>
+                            <span className="request-email">{student?.email}</span>
+                          </div>
+                          <div className="request-date">
+                            {req.createdAt?.toDate().toLocaleDateString()}
+                          </div>
                         </div>
-                        <div className="request-date">
-                          {req.createdAt?.toDate().toLocaleDateString()}
+                        <div className="request-course">
+                          📚 {course?.courseName}
                         </div>
-                      </div>
-                      <div className="request-details">
-                        <div className="request-info">
-                          <span>Year {req.academicYear} · Term {req.term}</span>
-                          <span>{req.division === 'computer_science' ? '💻 CS' : '📐 Math'}</span>
+                        <div className="request-transfer-details">
+                          <div className="old-group">
+                            From: {oldGroup?.groupName || 'Unknown'} · {oldGroup?.day || ''} {oldGroup?.time || ''}
+                          </div>
+                          <div className="transfer-arrow">→</div>
+                          <div className="new-group">
+                            To: {newGroup?.groupName || 'Unknown'} · {newGroup?.day || ''} {newGroup?.time || ''}
+                          </div>
                         </div>
                         <div className="request-reason">
-                          <strong>Reason:</strong> {req.reason}
+                          <strong>Reason:</strong> {req.reason || 'No reason provided'}
                         </div>
-                        {requestedCourseNames.length > 0 && (
-                          <div className="request-courses">
-                            <strong>Requested changes for:</strong>
-                            <div className="request-courses-list">
-                              {requestedCourseNames.map((name, idx) => (
-                                <span key={idx} className="request-course-tag">{name}</span>
-                              ))}
-                            </div>
+                        <div className="request-actions">
+                          <button 
+                            className="request-reject-btn" 
+                            onClick={() => handleTransferRequest(req.id, req.studentId, req.courseId, req.newGroupId, 'reject')}
+                            disabled={processingTransfer}
+                          >
+                            Reject
+                          </button>
+                          <button 
+                            className="request-approve-btn" 
+                            onClick={() => handleTransferRequest(req.id, req.studentId, req.courseId, req.newGroupId, 'approve')}
+                            disabled={processingTransfer}
+                          >
+                            Approve Transfer
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Enrollment Problem Requests Section */}
+              {enrollmentRequests.length > 0 && (
+                <>
+                  <h4 style={{ marginBottom: '12px', marginTop: transferRequests.length > 0 ? '24px' : '0', color: 'var(--blue)' }}>📝 Problem Reports ({enrollmentRequests.length})</h4>
+                  {enrollmentRequests.map(req => {
+                    const student = students.find(s => s.id === req.userId);
+                    
+                    return (
+                      <div key={req.id} className="transfer-request-card">
+                        <div className="request-header">
+                          <div className="request-student">
+                            <strong>{req.userName || student?.displayName || student?.fullName || 'Student'}</strong>
+                            <span className="request-email">{req.userEmail}</span>
                           </div>
-                        )}
+                          <div className="request-date">
+                            {req.createdAt?.toDate().toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="request-details">
+                          <div className="request-course">
+                            📚 {req.courseName} (Year {req.courseYear})
+                          </div>
+                          <div className="request-reason">
+                            <strong>Problem:</strong> {req.reason}
+                          </div>
+                        </div>
+                        <div className="request-actions">
+                          <button 
+                            className="request-reject-btn" 
+                            onClick={() => handleEnrollmentRequest(req.id, req.userId, req, 'reject')}
+                            disabled={processingEnrollmentRequest}
+                          >
+                            Reject
+                          </button>
+                          <button 
+                            className="request-approve-btn" 
+                            onClick={() => handleEnrollmentRequest(req.id, req.userId, req, 'approve')}
+                            disabled={processingEnrollmentRequest}
+                          >
+                            Approve
+                          </button>
+                        </div>
                       </div>
-                      <div className="request-actions">
-                        <button 
-                          className="request-reject-btn" 
-                          onClick={() => handleRequest(req.id, req.userId, req.currentCourses, 'reject')}
-                          disabled={processingRequest}
-                        >
-                          Reject
-                        </button>
-                        <button 
-                          className="request-approve-btn" 
-                          onClick={() => handleRequest(req.id, req.userId, req.currentCourses, 'approve')}
-                          disabled={processingRequest}
-                        >
-                          Approve & Enroll
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </>
+              )}
+
+              {totalRequests === 0 && (
+                <div className="no-requests">No pending requests</div>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Division Warning Modal */}
-      {warnModal && warnedCourse && (
-        <div className="warn-overlay" onClick={() => { setWarnModal(false); setWarnedCourse(null); }}>
-          <div className="warn-modal" onClick={e => e.stopPropagation()}>
-            <div className="warn-icon-wrap">
-              <div className="warn-icon-circle">⚠️</div>
+      {/* Group Selection Modal */}
+      {groupModalOpen && currentCourseForGroup && (
+        <div className="modal-overlay" onClick={() => setGroupModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">📅 Select Group for {currentCourseForGroup.courseName}</span>
+              <button className="modal-close" onClick={() => setGroupModalOpen(false)}>✕</button>
             </div>
-            <h3 className="warn-title">Division Mismatch</h3>
-            <p className="warn-desc">
-              This course belongs to a different division than the student's.
-            </p>
-            <div className="warn-info-grid">
-              <div className="warn-info-card warn-info-student">
-                <div className="warn-info-label">STUDENT DIVISION</div>
-                <div className="warn-info-value">
-                  {studentDivInfo?.icon} {studentDivInfo?.label || '—'}
+            <div className="modal-body">
+              {loadingGroups[currentCourseForGroup.id] ? (
+                <div className="groups-loading">Loading groups...</div>
+              ) : groupsCache[currentCourseForGroup.id]?.length === 0 ? (
+                <div className="groups-empty">No groups available for this course. Please add groups first in Manage Courses.</div>
+              ) : (
+                <div className="groups-selection-list">
+                  {groupsCache[currentCourseForGroup.id]?.map(group => (
+                    <div
+                      key={group.id}
+                      className={`group-selection-item ${tempGroupSelection === group.id ? 'is-selected' : ''}`}
+                      onClick={() => setTempGroupSelection(group.id)}
+                    >
+                      <div className="group-selection-radio">
+                        {tempGroupSelection === group.id && <span className="radio-dot">●</span>}
+                      </div>
+                      <div className="group-selection-info">
+                        <div className="group-selection-name">{group.groupName}</div>
+                        <div className="group-selection-schedule">
+                          📅 {group.day} · {group.time} · 🏠 {group.room}
+                        </div>
+                        <div className="group-selection-capacity">
+                          👥 Max: {group.maxStudents} students
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="warn-info-arrow">→</div>
-              <div className="warn-info-card warn-info-course">
-                <div className="warn-info-label">COURSE DIVISION</div>
-                <div className="warn-info-value">
-                  {DIVISION_LABEL[warnedCourse.division]?.icon} {DIVISION_LABEL[warnedCourse.division]?.label || '—'}
-                </div>
-              </div>
-            </div>
-            <div className="warn-course-box">
-              <div className="warn-course-name">{warnedCourse.courseName}</div>
-              {warnedCourse.courseCode && (
-                <div className="warn-course-meta">{warnedCourse.courseCode} · Year {warnedCourse.year} · Term {warnedCourse.term}</div>
               )}
-            </div>
-            <p className="warn-question">Do you still want to enroll this student in this course?</p>
-            <div className="warn-actions">
-              <button className="warn-cancel-btn" onClick={() => { setWarnModal(false); setWarnedCourse(null); }}>
-                Cancel
-              </button>
-              <button className="warn-confirm-btn" onClick={forceEnroll}>Enroll Anyway</button>
+              <div className="modal-footer">
+                <button className="cancel-btn" onClick={() => setGroupModalOpen(false)}>Cancel</button>
+                <button 
+                  className="submit-btn" 
+                  onClick={confirmGroupSelection}
+                  disabled={!tempGroupSelection}
+                >
+                  Confirm Selection
+                </button>
+              </div>
             </div>
           </div>
         </div>

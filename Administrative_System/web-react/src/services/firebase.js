@@ -1,8 +1,17 @@
 
-
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, doc, updateDoc } from "firebase/firestore";
+import { 
+  getFirestore, 
+  doc, 
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  deleteDoc
+} from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const firebaseConfig = {
@@ -20,5 +29,51 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+export const getGroupsByCourse = async (courseId) => {
+  try {
+    const q = query(collection(db, 'groups'), where('courseId', '==', courseId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error getting groups:', error);
+    return [];
+  }
+};
+
+export const addGroup = async (data) => {
+  try {
+    const docRef = await addDoc(collection(db, 'groups'), {
+      ...data,
+      currentStudents: 0,
+      createdAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error adding group:', error);
+    throw error;
+  }
+};
+
+export const updateGroup = async (groupId, data) => {
+  try {
+    await updateDoc(doc(db, 'groups', groupId), {
+      ...data,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating group:', error);
+    throw error;
+  }
+};
+
+export const deleteGroup = async (groupId) => {
+  try {
+    await deleteDoc(doc(db, 'groups', groupId));
+  } catch (error) {
+    console.error('Error deleting group:', error);
+    throw error;
+  }
+};
 
 export default app;

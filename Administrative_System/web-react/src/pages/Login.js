@@ -1,8 +1,7 @@
-
-
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../services/firebase';
+import { auth, db } from '../services/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import './Auth.css';
 
 export default function Login({ onNavigate }) {
@@ -17,13 +16,61 @@ export default function Login({ onNavigate }) {
     setError('');
     
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+     
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      
+      if (userData?.isBlocked === true) {
+        await auth.signOut();
+        
+        let message = '⛔ Your account has been blocked.';
+        
+        if (userData.blockDetails?.reason) {
+          message = `⛔ Account Blocked\n\nReason: ${userData.blockDetails.reason}`;
+        }
+        
+        if (userData.blockDetails?.expiresAt) {
+          const expiryDate = userData.blockDetails.expiresAt.toDate();
+          if (expiryDate > new Date()) {
+            message += `\n\nUnblock Date: ${expiryDate.toLocaleDateString()}`;
+          }
+        } else if (userData.blockDetails?.duration === 'permanent') {
+          message += `\n\nThis is a permanent block.`;
+        }
+        
+        alert(message);
+        setError(message);
+        return;
+      }
+      
+      if (!userData) {
+        await auth.signOut();
+        alert('❌ Account not found. Please contact support.');
+        setError('Account not found');
+        return;
+      }
+      
       onNavigate('dashboard');
+      
     } catch (error) {
+      console.error('Login error:', error);
+      
       if (error.code === 'auth/invalid-credential') {
         setError('Invalid email or password');
+        alert('Invalid email or password');
+      } else if (error.code === 'auth/user-not-found') {
+        setError('Account not found');
+        alert('Account not found');
+      } else if (error.code === 'auth/wrong-password') {
+        setError('Wrong password');
+        alert('Wrong password');
       } else {
         setError(error.message);
+        alert(error.message);
       }
     } finally {
       setLoading(false);
@@ -33,7 +80,7 @@ export default function Login({ onNavigate }) {
   return (
     <div className="auth-container">
       <div className="auth-image">
-        <img src="/assets/images/science-faculty-logo.jpg" alt="Logo" />
+        <img src="/assets/images/logo.jpg" alt="Logo" />
         <p>LETS SHARE FEEDBACK, RESOLVE ISSUES</p>
       </div>
       <div className="auth-form">
