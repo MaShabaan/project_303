@@ -128,9 +128,10 @@ export default function AdminDashboardScreen() {
   const actions = [
     { icon: '📋', title: 'Complaints', sub: 'View & reply', bg: '#f5f3ff', border: '#ede9fe', route: './complaints' as const },
     { icon: '👥', title: 'Manage Users', sub: 'Promote or block', bg: '#fdf4ff', border: '#f5d0fe', route: './users' as const },
-    { icon: '📚', title: ' Manage Courses', sub: 'Add or edit courses', bg: '#fffbeb', border: '#fde68a', route: './courses' as const },
+    { icon: '📚', title: 'Manage Courses', sub: 'Add or edit courses', bg: '#fffbeb', border: '#fde68a', route: './courses' as const },
     { icon: '📝', title: 'Enrollments', sub: 'Assign courses', bg: '#f0fdf4', border: '#bbf7d0', route: './enrollments' as const },
     { icon: '⭐', title: 'Feedback', sub: 'View ratings', bg: '#eff6ff', border: '#bfdbfe', route: './feedback' as const },
+    { icon: '📊', title: 'Statistics', sub: 'View analytics', bg: '#f5f3ff', border: '#c4b5fd', route: './statistics' as const },
   ];
 
   return (

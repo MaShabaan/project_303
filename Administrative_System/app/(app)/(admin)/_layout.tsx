@@ -81,6 +81,10 @@ export default function AdminLayout() {
         go("/(admin)");
         return;
       }
+      if (currentPath.includes("/admin/statistics") && !hasPermission("view_statistics")) {
+        go("/(admin)");
+        return;
+      }
     }
 
     if (isLoggedIn && userRole !== "super_admin") {
@@ -103,5 +107,16 @@ export default function AdminLayout() {
     return <Redirect href={"/(app)/(user)/account-suspended" as any} />;
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="courses" />
+      <Stack.Screen name="enrollments" />
+      <Stack.Screen name="feedback" />
+      <Stack.Screen name="complaints" />
+      <Stack.Screen name="users" />
+      <Stack.Screen name="approvals" />
+      <Stack.Screen name="statistics" options={{ title: "Statistics" }} />
+    </Stack>
+  );
 }
