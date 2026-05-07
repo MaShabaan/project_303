@@ -37,10 +37,7 @@ export default function UserLayout() {
       <Stack.Screen name="my-ratings" />
       <Stack.Screen name="enroll-courses" />
       <Stack.Screen name="notifications" />
-      <Stack.Screen
-        name="../ai-assistant"
-        options={{ title: "AI Assistant" }}
-      />
+      <Stack.Screen name="ai-assistant" options={{ title: "AI Assistant" }} />
     </Stack>
   );
 }
