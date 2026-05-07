@@ -1,8 +1,8 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
+import FloatingChatbot from '../components/FloatingChatbot';
 import './UserDashboard.css';
 
 export default function UserDashboard({ user, onNavigate }) {
@@ -55,7 +55,6 @@ export default function UserDashboard({ user, onNavigate }) {
         setAvgRating((total / feedbackSnap.size).toFixed(1));
       }
 
-      // Recent Activity - آخر 3 شكاوى
       const recentTickets = ticketsSnap.docs
         .sort((a, b) => {
           const tA = a.data().createdAt?.toDate?.()?.getTime() ?? 0;
@@ -155,7 +154,7 @@ export default function UserDashboard({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* Recent Activity */}
+  
       <div className="activity-section">
         <div className="section-title">RECENT ACTIVITY</div>
         {recentActivity.length === 0 ? (
@@ -181,6 +180,9 @@ export default function UserDashboard({ user, onNavigate }) {
           </div>
         )}
       </div>
+
+    
+      <FloatingChatbot onNavigate={onNavigate} />
     </div>
   );
 }

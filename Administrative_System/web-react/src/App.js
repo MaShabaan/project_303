@@ -1,17 +1,15 @@
 
-
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './services/firebase';
-import { ThemeProvider, useTheme } from './pages/ThemeContext';
+import { ThemeProvider } from './pages/ThemeContext';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import SubmitTicket from './pages/SubmitTicket';
-
 import RateCourse from './pages/RateCourse';
 import EnrollCourses from './pages/EnrollCourses';
 import Complaints from './pages/Complaints';
@@ -23,14 +21,28 @@ import Statistics from './pages/Statistics';
 import ProfileSettings from './pages/ProfileSettings';
 import MyTickets from './pages/MyTickets';
 import MyRatings from './pages/MyRatings';
-
+import FloatingChatbot from './components/FloatingChatbot';
 import './App.css';
 
-function AppContent() {
+function App() {
   const [view, setView] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+
+
+  const handleNavigate = (route) => {
+    console.log( "Navigate to :", route);
+    
+    if (route === 'logout') {
+      signOut(auth);
+      setView('login');
+    } else if (route === 'back') {
+      setView('dashboard');
+    } else {
+      setView(route);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -54,39 +66,31 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  const handleNavigate = (route) => {
-    if (route === 'logout') {
-      auth.signOut();
-      setView('login');
-    } else if (route === 'back') {
-      setView('dashboard');
-    } else {
-      setView(route);
-    }
-  };
-
   if (loading) {
     return <div className="loading">Loading...</div>;
   }
 
-  // Auth pages
+
   if (view === 'login') return <Login onNavigate={handleNavigate} />;
   if (view === 'signup') return <SignUp onNavigate={handleNavigate} />;
   if (view === 'forgot') return <ForgotPassword onNavigate={handleNavigate} />;
 
-  // User pages
+  
   if (view === 'submit-ticket') {
     return <SubmitTicket user={currentUser} onBack={() => handleNavigate('back')} />;
   }
-
   if (view === 'rate-course') {
     return <RateCourse user={currentUser} onBack={() => handleNavigate('back')} />;
   }
   if (view === 'enroll-courses') {
     return <EnrollCourses user={currentUser} onBack={() => handleNavigate('back')} />;
   }
-
-  // Admin pages
+  if (view === 'my-tickets') {
+    return <MyTickets onBack={() => handleNavigate('back')} />;
+  }
+  if (view === 'my-ratings') {
+    return <MyRatings onBack={() => handleNavigate('back')} />;
+  }
   if (view === 'complaints') {
     return <Complaints user={currentUser} onBack={() => handleNavigate('back')} />;
   }
@@ -109,13 +113,7 @@ function AppContent() {
     return <ProfileSettings user={currentUser} onBack={() => handleNavigate('back')} />;
   }
 
-  if (view === 'my-tickets') {
-  return <MyTickets onBack={() => handleNavigate('back')} />;
-}
-if (view === 'my-ratings') {
-  return <MyRatings onBack={() => handleNavigate('back')} />;
-}
-  // Dashboard
+  
   if (view === 'dashboard' && currentUser) {
     if (userRole === 'admin' || userRole === 'super_admin') {
       return <AdminDashboard user={currentUser} onNavigate={handleNavigate} />;
@@ -126,12 +124,14 @@ if (view === 'my-ratings') {
   return <Login onNavigate={handleNavigate} />;
 }
 
-function App() {
+
+function AppWrapper() {
   return (
-    <ThemeProvider>
-      <AppContent />
+    <ThemeProvider> 
+      <App /> 
+    
     </ThemeProvider>
   );
 }
 
-export default App;
+export default AppWrapper;
