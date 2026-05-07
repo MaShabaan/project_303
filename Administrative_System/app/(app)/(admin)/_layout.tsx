@@ -27,12 +27,15 @@ export default function AdminLayout() {
 
     const hasPermission = (permission: string) => {
       if (userRole === "super_admin") return true;
-      return userPermissions[permission as keyof typeof userPermissions] === true;
+      return (
+        userPermissions[permission as keyof typeof userPermissions] === true
+      );
     };
 
     const isAdminRoute = currentPath.startsWith("admin");
     const isUserRoute = currentPath.startsWith("user");
-    const isAuthRoute = currentPath.startsWith("login") || currentPath.startsWith("signup");
+    const isAuthRoute =
+      currentPath.startsWith("login") || currentPath.startsWith("signup");
 
     const go = (path: string) => router.replace(path as any);
 
@@ -55,33 +58,55 @@ export default function AdminLayout() {
       return;
     }
 
-    if (isLoggedIn && isUserRoute && (userRole === "admin" || userRole === "super_admin")) {
+    if (
+      isLoggedIn &&
+      isUserRoute &&
+      (userRole === "admin" || userRole === "super_admin")
+    ) {
       go("/(admin)");
       return;
     }
 
     if (isLoggedIn && isAdminRoute && userRole === "admin") {
-      if (currentPath.includes("/admin/courses") && !hasPermission("manage_courses")) {
+      if (
+        currentPath.includes("/admin/courses") &&
+        !hasPermission("manage_courses")
+      ) {
         go("/(admin)");
         return;
       }
-      if (currentPath.includes("/admin/enrollments") && !hasPermission("manage_enrollments")) {
+      if (
+        currentPath.includes("/admin/enrollments") &&
+        !hasPermission("manage_enrollments")
+      ) {
         go("/(admin)");
         return;
       }
-      if (currentPath.includes("/admin/feedback") && !hasPermission("view_feedback")) {
+      if (
+        currentPath.includes("/admin/feedback") &&
+        !hasPermission("view_feedback")
+      ) {
         go("/(admin)");
         return;
       }
-      if (currentPath.includes("/admin/complaints") && !hasPermission("manage_complaints")) {
+      if (
+        currentPath.includes("/admin/complaints") &&
+        !hasPermission("manage_complaints")
+      ) {
         go("/(admin)");
         return;
       }
-      if (currentPath.includes("/admin/users") && !hasPermission("view_users")) {
+      if (
+        currentPath.includes("/admin/users") &&
+        !hasPermission("view_users")
+      ) {
         go("/(admin)");
         return;
       }
-      if (currentPath.includes("/admin/statistics") && !hasPermission("view_statistics")) {
+      if (
+        currentPath.includes("/admin/statistics") &&
+        !hasPermission("view_statistics")
+      ) {
         go("/(admin)");
         return;
       }
@@ -97,7 +122,14 @@ export default function AdminLayout() {
 
   if (!isInitialized || isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0f0c29" }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#0f0c29",
+        }}
+      >
         <ActivityIndicator size="large" color="#7c3aed" />
       </View>
     );
@@ -117,6 +149,10 @@ export default function AdminLayout() {
       <Stack.Screen name="users" />
       <Stack.Screen name="approvals" />
       <Stack.Screen name="statistics" options={{ title: "Statistics" }} />
+      <Stack.Screen
+        name="../ai-assistant"
+        options={{ title: "AI Assistant" }}
+      />
     </Stack>
   );
 }

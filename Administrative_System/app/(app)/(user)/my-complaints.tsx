@@ -123,7 +123,7 @@ export default function MyComplaintsScreen() {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyText}>You haven't submitted any complaints yet.</Text>
+            <Text style={styles.emptyText}>You haven&apos;t submitted any complaints yet.</Text>
             <TouchableOpacity 
               style={styles.submitBtn}
               onPress={() => router.push('/(app)/(user)/submit-complaint')}
