@@ -179,7 +179,7 @@ export default function ProfileSettings({ user, onBack }) {
             </label>
             {uploading && <div className="profile-uploading">Processing image...</div>}
             <div className="profile-avatar-note">
-              ✨ Image is resized to 150x150 and stored in Firestore
+           
             </div>
           </div>
 
