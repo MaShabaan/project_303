@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, addDoc, Timestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, Timestamp, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from './ThemeContext';
 import './RateCourse.css';
@@ -41,77 +41,70 @@ export default function RateCourse({ onBack }) {
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
   const [ratedCourses, setRatedCourses] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
-  const [loadingCourses, setLoadingCourses] = useState(false);
+  const [loadingCourses, setLoadingCourses] = useState(true);
 
   useEffect(() => {
-    if (user?.uid) {
-      loadRatedCourses();
-      loadEnrolledCourses();
-    }
-  }, [user]);
-
-  const loadEnrolledCourses = async () => {
-    setLoadingCourses(true);
-    try {
-      const enrollmentRef = doc(db, 'enrollments', user.uid);
-      const enrollmentSnap = await getDoc(enrollmentRef);
-      
-      let enrolledCourses = [];
-      if (enrollmentSnap.exists()) {
-        const data = enrollmentSnap.data();
-   
-        if (data.courses && Array.isArray(data.courses)) {
-          enrolledCourses = data.courses;
-        } 
-    
-        else if (data.courseIds && Array.isArray(data.courseIds)) {
-          enrolledCourses = data.courseIds.map(courseId => ({ courseId }));
-        }
-      }
-      
-      if (enrolledCourses.length === 0) {
-        setAvailableCourses([]);
-        setLoadingCourses(false);
-        return;
-      }
-      
-      const coursesList = [];
-      for (const enrolled of enrolledCourses) {
-        const courseId = enrolled.courseId;
-        const courseRef = doc(db, 'courses', courseId);
-        const courseSnap = await getDoc(courseRef);
-        if (courseSnap.exists()) {
-          coursesList.push({
-            id: courseId,
-            courseName: courseSnap.data().courseName || courseSnap.data().name || 'Course',
-            courseCode: courseSnap.data().courseCode || '',
-            instructor: courseSnap.data().instructor || 'N/A'
-          });
-        }
-      }
-      
-      setAvailableCourses(coursesList);
-    } catch (error) {
-      console.error('Error loading enrolled courses:', error);
-    } finally {
-      setLoadingCourses(false);
-    }
-  };
-
-  const loadRatedCourses = async () => {
     if (!user?.uid) return;
-    try {
-      const q = query(
-        collection(db, 'feedback'),
-        where('userId', '==', user.uid)
-      );
-      const snapshot = await getDocs(q);
+    
+    const q = query(collection(db, 'feedback'), where('userId', '==', user.uid));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const courses = snapshot.docs.map(d => d.data().courseName);
       setRatedCourses(courses);
-    } catch (error) {
-      console.error('Error loading rated courses:', error);
-    }
-  };
+    });
+    
+    return () => unsubscribe();
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    
+    setLoadingCourses(true);
+    const enrollmentRef = doc(db, 'enrollments', user.uid);
+    
+    const unsubscribe = onSnapshot(enrollmentRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        let enrolledCourses = [];
+        
+        if (data.courses && Array.isArray(data.courses)) {
+          enrolledCourses = data.courses;
+        } else if (data.courseIds && Array.isArray(data.courseIds)) {
+          enrolledCourses = data.courseIds.map(courseId => ({ courseId }));
+        }
+        
+        if (enrolledCourses.length === 0) {
+          setAvailableCourses([]);
+          setLoadingCourses(false);
+          return;
+        }
+        
+        const coursesList = [];
+        for (const enrolled of enrolledCourses) {
+          const courseId = enrolled.courseId;
+          const courseRef = doc(db, 'courses', courseId);
+          const courseSnap = await getDoc(courseRef);
+          if (courseSnap.exists()) {
+            coursesList.push({
+              id: courseId,
+              courseName: courseSnap.data().courseName || courseSnap.data().name || 'Course',
+              courseCode: courseSnap.data().courseCode || '',
+              instructor: courseSnap.data().instructor || 'N/A'
+            });
+          }
+        }
+        
+        setAvailableCourses(coursesList);
+      } else {
+        setAvailableCourses([]);
+      }
+      setLoadingCourses(false);
+    }, (error) => {
+      console.error('Error in enrollment listener:', error);
+      setLoadingCourses(false);
+    });
+    
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   const isAlreadyRated = (courseName) => ratedCourses.includes(courseName);
 
@@ -189,7 +182,6 @@ export default function RateCourse({ onBack }) {
   };
 
   const totalSteps = 4;
-  const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
   if (loadingCourses) {
     return (
@@ -198,7 +190,10 @@ export default function RateCourse({ onBack }) {
           <button className="rate-course-back-btn" onClick={goBack}>← Back</button>
           <span className="rate-course-title">⭐ Rate a Course</span>
         </div>
-        <div className="loading-state">Loading your enrolled courses...</div>
+        <div className="loading-state">
+          <div className="rate-courses-spinner" />
+          <div>Loading your enrolled courses...</div>
+        </div>
       </div>
     );
   }
@@ -247,7 +242,7 @@ export default function RateCourse({ onBack }) {
                     const isSelected = selectedCourse === course.courseName;
                     return (
                       <button
-                        key={i}
+                        key={course.id}
                         className={`course-item ${isSelected ? 'selected' : ''} ${alreadyRated ? 'rated' : ''}`}
                         onClick={() => {
                           if (alreadyRated) {

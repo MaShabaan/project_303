@@ -83,7 +83,7 @@ export default function SignUp({ onNavigate }) {
   return (
     <div className="auth-container">
       <div className="auth-image">
-        <img src="/assets/images/science-faculty-logo.jpg" alt="Logo" />
+        <img src="/assets/images/logo.jpg" alt="Logo" />
         <p>CREATE ACCOUNT</p>
       </div>
       <div className="auth-form signup-form">
