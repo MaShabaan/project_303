@@ -684,11 +684,3 @@
     align-self: center;
   }
 }
-.user-dashboard {
-  max-width: 1400px;
-  margin: 40px auto 0 auto; 
-  padding: 24px;
-  min-height: 100vh;
-  background: var(--bg);
-  font-family: var(--font-body);
-}
