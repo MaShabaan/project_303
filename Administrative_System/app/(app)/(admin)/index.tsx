@@ -7,9 +7,10 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
-import { db, COLLECTIONS } from '@/services/firebase';
+import { db, COLLECTIONS, isSuperAdminEmail } from '@/services/firebase';
 import { router } from 'expo-router';
 import { NotificationBellButton } from '@/components/NotificationBellButton';
 
@@ -36,9 +37,7 @@ export default function AdminDashboardScreen() {
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  const isSuperAdmin = profile?.email === 'mshabaan295@gmail.com' || 
-                       profile?.email === 'hoda17753@gmail.com' || 
-                       profile?.email === 'Tbarckyasir@gmail.com';
+  const isSuperAdmin = isSuperAdminEmail(profile?.email);
 
   React.useEffect(() => {
     Animated.spring(fadeAnim, {
@@ -112,8 +111,10 @@ export default function AdminDashboardScreen() {
     router.replace('/(auth)/login');
   };
 
-  const displayName = profile?.displayName || user?.email?.split('@')[0] || 'Admin';
+  const displayName =
+    profile?.displayName || profile?.fullName || user?.email?.split('@')[0] || 'Admin';
   const avatarLetter = displayName.charAt(0).toUpperCase();
+  const photoURL = profile?.photoURL;
   const roleLabel = isSuperAdmin ? 'Super Admin' : 'Administrator';
 
   const stats = [
@@ -124,6 +125,16 @@ export default function AdminDashboardScreen() {
   ];
 
   const actions = [
+    ...(isSuperAdmin
+      ? [{
+          icon: '✅',
+          title: 'Approvals',
+          sub: 'Pending admins',
+          bg: '#ecfdf5',
+          border: '#a7f3d0',
+          route: './approvals' as const,
+        }]
+      : []),
     { icon: '📋', title: 'Complaints', sub: 'View & reply', bg: '#f5f3ff', border: '#ede9fe', route: './complaints' as const },
     { icon: '👥', title: 'Manage Users', sub: 'Promote or block', bg: '#fdf4ff', border: '#f5d0fe', route: './users' as const },
     { icon: '📚', title: 'Manage Courses', sub: 'Add or edit courses', bg: '#fffbeb', border: '#fde68a', route: './courses' as const },
@@ -143,15 +154,26 @@ export default function AdminDashboardScreen() {
 
           <View style={styles.header}>
             <View style={styles.userRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{avatarLetter}</Text>
-              </View>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={styles.avatarImg} contentFit="cover" />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{avatarLetter}</Text>
+                </View>
+              )}
               <View>
                 <Text style={styles.welcomeText}>Welcome back, {displayName} 👋</Text>
                 <Text style={styles.roleText}>{roleLabel}</Text>
               </View>
             </View>
             <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => router.push('./profile-settings')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.iconBtnText}>⚙️</Text>
+              </TouchableOpacity>
               <NotificationBellButton href="./notifications" />
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
                 <Text style={styles.logoutText}>Logout</Text>
@@ -240,7 +262,19 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#fff', borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, borderWidth: 1, borderColor: '#ede9fe', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center' },
+  avatarImg: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#ede9fe' },
   avatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#f5f3ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ede9fe',
+  },
+  iconBtnText: { fontSize: 16 },
   welcomeText: { fontSize: 14, fontWeight: '700', color: '#1e1b4b' },
   roleText: { fontSize: 12, color: '#a78bfa', fontWeight: '600', marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },

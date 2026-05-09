@@ -28,6 +28,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { firebaseConfig } from "@/config/firebase";
+import { getStorage, ref, uploadBytes, getDownloadURL, FirebaseStorage } from "firebase/storage";
 
 const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
@@ -40,6 +41,8 @@ const getFirebaseApp = (): FirebaseApp => {
 
 const app: FirebaseApp = getFirebaseApp();
 export const auth: Auth = getAuth(app);
+
+export const storage: FirebaseStorage = getStorage(app);
 
 export const db: Firestore = (() => {
   try {
@@ -57,6 +60,8 @@ export interface UserProfile {
   uid?: string;
   email: string;
   displayName?: string | null;
+  fullName?: string | null;
+  photoURL?: string | null;
   role: UserRole;
   isApproved?: boolean;
   isBanned?: boolean;
@@ -130,7 +135,17 @@ export interface EnrollmentRecord {
   updatedAt: Timestamp;
 }
 
-const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
+/** Same allowlist as web-react (Users, AdminDashboard, Complaints, Feedback). */
+export const SUPER_ADMINS = [
+  "mshabaan295@gmail.com",
+  "hoda17753@gmail.com",
+  "Tbarckyasir@gmail.com",
+] as const;
+
+export function isSuperAdminEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return (SUPER_ADMINS as readonly string[]).includes(email);
+}
 
 export async function getAllUsers(): Promise<(UserProfile & { id: string })[]> {
   const usersRef = collection(db, COLLECTIONS.USERS);
@@ -167,7 +182,7 @@ export async function demoteFromAdmin(userId: string): Promise<void> {
 }
 
 export async function deleteUser(userId: string, currentUserEmail: string): Promise<void> {
-  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+  if (!isSuperAdminEmail(currentUserEmail)) {
     throw new Error('Only super admins can delete users');
   }
   
@@ -175,7 +190,7 @@ export async function deleteUser(userId: string, currentUserEmail: string): Prom
   const userDoc = await getDoc(userRef);
   const userData = userDoc.data();
   
-  if (SUPER_ADMINS.includes(userData?.email || '')) {
+  if (isSuperAdminEmail(userData?.email)) {
     throw new Error('Cannot delete super admin account');
   }
   
@@ -188,7 +203,7 @@ export async function blockUser(
   duration: '2days' | '1week' | '1month' | 'permanent',
   currentUser: UserProfile
 ): Promise<void> {
-  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  const isSuperAdmin = isSuperAdminEmail(currentUser.email);
   
   const userRef = doc(db, COLLECTIONS.USERS, userId);
   const userDoc = await getDoc(userRef);
@@ -198,7 +213,7 @@ export async function blockUser(
     throw new Error('You cannot block yourself');
   }
   
-  if (SUPER_ADMINS.includes(targetUser.email)) {
+  if (isSuperAdminEmail(targetUser.email)) {
     throw new Error('Cannot block super admin');
   }
   
@@ -239,7 +254,7 @@ export async function blockUser(
 }
 
 export async function unblockUser(userId: string, currentUser: UserProfile): Promise<void> {
-  const isSuperAdmin = SUPER_ADMINS.includes(currentUser.email);
+  const isSuperAdmin = isSuperAdminEmail(currentUser.email);
   
   const userRef = doc(db, COLLECTIONS.USERS, userId);
   const userDoc = await getDoc(userRef);
@@ -298,7 +313,7 @@ export async function updateUserPermissions(
   },
   currentUserEmail: string
 ): Promise<void> {
-  if (!SUPER_ADMINS.includes(currentUserEmail)) {
+  if (!isSuperAdminEmail(currentUserEmail)) {
     throw new Error('Only super admins can update permissions');
   }
   
@@ -306,7 +321,7 @@ export async function updateUserPermissions(
   const userDoc = await getDoc(userRef);
   const userData = userDoc.data();
   
-  if (SUPER_ADMINS.includes(userData?.email || '')) {
+  if (isSuperAdminEmail(userData?.email)) {
     throw new Error('Cannot change super admin permissions');
   }
   
@@ -528,6 +543,60 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   if (!userDoc.exists()) return null;
   const data = userDoc.data() as UserProfile;
   return { ...data, uid: userDoc.id };
+}
+
+/**
+ * Read a local file URI (e.g. from expo-image-picker) as a Blob.
+ * `fetch(uri).blob()` is unreliable on React Native; XHR + responseType blob works for file://.
+ */
+async function readLocalFileAsBlob(uri: string): Promise<Blob> {
+  const fromXhr = (): Promise<Blob> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = () => {
+        const b = xhr.response as Blob;
+        if (b && typeof b.size === "number" && b.size > 0) {
+          resolve(b);
+          return;
+        }
+        reject(new Error("empty"));
+      };
+      xhr.onerror = () => reject(new Error("xhr"));
+      xhr.responseType = "blob";
+      xhr.open("GET", uri, true);
+      xhr.send();
+    });
+
+  try {
+    return await fromXhr();
+  } catch {
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      if (blob && blob.size > 0) return blob;
+    } catch {
+      /* fall through */
+    }
+    throw new Error(
+      "Could not read the selected image. Try another photo or disable cropping.",
+    );
+  }
+}
+
+/** Upload a profile image (local file URI from image picker) and return the download URL. */
+export async function uploadProfilePhoto(uid: string, localFileUri: string): Promise<string> {
+  const blob = await readLocalFileAsBlob(localFileUri);
+  const ext = localFileUri.split(".").pop()?.split("?")[0] || "jpg";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes((ext || "").toLowerCase()) ? ext : "jpg";
+  const contentType =
+    safeExt === "png"
+      ? "image/png"
+      : safeExt === "webp"
+        ? "image/webp"
+        : "image/jpeg";
+  const storageRef = ref(storage, `profilePhotos/${uid}/${Date.now()}.${safeExt}`);
+  await uploadBytes(storageRef, blob, { contentType });
+  return getDownloadURL(storageRef);
 }
 
 export async function signUpUser(

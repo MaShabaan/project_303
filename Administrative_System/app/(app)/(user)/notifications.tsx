@@ -13,6 +13,7 @@ import {
   query,
   where,
   onSnapshot,
+  getDocs,
   doc,
   updateDoc,
 } from "firebase/firestore";
@@ -63,9 +64,30 @@ export default function NotificationsScreen() {
     return unsub;
   }, [user?.uid]);
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
+    if (!user?.uid) return;
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 400);
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.NOTIFICATIONS),
+        where("userId", "==", user.uid),
+      );
+      const snap = await getDocs(q);
+      const list: Row[] = snap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as InAppNotificationRecord),
+      }));
+      list.sort((a, b) => {
+        const ta = a.createdAt?.toMillis?.() ?? 0;
+        const tb = b.createdAt?.toMillis?.() ?? 0;
+        return tb - ta;
+      });
+      setRows(list);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const markRead = async (id: string) => {

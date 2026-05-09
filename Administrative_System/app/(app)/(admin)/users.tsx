@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, getDocs, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
-import { db, promoteToAdmin, demoteFromAdmin, blockUser, unblockUser, autoUnblockExpiredUsers } from '@/services/firebase';
+import { db, promoteToAdmin, demoteFromAdmin, blockUser, unblockUser, autoUnblockExpiredUsers, isSuperAdminEmail } from '@/services/firebase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { notifyAccountBanned, notifyAccountUnbanned } from '@/services/notifications';
 import { router } from 'expo-router';
@@ -40,8 +40,6 @@ interface User {
   createdAt: any;
 }
 
-const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
-
 export default function UsersScreen() {
   const { profile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -54,7 +52,7 @@ export default function UsersScreen() {
   const [blockReason, setBlockReason] = useState('');
   const [blockDuration, setBlockDuration] = useState<'2days' | '1week' | '1month' | 'permanent'>('permanent');
 
-  const isSuperAdmin = SUPER_ADMINS.includes(profile?.email || '');
+  const isSuperAdmin = isSuperAdminEmail(profile?.email);
   const isAdmin = profile?.role === 'admin';
 
   useEffect(() => { 
@@ -67,7 +65,7 @@ export default function UsersScreen() {
     try {
       const snapshot = await getDocs(collection(db, 'users'));
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() })) as User[];
-      setUsers(list.filter(u => !SUPER_ADMINS.includes(u.email)));
+      setUsers(list.filter(u => !isSuperAdminEmail(u.email)));
     } catch (error) {
       Alert.alert('Error', 'Failed to load users');
     } finally {
@@ -180,7 +178,7 @@ export default function UsersScreen() {
       Alert.alert('Permission Denied', 'Only super admins can block users');
       return;
     }
-    if (SUPER_ADMINS.includes(user.email)) {
+    if (isSuperAdminEmail(user.email)) {
       Alert.alert('Cannot Block', 'Super admin cannot be blocked');
       return;
     }

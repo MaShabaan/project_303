@@ -149,6 +149,8 @@ export default function AdminLayout() {
       <Stack.Screen name="users" />
       <Stack.Screen name="approvals" />
       <Stack.Screen name="statistics" options={{ title: "Statistics" }} />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="profile-settings" />
       <Stack.Screen name="ai-assistant" options={{ title: "AI Assistant" }} />
     </Stack>
   );

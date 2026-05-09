@@ -19,6 +19,7 @@ import {
   UserRole,
   db,
   COLLECTIONS,
+  isSuperAdminEmail,
 } from '@/services/firebase';
 import { Timestamp, doc, onSnapshot } from 'firebase/firestore';
 
@@ -64,8 +65,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com'];
 
   const loadUserProfile = useCallback(async (firebaseUser: User | null) => {
     if (!firebaseUser) {
@@ -166,6 +165,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('User profile not found. Please contact support.');
       }
 
+      if (userProfile.isBlocked === true) {
+        await logoutUser();
+        let message = '⛔ Your account has been blocked.';
+        if (userProfile.blockDetails?.reason) {
+          message = `⛔ Account Blocked\n\nReason: ${userProfile.blockDetails.reason}`;
+        }
+        if (userProfile.blockDetails?.expiresAt) {
+          const expiryDate = userProfile.blockDetails.expiresAt.toDate();
+          if (expiryDate > new Date()) {
+            message += `\n\nUnblock Date: ${expiryDate.toLocaleDateString()}`;
+          }
+        } else if (userProfile.blockDetails?.duration === 'permanent') {
+          message += '\n\nThis is a permanent block.';
+        }
+        throw new Error(message);
+      }
+
       if (userProfile.role === 'admin' && userProfile.isApproved === false) {
         await logoutUser();
         throw new Error('Your admin account is pending approval. Please wait for super admin confirmation.');
@@ -217,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const approveAdmin = useCallback(async (adminId: string) => {
-    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+    if (!profile || !isSuperAdminEmail(profile.email)) {
       throw new Error('Only super admins can approve admins');
     }
     setIsLoading(true);
@@ -239,7 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [profile]);
 
   const rejectAdmin = useCallback(async (adminId: string) => {
-    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+    if (!profile || !isSuperAdminEmail(profile.email)) {
       throw new Error('Only super admins can reject admins');
     }
     setIsLoading(true);
@@ -257,7 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [profile]);
 
   const getPendingAdmins = useCallback(async () => {
-    if (!profile || !SUPER_ADMINS.includes(profile.email)) {
+    if (!profile || !isSuperAdminEmail(profile.email)) {
       return [];
     }
     try {

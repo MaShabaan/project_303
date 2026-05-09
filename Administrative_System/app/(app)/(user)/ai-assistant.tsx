@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import Groq from 'groq-sdk';
+import { tryChatCommand } from '@/utils/chatCommands';
 
 const API_KEY = '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';
 
@@ -93,6 +94,14 @@ ${context ? `\nUser context: ${context}` : ''}`;
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
     setLoading(true);
+
+    const cmd = tryChatCommand(messageToSend, false);
+    if (cmd) {
+      setMessages(prev => [...prev, { role: 'assistant', content: cmd.reply }]);
+      setLoading(false);
+      setTimeout(() => router.push(cmd.href), 500);
+      return;
+    }
 
     const context = `User: ${profile?.displayName || profile?.email || 'Guest'}, Role: ${profile?.role || 'user'}`;
     const reply = await sendMessageToGroq([...messages, userMessage], context);

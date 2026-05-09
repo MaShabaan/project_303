@@ -20,6 +20,7 @@ export async function notifyComplaintReply(
     type: "complaint_reply",
     title: "Reply to your complaint",
     body: `An administrator replied to “${clip(complaintTitle, 80)}”.`,
+    read: false,
     meta: { ticketId },
   });
 }
@@ -31,6 +32,7 @@ export async function notifyEnrollmentEdited(targetUserId: string): Promise<void
     type: "enrollment_edited",
     title: "Enrollment updated",
     body: "Your course enrollment was updated by an administrator.",
+    read: false,
   });
 }
 
@@ -40,6 +42,7 @@ export async function notifyAccountBanned(targetUserId: string): Promise<void> {
     type: "account_banned",
     title: "Account suspended",
     body: "Your account has been suspended. Contact the administration if you believe this is a mistake.",
+    read: false,
   });
 }
 
@@ -49,6 +52,7 @@ export async function notifyAccountUnbanned(targetUserId: string): Promise<void>
     type: "account_unbanned",
     title: "Account reinstated",
     body: "Your account suspension has been lifted. You can use the app again.",
+    read: false,
   });
 }
 

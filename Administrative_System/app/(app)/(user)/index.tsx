@@ -7,6 +7,7 @@ import {
   ScrollView,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { db, COLLECTIONS } from '@/services/firebase';
@@ -101,7 +102,7 @@ export default function UserDashboardScreen() {
         setCourseProgress(progress);
       }
 
-      // ── Recent Activity ──
+      // ── Recent Activity (matches web UserDashboard: last 3 tickets) ──
       const activity: ActivityItem[] = [];
 
       const recentTickets = ticketsSnap.docs
@@ -110,40 +111,20 @@ export default function UserDashboardScreen() {
           const tB = (b.data().createdAt as Timestamp)?.toDate?.()?.getTime() ?? 0;
           return tB - tA;
         })
-        .slice(0, 2);
+        .slice(0, 3);
 
       recentTickets.forEach(doc => {
         const d = doc.data();
         const status = d.status ?? 'open';
+        const desc = typeof d.description === 'string' ? d.description : '';
         activity.push({
           icon: '📝',
           title: d.title ?? 'Complaint',
-          sub: d.type ?? '',
-          badge: status === 'open' ? 'Pending' : status === 'replied' ? 'Replied' : 'Resolved',
-          badgeBg: status === 'open' ? '#fef3c7' : '#d1fae5',
-          badgeColor: status === 'open' ? '#d97706' : '#059669',
+          sub: desc.slice(0, 50),
+          badge: status === 'open' ? 'Pending' : status === 'replied' ? 'Replied' : 'Closed',
+          badgeBg: status === 'open' ? '#fef3c7' : status === 'replied' ? '#d1fae5' : '#fee2e2',
+          badgeColor: status === 'open' ? '#d97706' : status === 'replied' ? '#059669' : '#dc2626',
           iconBg: '#f5f3ff',
-        });
-      });
-
-      const recentRatings = feedbackSnap.docs
-        .sort((a, b) => {
-          const tA = (a.data().createdAt as Timestamp)?.toDate?.()?.getTime() ?? 0;
-          const tB = (b.data().createdAt as Timestamp)?.toDate?.()?.getTime() ?? 0;
-          return tB - tA;
-        })
-        .slice(0, 1);
-
-      recentRatings.forEach(doc => {
-        const d = doc.data();
-        activity.push({
-          icon: '⭐',
-          title: d.courseName ?? 'Course',
-          sub: `Rated ${d.courseRating ?? d.rating ?? '—'}/10`,
-          badge: 'Done',
-          badgeBg: '#d1fae5',
-          badgeColor: '#059669',
-          iconBg: '#fffbeb',
         });
       });
 
@@ -160,8 +141,10 @@ export default function UserDashboardScreen() {
     router.replace('/(auth)/login');
   };
 
-  const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
+  const displayName =
+    profile?.displayName || profile?.fullName || user?.email?.split('@')[0] || 'User';
   const avatarLetter = displayName.charAt(0).toUpperCase();
+  const photoURL = profile?.photoURL;
 
   const stats = [
     { num: statsLoading ? '...' : String(complaintsCount), label: 'MY COMPLAINTS', change: `${complaintsCount} total`, color: '#7c3aed', bg: '#f5f3ff' },
@@ -189,15 +172,26 @@ export default function UserDashboardScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.userRow}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{avatarLetter}</Text>
-              </View>
+              {photoURL ? (
+                <Image source={{ uri: photoURL }} style={styles.avatarImg} contentFit="cover" />
+              ) : (
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{avatarLetter}</Text>
+                </View>
+              )}
               <View>
                 <Text style={styles.welcomeText}>Welcome back, {displayName} 👋</Text>
                 <Text style={styles.roleText}>Regular User</Text>
               </View>
             </View>
             <View style={styles.headerRight}>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => router.push('./profile-settings')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.iconBtnText}>⚙️</Text>
+              </TouchableOpacity>
               <NotificationBellButton href="./notifications" />
               <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.85}>
                 <Text style={styles.logoutText}>Logout</Text>
@@ -241,7 +235,9 @@ export default function UserDashboardScreen() {
             <Text style={styles.sectionTitle}>RECENT ACTIVITY</Text>
             {recentActivity.length === 0 ? (
               <View style={styles.emptyActivity}>
-                <Text style={styles.emptyActivityText}>No activity yet — submit a complaint or rate a course!</Text>
+                <Text style={styles.emptyActivityText}>
+                  No recent activity — submit a complaint or rate a course!
+                </Text>
               </View>
             ) : (
               <View style={styles.activityList}>
@@ -294,7 +290,19 @@ const styles = StyleSheet.create({
   header: { backgroundColor: '#fff', borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, borderWidth: 1, borderColor: '#ede9fe', shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
   userRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   avatar: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center' },
+  avatarImg: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#ede9fe' },
   avatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#f5f3ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ede9fe',
+  },
+  iconBtnText: { fontSize: 16 },
   welcomeText: { fontSize: 14, fontWeight: '700', color: '#1e1b4b' },
   roleText: { fontSize: 12, color: '#a78bfa', fontWeight: '600', marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
