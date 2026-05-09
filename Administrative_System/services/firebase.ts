@@ -1,33 +1,34 @@
+// services/firebase.ts
 
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut as firebaseSignOut, 
-  sendPasswordResetEmail, 
-  UserCredential,
-  Auth
+import { firebaseConfig } from "@/config/firebase";
+import { FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
+import {
+  Auth,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  getAuth,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  UserCredential
 } from "firebase/auth";
 import {
-  initializeFirestore,
-  getFirestore,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
   enableNetwork,
   Firestore,
-  doc,
-  setDoc,
   getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  collection,
-  query,
-  where,
   getDocs,
+  getFirestore,
+  initializeFirestore,
   orderBy,
+  query,
+  setDoc,
   Timestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
-import { firebaseConfig } from "@/config/firebase";
 
 const getFirebaseApp = (): FirebaseApp => {
   const existingApps = getApps();
@@ -102,10 +103,12 @@ export const COLLECTIONS = {
 export const MAX_STUDENT_ENROLLMENT_COURSES = 5;
 
 export type InAppNotificationType =
-  | "complaint_reply"
+ | "complaint_reply"
   | "enrollment_edited"
   | "account_banned"
-  | "account_unbanned";
+  | "account_unbanned"
+  | "admin_message"
+  | "ticket_status_changed";
 
 export interface InAppNotificationRecord {
   userId: string;
@@ -441,7 +444,6 @@ export async function getTicketsByUser(userId: string): Promise<(Ticket & { id: 
   })) as (Ticket & { id: string })[];
 }
 
-
 export async function replyToTicket(
   ticketId: string,
   adminEmail: string,
@@ -475,6 +477,7 @@ export async function replyToTicket(
     meta: { ticketId },
   });
 }
+
 export async function updateTicketStatus(
   ticketId: string,
   status: string
@@ -592,11 +595,10 @@ export async function resetPassword(email: string): Promise<void> {
   await sendPasswordResetEmail(auth, email);
 }
 
-
 export async function createInAppNotification(
   data: {
     userId: string;
-    type: "complaint_reply" | "enrollment_edited" | "account_banned" | "account_unbanned";
+    type: "complaint_reply" | "enrollment_edited" | "account_banned" | "account_unbanned" | "admin_message";
     title: string;
     body: string;
     read: boolean;

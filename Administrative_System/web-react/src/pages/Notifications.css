@@ -1,0 +1,143 @@
+/* web-react/src/pages/Notifications.css */
+
+.notifications-container {
+  min-height: 100vh;
+  background-color: #f6f5ff;
+  padding: 20px;
+}
+
+.notifications-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+  cursor: pointer;
+  padding: 8px 12px;
+}
+
+.notifications-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e1b4b;
+  margin: 0;
+}
+
+.unread-badge {
+  background-color: #ef4444;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background-color: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid #ede9fe;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.notification-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.notification-item.unread {
+  background-color: #faf8ff;
+  border-left: 4px solid #7c3aed;
+}
+
+.notification-icon {
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  background-color: #f5f3ff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e1b4b;
+  margin-bottom: 4px;
+}
+
+.notification-body {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.notification-time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.unread-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #7c3aed;
+  border-radius: 50%;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.notifications-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.empty-text {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.notifications-loading {
+  text-align: center;
+  padding: 60px;
+  color: #94a3b8;
+}

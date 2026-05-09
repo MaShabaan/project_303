@@ -1,3 +1,4 @@
+// web-react/src/services/firebase.js
 
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
@@ -31,16 +32,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-export const getGroupsByCourse = async (courseId) => {
-  try {
-    const q = query(collection(db, 'groups'), where('courseId', '==', courseId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error('Error getting groups:', error);
-    return [];
-  }
-};
 export const createInAppNotification = async (data) => {
   try {
     const ref = collection(db, 'notifications');
@@ -53,9 +44,21 @@ export const createInAppNotification = async (data) => {
       createdAt: Timestamp.now(),
       ...(data.meta ? { meta: data.meta } : {}),
     });
+    console.log('Notification created for user:', data.userId);
   } catch (error) {
     console.error('Error creating notification:', error);
     throw error;
+  }
+};
+
+export const getGroupsByCourse = async (courseId) => {
+  try {
+    const q = query(collection(db, 'groups'), where('courseId', '==', courseId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error getting groups:', error);
+    return [];
   }
 };
 

@@ -1,22 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  Modal,
-} from 'react-native';
+// app/(app)/(admin)/users.tsx
+
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, getDocs, doc, deleteDoc, Timestamp, updateDoc } from 'firebase/firestore';
-import { db, promoteToAdmin, demoteFromAdmin, blockUser, unblockUser, autoUnblockExpiredUsers } from '@/services/firebase';
-import { LinearGradient } from 'expo-linear-gradient';
+import { autoUnblockExpiredUsers, blockUser, createInAppNotification, db, demoteFromAdmin, promoteToAdmin, unblockUser } from '@/services/firebase';
 import { notifyAccountBanned, notifyAccountUnbanned } from '@/services/notifications';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { collection, deleteDoc, doc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface User {
   id: string;
@@ -42,6 +45,16 @@ interface User {
 
 const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
 
+const getStatusStyle = (status: string) => {
+  switch (status) {
+    case 'open': return '#f59e0b';
+    case 'in-progress': return '#3b82f6';
+    case 'replied': return '#10b981';
+    case 'closed': return '#6b7280';
+    default: return '#f59e0b';
+  }
+};
+
 export default function UsersScreen() {
   const { profile } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
@@ -53,6 +66,13 @@ export default function UsersScreen() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockDuration, setBlockDuration] = useState<'2days' | '1week' | '1month' | 'permanent'>('permanent');
+  
+  const [messageModalVisible, setMessageModalVisible] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [selectedUserForMsg, setSelectedUserForMsg] = useState<User | null>(null);
+  
+  const [activityModalVisible, setActivityModalVisible] = useState(false);
+  const [userActivity, setUserActivity] = useState<{ tickets: any[]; feedback: any[] } | null>(null);
 
   const isSuperAdmin = SUPER_ADMINS.includes(profile?.email || '');
   const isAdmin = profile?.role === 'admin';
@@ -72,6 +92,40 @@ export default function UsersScreen() {
       Alert.alert('Error', 'Failed to load users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sendNotification = async (userId: string, message: string) => {
+    try {
+      await createInAppNotification({
+        userId,
+        type: 'admin_message',
+        title: '📢 Message from Admin',
+        body: message,
+        read: false,
+      });
+      Alert.alert('Success', 'Notification sent successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to send notification');
+    }
+  };
+
+  const viewUserActivity = async (userId: string) => {
+    try {
+      const ticketsQuery = query(collection(db, 'tickets'), where('userId', '==', userId));
+      const ticketsSnap = await getDocs(ticketsQuery);
+      
+      const feedbackQuery = query(collection(db, 'feedback'), where('userId', '==', userId));
+      const feedbackSnap = await getDocs(feedbackQuery);
+      
+      setUserActivity({
+        tickets: ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        feedback: feedbackSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      });
+      setActivityModalVisible(true);
+    } catch (error) {
+      console.error('Error loading activity:', error);
+      Alert.alert('Error', 'Failed to load user activity');
     }
   };
 
@@ -303,6 +357,16 @@ export default function UsersScreen() {
       </View>
 
       <View style={styles.actions}>
+        <TouchableOpacity style={[styles.actionBtn, styles.activityBtn]} onPress={() => viewUserActivity(item.id)}>
+          <Text style={styles.actionBtnText}>📋 Activity</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionBtn, styles.messageBtn]} onPress={() => {
+          setSelectedUserForMsg(item);
+          setMessageText('');
+          setMessageModalVisible(true);
+        }}>
+          <Text style={styles.actionBtnText}>💬 Message</Text>
+        </TouchableOpacity>
         {isSuperAdmin && item.role === 'user' && !item.isBlocked && (
           <TouchableOpacity style={[styles.actionBtn, styles.promoteBtn]} onPress={() => handlePromote(item)} activeOpacity={0.8}>
             <Text style={styles.actionBtnText}>⬆ Make Admin</Text>
@@ -419,7 +483,7 @@ export default function UsersScreen() {
         <Text style={styles.permInfoText}>
           {isSuperAdmin
             ? '🔑 Super Admin — can promote, demote, block, unblock & delete users'
-            : '👤 View only'}
+            : '👁️ Admin — can view user activity and send messages'}
         </Text>
       </View>
 
@@ -436,6 +500,94 @@ export default function UsersScreen() {
         }
       />
 
+      {/* Message Modal */}
+      <Modal visible={messageModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>💬 Send Message</Text>
+              <Text style={styles.modalSubtitle}>To: {selectedUserForMsg?.displayName || selectedUserForMsg?.email}</Text>
+              <TouchableOpacity onPress={() => setMessageModalVisible(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Message</Text>
+              <TextInput
+                style={[styles.input, { minHeight: 100 }]}
+                placeholder="Type your message here..."
+                placeholderTextColor="#94a3b8"
+                value={messageText}
+                onChangeText={setMessageText}
+                multiline
+                numberOfLines={5}
+              />
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.modalCancel} onPress={() => setMessageModalVisible(false)}>
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalSubmit, styles.sendBtn]} onPress={() => {
+                  if (selectedUserForMsg) {
+                    sendNotification(selectedUserForMsg.id, messageText);
+                    setMessageModalVisible(false);
+                  }
+                }}>
+                  <Text style={styles.modalSubmitText}>Send Message</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Activity Modal */}
+      <Modal visible={activityModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
+            <LinearGradient colors={["#667eea", "#764ba2"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>📋 User Activity</Text>
+              <TouchableOpacity onPress={() => setActivityModalVisible(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.activityTitle}>📝 Complaints ({userActivity?.tickets.length || 0})</Text>
+              {userActivity?.tickets.length === 0 ? (
+                <Text style={styles.activityEmpty}>No complaints</Text>
+              ) : (
+                userActivity?.tickets.map((ticket: any) => (
+                  <View key={ticket.id} style={styles.activityItem}>
+                    <Text style={styles.activityItemTitle}>{ticket.title}</Text>
+                    <View style={[styles.activityStatus, { backgroundColor: getStatusStyle(ticket.status) }]}>
+                      <Text style={styles.activityStatusText}>{ticket.status}</Text>
+                    </View>
+                    <Text style={styles.activityItemDesc} numberOfLines={2}>{ticket.description}</Text>
+                  </View>
+                ))
+              )}
+
+              <Text style={[styles.activityTitle, { marginTop: 20 }]}>⭐ Ratings ({userActivity?.feedback.length || 0})</Text>
+              {userActivity?.feedback.length === 0 ? (
+                <Text style={styles.activityEmpty}>No ratings</Text>
+              ) : (
+                userActivity?.feedback.map((fb: any) => (
+                  <View key={fb.id} style={styles.activityItem}>
+                    <Text style={styles.activityItemTitle}>{fb.courseName}</Text>
+                    <Text style={styles.activityItemDesc}>
+                      Course: {fb.courseRating || fb.rating}/10 | Instructor: {fb.instructorRating || fb.rating}/10
+                    </Text>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Block Modal */}
       <Modal visible={blockModalVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -570,6 +722,8 @@ const styles = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
   actionBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, flexDirection: 'row', alignItems: 'center' },
+  activityBtn: { backgroundColor: '#3b82f6' },
+  messageBtn: { backgroundColor: '#10b981' },
   promoteBtn: { backgroundColor: '#4f46e5' },
   demoteBtn: { backgroundColor: '#f59e0b' },
   blockBtn: { backgroundColor: '#ef4444' },
@@ -599,5 +753,24 @@ const styles = StyleSheet.create({
   modalCancel: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#f1f5f9', alignItems: 'center' },
   modalCancelText: { fontWeight: '700', color: '#64748b' },
   modalSubmit: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#ef4444', alignItems: 'center' },
+  sendBtn: { backgroundColor: '#10b981' },
   modalSubmitText: { fontWeight: '700', color: '#fff' },
+
+  activityTitle: { fontSize: 14, fontWeight: '700', color: '#1e1b4b', marginBottom: 10 },
+  activityEmpty: { color: '#94a3b8', padding: 12, textAlign: 'center' },
+  activityItem: { backgroundColor: '#f8f7ff', padding: 12, borderRadius: 12, marginBottom: 8 },
+  activityItemTitle: { fontSize: 13, fontWeight: '700', color: '#1e1b4b' },
+  activityItemDesc: { fontSize: 12, color: '#64748b', marginTop: 4 },
+  activityStatus: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  activityStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });

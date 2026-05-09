@@ -1,28 +1,28 @@
 
-import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from './services/firebase';
-import { ThemeProvider } from './pages/ThemeContext';
-import Login from './pages/Login';
-import SignUp from './pages/SignUp';
-import ForgotPassword from './pages/ForgotPassword';
-import UserDashboard from './pages/UserDashboard';
+import { useEffect, useState } from 'react';
+import './App.css';
 import AdminDashboard from './pages/AdminDashboard';
-import SubmitTicket from './pages/SubmitTicket';
-import RateCourse from './pages/RateCourse';
-import EnrollCourses from './pages/EnrollCourses';
 import Complaints from './pages/Complaints';
-import Users from './pages/Users';
-import ManageCourses from './pages/ManageCourses';
+import EnrollCourses from './pages/EnrollCourses';
 import Enrollments from './pages/Enrollments';
 import Feedback from './pages/Feedback';
-import Statistics from './pages/Statistics';
-import ProfileSettings from './pages/ProfileSettings';
-import MyTickets from './pages/MyTickets';
+import ForgotPassword from './pages/ForgotPassword';
+import Login from './pages/Login';
+import ManageCourses from './pages/ManageCourses';
 import MyRatings from './pages/MyRatings';
-import FloatingChatbot from './components/FloatingChatbot';
-import './App.css';
+import MyTickets from './pages/MyTickets';
+import Notifications from './pages/Notifications';
+import ProfileSettings from './pages/ProfileSettings';
+import RateCourse from './pages/RateCourse';
+import SignUp from './pages/SignUp';
+import Statistics from './pages/Statistics';
+import SubmitTicket from './pages/SubmitTicket';
+import { ThemeProvider } from './pages/ThemeContext';
+import UserDashboard from './pages/UserDashboard';
+import Users from './pages/Users';
+import { auth, db } from './services/firebase';
 
 function App() {
   const [view, setView] = useState('login');
@@ -75,7 +75,9 @@ function App() {
   if (view === 'signup') return <SignUp onNavigate={handleNavigate} />;
   if (view === 'forgot') return <ForgotPassword onNavigate={handleNavigate} />;
 
-  
+  if (view === 'notifications') {  
+  return <Notifications user={currentUser} onBack={() => handleNavigate('back')} />;
+}
   if (view === 'submit-ticket') {
     return <SubmitTicket user={currentUser} onBack={() => handleNavigate('back')} />;
   }

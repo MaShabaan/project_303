@@ -1,8 +1,8 @@
+// web-react/src/pages/Complaints.jsx
 
-
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { collection, deleteDoc, doc, getDoc, getDocs, Timestamp, updateDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { createInAppNotification, db } from '../services/firebase';
 import './Complaints.css';
 
 const PRIORITY_COLORS = {
@@ -69,6 +69,17 @@ export default function Complaints({ user, onBack }) {
         status: 'replied',
         updatedAt: Timestamp.now(),
       });
+
+      // Send notification to user about reply
+      await createInAppNotification({
+        userId: selectedTicket.userId,
+        type: 'complaint_reply',
+        title: '📝 Reply to your complaint',
+        body: `Admin replied to "${selectedTicket.title}"`,
+        read: false,
+        meta: { ticketId: selectedTicket.id },
+      });
+
       alert('Reply sent successfully');
       setShowReplyModal(false);
       setReplyText('');
@@ -84,11 +95,33 @@ export default function Complaints({ user, onBack }) {
 
   const handleStatusChange = async (ticketId, newStatus) => {
     try {
+      // Get ticket data before update
       const ticketRef = doc(db, 'tickets', ticketId);
+      const ticketSnap = await getDoc(ticketRef);
+      const ticketData = ticketSnap.data();
+      
       await updateDoc(ticketRef, {
         status: newStatus,
         updatedAt: Timestamp.now(),
       });
+
+      const statusMessages = {
+        'open': 'opened',
+        'in-progress': 'marked as in progress',
+        'replied': 'received a reply',
+        'closed': 'closed'
+      };
+
+      // Send notification to user about status change
+      await createInAppNotification({
+        userId: ticketData.userId,
+        type: 'ticket_status_changed',
+        title: '🔄 Complaint Status Updated',
+        body: `Your complaint "${ticketData.title}" has been ${statusMessages[newStatus] || 'updated'} to ${newStatus}.`,
+        read: false,
+        meta: { ticketId },
+      });
+
       alert(`Status updated to ${newStatus}`);
       await loadTickets();
       if (selectedTicket && selectedTicket.id === ticketId) {

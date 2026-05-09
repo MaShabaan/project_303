@@ -1,8 +1,9 @@
+// web-react/src/pages/UserDashboard.jsx
 
-import React, { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import FloatingChatbot from '../components/FloatingChatbot';
+import { db } from '../services/firebase';
 import './UserDashboard.css';
 
 export default function UserDashboard({ user, onNavigate }) {
@@ -13,11 +14,13 @@ export default function UserDashboard({ user, onNavigate }) {
   const [displayName, setDisplayName] = useState('');
   const [photoURL, setPhotoURL] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (user?.uid) {
       loadStats();
       loadUserProfile();
+      loadUnreadCount();
     }
   }, [user]);
 
@@ -27,6 +30,21 @@ export default function UserDashboard({ user, onNavigate }) {
       const data = userDoc.data();
       setDisplayName(data.displayName || data.fullName || user.email.split('@')[0]);
       setPhotoURL(data.photoURL || null);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const loadUnreadCount = async () => {
+    if (!user?.uid) return;
+    try {
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', user.uid),
+        where('read', '==', false)
+      );
+      const snapshot = await getDocs(q);
+      setUnreadCount(snapshot.size);
     } catch (error) {
       console.error(error);
     }
@@ -101,6 +119,9 @@ export default function UserDashboard({ user, onNavigate }) {
           </div>
         </div>
         <div className="header-actions">
+          <button className="notification-bell" onClick={() => onNavigate('notifications')}>
+            🔔 {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+          </button>
           <button className="settings-btn" onClick={() => onNavigate('profile')}>
             ⚙️
           </button>
@@ -154,7 +175,6 @@ export default function UserDashboard({ user, onNavigate }) {
         </div>
       </div>
 
-  
       <div className="activity-section">
         <div className="section-title">RECENT ACTIVITY</div>
         {recentActivity.length === 0 ? (
@@ -181,7 +201,6 @@ export default function UserDashboard({ user, onNavigate }) {
         )}
       </div>
 
-    
       <FloatingChatbot onNavigate={onNavigate} />
     </div>
   );
