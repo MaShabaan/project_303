@@ -5,11 +5,21 @@ import { useAuth } from './ThemeContext';
 import './ManageCourses.css';
 
 const DIVISIONS = [
+  { value: 'all', label: 'All Divisions', icon: '📚' },
   { value: 'computer_science', label: 'Computer Science', icon: '💻' },
   { value: 'special_mathematics', label: 'Special Mathematics', icon: '📐' },
 ];
-const YEARS = [2, 3, 4];
-const TERMS = [1, 2];
+const YEARS = [
+  { value: 'all', label: 'All Years' },
+  { value: 2, label: 'Year 2' },
+  { value: 3, label: 'Year 3' },
+  { value: 4, label: 'Year 4' },
+];
+const TERMS = [
+  { value: 'all', label: 'All Terms' },
+  { value: 1, label: 'Term 1' },
+  { value: 2, label: 'Term 2' },
+];
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
 const TIME_SLOTS = ['8:00-10:00', '10:00-12:00', '12:00-14:00', '14:00-16:00', '16:00-18:00'];
@@ -20,8 +30,12 @@ export default function ManageCourses({ user, onBack }) {
   const [expandedCourse, setExpandedCourse] = useState(null);
   const [groups, setGroups] = useState({});
   const [loadingGroups, setLoadingGroups] = useState({});
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDivision, setFilterDivision] = useState('all');
+  const [filterYear, setFilterYear] = useState('all');
+  const [filterTerm, setFilterTerm] = useState('all');
 
-  // Modal states
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [courseForm, setCourseForm] = useState({
@@ -152,12 +166,10 @@ export default function ManageCourses({ user, onBack }) {
   const handleDeleteCourse = async () => {
     if (!deletingCourse) return;
     try {
-      // Delete all groups for this course first
       const courseGroups = await getGroupsByCourse(deletingCourse.id);
       for (const group of courseGroups) {
         await deleteGroup(group.id);
       }
-      // Delete the course
       await deleteDoc(doc(db, 'courses', deletingCourse.id));
       alert('Course and all its groups deleted successfully');
       setDeleteModal(false);
@@ -240,10 +252,35 @@ export default function ManageCourses({ user, onBack }) {
     }
   };
 
+  const filteredCourses = (() => {
+    let result = [...courses];
+    
+    if (searchTerm.trim() !== '') {
+      result = result.filter(course => 
+        (course.courseName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (course.courseCode || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (filterDivision !== 'all') {
+      result = result.filter(course => course.division === filterDivision);
+    }
+    
+    if (filterYear !== 'all') {
+      result = result.filter(course => Number(course.year) === Number(filterYear));
+    }
+    
+    if (filterTerm !== 'all') {
+      result = result.filter(course => Number(course.term) === Number(filterTerm));
+    }
+    
+    return result;
+  })();
+
   const stats = [
-    { lbl: 'TOTAL', num: courses.length, ac: '#7c3aed' },
-    { lbl: 'CS', num: courses.filter(c => c.division === 'computer_science').length, ac: '#4f46e5' },
-    { lbl: 'MATH', num: courses.filter(c => c.division === 'special_mathematics').length, ac: '#10b981' },
+    { lbl: 'TOTAL', num: filteredCourses.length, ac: '#7c3aed' },
+    { lbl: 'CS', num: filteredCourses.filter(c => c.division === 'computer_science').length, ac: '#4f46e5' },
+    { lbl: 'MATH', num: filteredCourses.filter(c => c.division === 'special_mathematics').length, ac: '#10b981' },
   ];
 
   if (loading) {
@@ -266,8 +303,74 @@ export default function ManageCourses({ user, onBack }) {
       <div className="courses-topbar">
         <button className="courses-back-btn" onClick={onBack}>← Back</button>
         <span className="courses-topbar-title">📚 Manage Courses</span>
-        <span className="courses-topbar-count">{courses.length} total</span>
+        <span className="courses-topbar-count">{filteredCourses.length} / {courses.length}</span>
         <button className="courses-add-btn" onClick={() => { resetCourseForm(); setCourseModalOpen(true); }}>+ Add Course</button>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="courses-filters-bar">
+        <div className="filters-row">
+          <div className="search-group">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="courses-search"
+              placeholder="Search by name or code..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <select 
+            className="filter-select"
+            value={filterDivision}
+            onChange={(e) => setFilterDivision(e.target.value)}
+          >
+            {DIVISIONS.map(div => (
+              <option key={div.value} value={div.value}>
+                {div.icon} {div.label}
+              </option>
+            ))}
+          </select>
+          
+          <select 
+            className="filter-select"
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+          >
+            {YEARS.map(year => (
+              <option key={year.value} value={year.value}>
+                🎓 {year.label}
+              </option>
+            ))}
+          </select>
+          
+          <select 
+            className="filter-select"
+            value={filterTerm}
+            onChange={(e) => setFilterTerm(e.target.value)}
+          >
+            {TERMS.map(term => (
+              <option key={term.value} value={term.value}>
+                📅 {term.label}
+              </option>
+            ))}
+          </select>
+          
+          {(searchTerm || filterDivision !== 'all' || filterYear !== 'all' || filterTerm !== 'all') && (
+            <button 
+              className="clear-filters-btn"
+              onClick={() => {
+                setSearchTerm('');
+                setFilterDivision('all');
+                setFilterYear('all');
+                setFilterTerm('all');
+              }}
+            >
+              ✖ Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="courses-body">
@@ -281,10 +384,10 @@ export default function ManageCourses({ user, onBack }) {
         </div>
 
         <div className="courses-list">
-          {courses.length === 0 ? (
+          {filteredCourses.length === 0 ? (
             <div className="courses-empty">No courses found</div>
           ) : (
-            courses.map(course => (
+            filteredCourses.map(course => (
               <div key={course.id} className="course-item">
                 <div className="course-item-header">
                   <div className="course-icon" onClick={() => toggleCourse(course.id)}>
@@ -301,7 +404,6 @@ export default function ManageCourses({ user, onBack }) {
                     {course.division === 'computer_science' ? 'CS' : 'Math'}
                   </div>
 
-                  {/* Action Buttons - Edit & Delete */}
                   <div className="course-actions" onClick={(e) => e.stopPropagation()}>
                     <button 
                       className="course-edit-btn" 
@@ -386,7 +488,7 @@ export default function ManageCourses({ user, onBack }) {
               <div className="input-group">
                 <label>Division</label>
                 <div className="option-group">
-                  {DIVISIONS.map(d => (
+                  {DIVISIONS.filter(d => d.value !== 'all').map(d => (
                     <button key={d.value} className={`option-btn ${courseForm.division === d.value ? 'active' : ''}`} onClick={() => setCourseForm({ ...courseForm, division: d.value })}>
                       {d.icon} {d.label}
                     </button>
@@ -396,16 +498,16 @@ export default function ManageCourses({ user, onBack }) {
               <div className="input-group">
                 <label>Year</label>
                 <div className="option-group">
-                  {YEARS.map(y => (
-                    <button key={y} className={`option-btn ${courseForm.year === y ? 'active' : ''}`} onClick={() => setCourseForm({ ...courseForm, year: y })}>Year {y}</button>
+                  {YEARS.filter(y => y.value !== 'all').map(y => (
+                    <button key={y.value} className={`option-btn ${courseForm.year === y.value ? 'active' : ''}`} onClick={() => setCourseForm({ ...courseForm, year: y.value })}>Year {y.value}</button>
                   ))}
                 </div>
               </div>
               <div className="input-group">
                 <label>Term</label>
                 <div className="option-group">
-                  {TERMS.map(t => (
-                    <button key={t} className={`option-btn ${courseForm.term === t ? 'active' : ''}`} onClick={() => setCourseForm({ ...courseForm, term: t })}>Term {t}</button>
+                  {TERMS.filter(t => t.value !== 'all').map(t => (
+                    <button key={t.value} className={`option-btn ${courseForm.term === t.value ? 'active' : ''}`} onClick={() => setCourseForm({ ...courseForm, term: t.value })}>Term {t.value}</button>
                   ))}
                 </div>
               </div>

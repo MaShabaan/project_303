@@ -1,7 +1,8 @@
 // web-react/src/pages/Users.jsx
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, Timestamp } from 'firebase/firestore';
-import { db } from '../services/firebase';
+
+import { collection, deleteDoc, doc, getDocs, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { createInAppNotification, db } from '../services/firebase';
 import './Users.css';
 
 const SUPER_ADMINS = ['mshabaan295@gmail.com', 'hoda17753@gmail.com', 'Tbarckyasir@gmail.com'];
@@ -37,13 +38,20 @@ export default function Users({ user, onBack }) {
   const [users, setUsers]           = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
-  const [view, setView]             = useState('active');   // active | blocked
-  const [roleFilter, setRoleFilter] = useState('all');      // all | admins | users
+  const [view, setView]             = useState('active');
+  const [roleFilter, setRoleFilter] = useState('all');
 
   const [blockModal, setBlockModal] = useState(false);
   const [selUser, setSelUser]       = useState(null);
   const [blockReason, setBlockReason] = useState('');
   const [blockDur, setBlockDur]     = useState('2days');
+
+  const [messageModal, setMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [selectedUserForMsg, setSelectedUserForMsg] = useState(null);
+
+  const [activityModal, setActivityModal] = useState(false);
+  const [userActivity, setUserActivity] = useState(null);
 
   const isSuperAdmin = SUPER_ADMINS.includes(user?.email);
 
@@ -122,6 +130,41 @@ export default function Users({ user, onBack }) {
     } catch (e) { alert(e.message); }
   };
 
+  const sendNotificationToUser = async (userId, message) => {
+    try {
+      await createInAppNotification({
+        userId: userId,
+        type: "admin_message",
+        title: "📢 Message from Admin",
+        body: message,
+        read: false,
+      });
+      alert("Notification sent successfully!");
+    } catch (error) {
+      console.error(error);
+      alert("Failed to send notification");
+    }
+  };
+
+  const viewUserActivity = async (userId) => {
+    try {
+      const ticketsQuery = query(collection(db, 'tickets'), where('userId', '==', userId));
+      const ticketsSnap = await getDocs(ticketsQuery);
+      
+      const feedbackQuery = query(collection(db, 'feedback'), where('userId', '==', userId));
+      const feedbackSnap = await getDocs(feedbackQuery);
+      
+      setUserActivity({
+        tickets: ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+        feedback: feedbackSnap.docs.map(d => ({ id: d.id, ...d.data() })),
+      });
+      setActivityModal(true);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load user activity");
+    }
+  };
+
   const filtered = users.filter(u => {
     const matchSearch =
       u.email.toLowerCase().includes(search.toLowerCase()) ||
@@ -185,12 +228,12 @@ export default function Users({ user, onBack }) {
         )}
       </div>
 
-      {/* Super Admin Banner */}
-      {isSuperAdmin && (
-        <div className="sa-banner">
-          🔑 Super Admin — promote, demote, block, unblock &amp; delete users
-        </div>
-      )}
+      {/* Admin Banner */}
+      <div className="sa-banner">
+        {isSuperAdmin 
+          ? "🔑 Super Admin — promote, demote, block, unblock & delete users"
+          : "👁️ Admin — can view user activity and send messages to users"}
+      </div>
 
       {/* Body */}
       <div className="users-body">
@@ -232,7 +275,7 @@ export default function Users({ user, onBack }) {
                       {u.academicCode && <span className="u-meta-tag">🎓 {u.academicCode}</span>}
                       {u.division === 'computer_science' && <span className="u-meta-tag">💻 CS</span>}
                       {u.division === 'special_mathematics' && <span className="u-meta-tag">📐 Math</span>}
-                      {u.semester && <span className="u-meta-tag">Sem {u.semester}</span>}
+                      {u.academicYear && <span className="u-meta-tag">Year {u.academicYear}</span>}
                     </div>
                     {u.isBlocked && u.blockDetails && (
                       <div className="u-blocked-info">
@@ -246,12 +289,33 @@ export default function Users({ user, onBack }) {
                   </div>
                 </div>
 
+                {/* Actions - Available to all admins */}
                 <div className="u-actions">
-                  {isSuperAdmin && u.role === 'user'  && !u.isBlocked && <button className="u-btn btn-promote"  onClick={() => handlePromote(u.id)}>⬆ Make Admin</button>}
-                  {isSuperAdmin && u.role === 'admin' && !u.isBlocked && <button className="u-btn btn-demote"   onClick={() => handleDemote(u.id)}>⬇ Remove Admin</button>}
-                  {isSuperAdmin && !u.isBlocked                        && <button className="u-btn btn-block"    onClick={() => openBlock(u)}>🔒 Block</button>}
-                  {isSuperAdmin && u.isBlocked                         && <button className="u-btn btn-unblock"  onClick={() => handleUnblock(u.id)}>🔓 Unblock</button>}
-                  {isSuperAdmin                                         && <button className="u-btn btn-delete"   onClick={() => handleDelete(u.id)}>🗑 Delete</button>}
+                  {/* View Activity - All admins */}
+                  <button className="u-btn btn-activity" onClick={() => viewUserActivity(u.id)}>
+                    📋 Activity
+                  </button>
+                  
+                  {/* Send Message - All admins */}
+                  <button className="u-btn btn-message" onClick={() => {
+                    setSelectedUserForMsg(u);
+                    setMessageText('');
+                    setMessageModal(true);
+                  }}>
+                    💬 Message
+                  </button>
+                  
+                  {/* Super Admin only actions */}
+                  {isSuperAdmin && u.role === 'user' && !u.isBlocked && 
+                    <button className="u-btn btn-promote" onClick={() => handlePromote(u.id)}>⬆ Make Admin</button>}
+                  {isSuperAdmin && u.role === 'admin' && !u.isBlocked && 
+                    <button className="u-btn btn-demote" onClick={() => handleDemote(u.id)}>⬇ Remove Admin</button>}
+                  {isSuperAdmin && !u.isBlocked && 
+                    <button className="u-btn btn-block" onClick={() => openBlock(u)}>🔒 Block</button>}
+                  {isSuperAdmin && u.isBlocked && 
+                    <button className="u-btn btn-unblock" onClick={() => handleUnblock(u.id)}>🔓 Unblock</button>}
+                  {isSuperAdmin && 
+                    <button className="u-btn btn-delete" onClick={() => handleDelete(u.id)}>🗑 Delete</button>}
                 </div>
               </div>
             ))}
@@ -298,6 +362,81 @@ export default function Users({ user, onBack }) {
               <div className="u-modal-footer">
                 <button className="u-cancel-btn" onClick={() => setBlockModal(false)}>Cancel</button>
                 <button className="u-block-submit-btn" onClick={handleBlock}>Block User</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Send Message Modal */}
+      {messageModal && selectedUserForMsg && (
+        <div className="u-modal-overlay" onClick={() => setMessageModal(false)}>
+          <div className="u-modal" onClick={e => e.stopPropagation()}>
+            <div className="u-modal-head">
+              <span className="u-modal-head-title">💬 Send Message to {selectedUserForMsg.displayName || selectedUserForMsg.email}</span>
+              <button className="u-modal-close" onClick={() => setMessageModal(false)}>✕</button>
+            </div>
+            <div className="u-modal-body">
+              <textarea
+                className="u-textarea"
+                placeholder="Type your message here..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                rows={5}
+              />
+              <div className="u-modal-footer">
+                <button className="u-cancel-btn" onClick={() => setMessageModal(false)}>Cancel</button>
+                <button className="u-send-btn" onClick={() => {
+                  sendNotificationToUser(selectedUserForMsg.id, messageText);
+                  setMessageModal(false);
+                }}>Send Message</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Activity Modal */}
+      {activityModal && userActivity && (
+        <div className="u-modal-overlay" onClick={() => setActivityModal(false)}>
+          <div className="u-modal u-modal-large" onClick={e => e.stopPropagation()}>
+            <div className="u-modal-head">
+              <span className="u-modal-head-title">📋 User Activity</span>
+              <button className="u-modal-close" onClick={() => setActivityModal(false)}>✕</button>
+            </div>
+            <div className="u-modal-body">
+              <div className="activity-section">
+                <h4>📝 Complaints ({userActivity.tickets.length})</h4>
+                {userActivity.tickets.length === 0 ? (
+                  <p className="activity-empty">No complaints</p>
+                ) : (
+                  userActivity.tickets.map(ticket => (
+                    <div key={ticket.id} className="activity-item">
+                      <div className="activity-item-title">
+                        <strong>{ticket.title}</strong>
+                        <span className={`activity-status status-${ticket.status}`}>{ticket.status}</span>
+                      </div>
+                      <div className="activity-item-desc">{ticket.description?.substring(0, 100)}...</div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="activity-section">
+                <h4>⭐ Ratings ({userActivity.feedback.length})</h4>
+                {userActivity.feedback.length === 0 ? (
+                  <p className="activity-empty">No ratings</p>
+                ) : (
+                  userActivity.feedback.map(fb => (
+                    <div key={fb.id} className="activity-item">
+                      <div className="activity-item-title">
+                        <strong>{fb.courseName}</strong>
+                      </div>
+                      <div className="activity-item-desc">
+                        Course: {fb.courseRating || fb.rating}/10 | Instructor: {fb.instructorRating || fb.rating}/10
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

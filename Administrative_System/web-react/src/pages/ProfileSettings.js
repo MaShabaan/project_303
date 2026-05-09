@@ -1,23 +1,18 @@
+// web-react/src/pages/ProfileSettings.jsx
 
-import React, { useState, useEffect } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 import { db } from '../services/firebase';
-import { useTheme } from './ThemeContext';
 import './ProfileSettings.css';
-
-const DIVISIONS = [
-  { value: 'computer_science', label: 'Computer Science', icon: '💻' },
-  { value: 'special_mathematics', label: 'Special Mathematics', icon: '📐' },
-];
-
-const YEARS = [2, 3, 4];
-const TERMS = [1, 2];
+import { useTheme } from './ThemeContext';
 
 export default function ProfileSettings({ user, onBack }) {
   const { isDark, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [displayName, setDisplayName] = useState('');
+  const [photoURL, setPhotoURL] = useState(null);
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
@@ -31,10 +26,69 @@ export default function ProfileSettings({ user, onBack }) {
       const data = userDoc.data();
       setUserData(data);
       setDisplayName(data.displayName || data.fullName || user.email.split('@')[0]);
+      setPhotoURL(data.photoURL || null);
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const resizeImage = (file, maxWidth, maxHeight, callback) => {
+    const img = new Image();
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      img.src = e.target.result;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        callback(dataUrl);
+      };
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      resizeImage(file, 150, 150, (resizedBase64) => {
+        setPhotoURL(resizedBase64);
+        alert('Profile picture updated! Click Save to apply.');
+        setUploading(false);
+      });
+    } catch (error) {
+      console.error(error);
+      alert('Failed to process image');
+      setUploading(false);
     }
   };
 
@@ -46,15 +100,21 @@ export default function ProfileSettings({ user, onBack }) {
     
     setSaving(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
+      const updateData = {
         displayName: displayName.trim(),
         updatedAt: new Date(),
-      });
-      alert('Profile updated successfully!');
+      };
+      
+      if (photoURL) {
+        updateData.photoURL = photoURL;
+      }
+      
+      await updateDoc(doc(db, 'users', user.uid), updateData);
+      alert('Profile saved successfully!');
       onBack();
     } catch (error) {
       console.error(error);
-      alert('Failed to update profile');
+      alert('Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -91,26 +151,38 @@ export default function ProfileSettings({ user, onBack }) {
 
   return (
     <div className="profile-page">
-      {/* Top Bar */}
       <div className="profile-topbar">
         <button className="profile-back-btn" onClick={onBack}>← Back</button>
         <span className="profile-topbar-title">⚙️ Profile Settings</span>
       </div>
 
-      {/* Body */}
       <div className="profile-body">
         <div className="profile-card">
-          {/* Avatar Section */}
           <div className="profile-avatar-section">
             <div className="profile-avatar" style={{ backgroundColor: getAvatarColor(user?.email) }}>
-              <div className="profile-avatar-placeholder">
-                {displayName?.charAt(0).toUpperCase() || 'U'}
-              </div>
+              {photoURL ? (
+                <img src={photoURL} alt="Profile" className="profile-avatar-image" />
+              ) : (
+                <div className="profile-avatar-placeholder">
+                  {displayName?.charAt(0).toUpperCase() || 'U'}
+                </div>
+              )}
             </div>
-          
+            <label className="profile-upload-btn">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+              />
+              📷 Change Photo
+            </label>
+            {uploading && <div className="profile-uploading">Processing image...</div>}
+            <div className="profile-avatar-note">
+           
+            </div>
           </div>
 
-          {/* Info Section */}
           <div className="profile-info-section">
             <div className="field-group">
               <label>Display Name</label>
@@ -122,19 +194,16 @@ export default function ProfileSettings({ user, onBack }) {
               />
             </div>
    
-         
             <div className="field-group">
               <label>Email</label>
               <input type="email" value={user?.email} disabled />
             </div>
 
-     
             <div className="field-group">
               <label>Role</label>
               <input type="text" value={roleLabel} disabled />
             </div>
 
-           
             {userData?.role === 'user' && userData?.academicCode && (
               <div className="field-group">
                 <label>Academic Code</label>
@@ -142,7 +211,6 @@ export default function ProfileSettings({ user, onBack }) {
               </div>
             )}
 
-           
             {userData?.role === 'user' && (
               <div className="field-group">
                 <label>Division</label>
@@ -150,7 +218,6 @@ export default function ProfileSettings({ user, onBack }) {
               </div>
             )}
 
-           
             {userData?.role === 'user' && userData?.academicYear && (
               <div className="field-group">
                 <label>Academic Year</label>
@@ -158,7 +225,6 @@ export default function ProfileSettings({ user, onBack }) {
               </div>
             )}
 
-           
             {userData?.role === 'user' && userData?.currentTerm && (
               <div className="field-group">
                 <label>Current Term</label>
@@ -166,7 +232,6 @@ export default function ProfileSettings({ user, onBack }) {
               </div>
             )}
 
-            {/* Dark Mode Toggle */}
             <div className="theme-section">
               <div className="theme-info">
                 <span className="theme-icon">{isDark ? '🌙' : '☀️'}</span>

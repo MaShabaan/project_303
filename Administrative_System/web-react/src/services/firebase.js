@@ -1,18 +1,19 @@
 
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { 
-  getFirestore, 
-  doc, 
-  updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+import {
   addDoc,
-  deleteDoc
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  getFirestore,
+  query,
+  Timestamp,
+  updateDoc,
+  where
 } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCk7xXTF4lRn3v5i6F_leQvK-hdnFW_zcU",
@@ -38,6 +39,23 @@ export const getGroupsByCourse = async (courseId) => {
   } catch (error) {
     console.error('Error getting groups:', error);
     return [];
+  }
+};
+export const createInAppNotification = async (data) => {
+  try {
+    const ref = collection(db, 'notifications');
+    await addDoc(ref, {
+      userId: data.userId,
+      type: data.type,
+      title: data.title,
+      body: data.body,
+      read: data.read || false,
+      createdAt: Timestamp.now(),
+      ...(data.meta ? { meta: data.meta } : {}),
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
   }
 };
 
