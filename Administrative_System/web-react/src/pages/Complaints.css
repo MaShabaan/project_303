@@ -562,3 +562,219 @@
 .dark-mode .c-loading {
   color: #94a3b8;
 }
+/* Add to Complaints.css */
+
+/* View Complaint Modal - Large size */
+.c-modal-large {
+  max-width: 700px;
+  width: 90%;
+}
+
+/* View Complaint Styles */
+.view-complaint-header {
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color, #ede9fe);
+}
+
+.view-title-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.view-title-section h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #1e1b4b);
+  margin: 0;
+}
+
+.view-priority-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.view-priority-badge.urgent { background-color: #fef2f2; color: #dc2626; }
+.view-priority-badge.high { background-color: #fffbeb; color: #d97706; }
+.view-priority-badge.medium { background-color: #eff6ff; color: #2563eb; }
+.view-priority-badge.low { background-color: #f0fdf4; color: #059669; }
+
+.view-meta {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+}
+
+.view-email {
+  font-weight: 500;
+}
+
+.view-date {
+  color: #94a3b8;
+}
+
+.view-section {
+  margin-bottom: 24px;
+}
+
+.view-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #1e1b4b);
+  margin-bottom: 10px;
+}
+
+.view-section p {
+  font-size: 14px;
+  color: var(--text-secondary, #475569);
+  line-height: 1.5;
+  background-color: var(--input-bg, #f8f7ff);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.view-status-section {
+  margin-top: 8px;
+}
+
+.view-status-select {
+  padding: 10px 14px;
+  border: 1px solid var(--border-color, #ede9fe);
+  border-radius: 10px;
+  background-color: var(--card-bg, #fff);
+  color: var(--text-primary, #1e1b4b);
+  font-size: 14px;
+  width: 100%;
+  max-width: 250px;
+  cursor: pointer;
+}
+
+.view-existing-reply {
+  background-color: var(--input-bg, #f8f7ff);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.view-existing-reply p {
+  background: none;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.view-existing-reply small {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.view-no-reply {
+  background-color: var(--input-bg, #f8f7ff);
+  padding: 12px;
+  border-radius: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.view-reply-section {
+  margin-top: 16px;
+}
+
+.view-reply-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color, #ede9fe);
+  border-radius: 12px;
+  background-color: var(--card-bg, #fff);
+  color: var(--text-primary, #1e1b4b);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.view-send-btn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.view-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.view-actions {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #ede9fe);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view-delete-btn {
+  padding: 10px 20px;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.view-delete-btn:hover {
+  background-color: #fecaca;
+}
+
+/* View button */
+.c-view-btn {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.c-view-btn:hover {
+  background-color: #2563eb;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .c-modal-large {
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .view-title-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .view-meta {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .view-status-select {
+    max-width: 100%;
+  }
+}

@@ -1,6 +1,6 @@
 // web-react/src/pages/Complaints.jsx
 
-import { collection, deleteDoc, doc, getDoc, getDocs, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDoc, getDocs, orderBy, query, Timestamp, updateDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { createInAppNotification, db } from '../services/firebase';
 import './Complaints.css';
@@ -29,6 +29,8 @@ export default function Complaints({ user, onBack }) {
   const [replyLoading, setReplyLoading] = useState(false);
   const [filter, setFilter] = useState('all');
   const [showReplyModal, setShowReplyModal] = useState(false);
+  const [viewingTicket, setViewingTicket] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const isSuperAdmin = SUPER_ADMINS.includes(user?.email);
 
@@ -39,13 +41,21 @@ export default function Complaints({ user, onBack }) {
   const loadTickets = async () => {
     setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, 'tickets'));
+      const q = query(collection(db, 'tickets'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
       const list = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       }));
+      
+      // Priority order for sorting: urgent (0), high (1), medium (2), low (3)
       const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-      list.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+      list.sort((a, b) => {
+        const priorityA = a.priority?.toLowerCase() || 'medium';
+        const priorityB = b.priority?.toLowerCase() || 'medium';
+        return priorityOrder[priorityA] - priorityOrder[priorityB];
+      });
+      
       setTickets(list);
     } catch (error) {
       console.error('Error loading tickets:', error);
@@ -70,7 +80,6 @@ export default function Complaints({ user, onBack }) {
         updatedAt: Timestamp.now(),
       });
 
-      // Send notification to user about reply
       await createInAppNotification({
         userId: selectedTicket.userId,
         type: 'complaint_reply',
@@ -95,7 +104,6 @@ export default function Complaints({ user, onBack }) {
 
   const handleStatusChange = async (ticketId, newStatus) => {
     try {
-      // Get ticket data before update
       const ticketRef = doc(db, 'tickets', ticketId);
       const ticketSnap = await getDoc(ticketRef);
       const ticketData = ticketSnap.data();
@@ -112,7 +120,6 @@ export default function Complaints({ user, onBack }) {
         'closed': 'closed'
       };
 
-      // Send notification to user about status change
       await createInAppNotification({
         userId: ticketData.userId,
         type: 'ticket_status_changed',
@@ -126,6 +133,9 @@ export default function Complaints({ user, onBack }) {
       await loadTickets();
       if (selectedTicket && selectedTicket.id === ticketId) {
         setSelectedTicket({ ...selectedTicket, status: newStatus });
+      }
+      if (viewingTicket && viewingTicket.id === ticketId) {
+        setViewingTicket({ ...viewingTicket, status: newStatus });
       }
     } catch (error) {
       console.error('Status error:', error);
@@ -143,10 +153,80 @@ export default function Complaints({ user, onBack }) {
         await deleteDoc(doc(db, 'tickets', ticket.id));
         await loadTickets();
         alert('Complaint deleted');
+        if (showViewModal) setShowViewModal(false);
       } catch (error) {
         alert('Failed to delete');
       }
     }
+  };
+
+  const handleUpdateInView = async () => {
+    if (!viewingTicket) return;
+    try {
+      const ticketRef = doc(db, 'tickets', viewingTicket.id);
+      await updateDoc(ticketRef, {
+        status: viewingTicket.status,
+        updatedAt: Timestamp.now(),
+      });
+      
+      await createInAppNotification({
+        userId: viewingTicket.userId,
+        type: 'ticket_status_changed',
+        title: '🔄 Complaint Status Updated',
+        body: `Your complaint "${viewingTicket.title}" has been updated to ${viewingTicket.status}.`,
+        read: false,
+        meta: { ticketId: viewingTicket.id },
+      });
+
+      alert('Status updated successfully');
+      await loadTickets();
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Failed to update status: ' + error.message);
+    }
+  };
+
+  const handleReplyInView = async () => {
+    if (!replyText.trim() || !viewingTicket) {
+      alert('Please enter a reply');
+      return;
+    }
+    setReplyLoading(true);
+    try {
+      const ticketRef = doc(db, 'tickets', viewingTicket.id);
+      await updateDoc(ticketRef, {
+        adminReply: replyText.trim(),
+        repliedAt: Timestamp.now(),
+        repliedBy: user?.email || 'admin',
+        status: 'replied',
+        updatedAt: Timestamp.now(),
+      });
+
+      await createInAppNotification({
+        userId: viewingTicket.userId,
+        type: 'complaint_reply',
+        title: '📝 Reply to your complaint',
+        body: `Admin replied to "${viewingTicket.title}"`,
+        read: false,
+        meta: { ticketId: viewingTicket.id },
+      });
+
+      alert('Reply sent successfully');
+      setReplyText('');
+      await loadTickets();
+      setViewingTicket({ ...viewingTicket, adminReply: replyText, status: 'replied' });
+    } catch (error) {
+      console.error('Reply error:', error);
+      alert('Failed to send reply: ' + error.message);
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
+  const openViewModal = (ticket) => {
+    setViewingTicket(ticket);
+    setReplyText(ticket.adminReply || '');
+    setShowViewModal(true);
   };
 
   const getDisplayEmail = (ticket) => {
@@ -227,12 +307,13 @@ export default function Complaints({ user, onBack }) {
                     </div>
                   </div>
                   <div className="c-card-email">{getDisplayEmail(ticket)}</div>
-                  <div className="c-card-desc">{ticket.description}</div>
+                  <div className="c-card-desc">{ticket.description?.substring(0, 100)}...</div>
                   <div className="c-card-footer">
                     <span className="c-card-date">{date}</span>
                     <span className={`c-status-badge status-${ticket.status}`}>{ticket.status}</span>
                   </div>
                   <div className="c-card-actions">
+                    <button className="c-view-btn" onClick={() => openViewModal(ticket)}>👁️ View</button>
                     <button className="c-reply-btn" onClick={() => {
                       setSelectedTicket(ticket);
                       setReplyText(ticket.adminReply || '');
@@ -249,12 +330,104 @@ export default function Complaints({ user, onBack }) {
         )}
       </div>
 
-      {/* Reply Modal */}
+      {/* View Complaint Modal - Individual Complaint View */}
+      {showViewModal && viewingTicket && (
+        <div className="c-modal-overlay" onClick={() => setShowViewModal(false)}>
+          <div className="c-modal c-modal-large" onClick={e => e.stopPropagation()}>
+            <div className="c-modal-head">
+              <span className="c-modal-title">📋 Complaint Details</span>
+              <button className="c-modal-close" onClick={() => setShowViewModal(false)}>✕</button>
+            </div>
+            <div className="c-modal-body">
+              {/* Complaint Header */}
+              <div className="view-complaint-header">
+                <div className="view-title-section">
+                  <h2>{viewingTicket.title}</h2>
+                  <div className={`view-priority-badge ${viewingTicket.priority}`}>
+                    {PRIORITY_COLORS[viewingTicket.priority?.toLowerCase()]?.label || 'Medium'}
+                  </div>
+                </div>
+                <div className="view-meta">
+                  <span className="view-email">{getDisplayEmail(viewingTicket)}</span>
+                  <span className="view-date">Submitted: {viewingTicket.createdAt?.toDate?.().toLocaleString() || 'Unknown date'}</span>
+                </div>
+              </div>
+
+              {/* Complaint Description */}
+              <div className="view-section">
+                <h3>📝 Description</h3>
+                <p>{viewingTicket.description}</p>
+              </div>
+
+              {/* Status Section - Editable */}
+              <div className="view-section">
+                <h3>📊 Status</h3>
+                <div className="view-status-section">
+                  <select
+                    className="view-status-select"
+                    value={viewingTicket.status || 'open'}
+                    onChange={(e) => {
+                      setViewingTicket({ ...viewingTicket, status: e.target.value });
+                      handleStatusChange(viewingTicket.id, e.target.value);
+                    }}
+                  >
+                    {STATUS_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Admin Reply Section */}
+              <div className="view-section">
+                <h3>💬 Admin Reply</h3>
+                {viewingTicket.adminReply ? (
+                  <div className="view-existing-reply">
+                    <p>{viewingTicket.adminReply}</p>
+                    <small>Replied by: {viewingTicket.repliedBy} on {viewingTicket.repliedAt?.toDate?.().toLocaleString()}</small>
+                  </div>
+                ) : (
+                  <p className="view-no-reply">No reply yet.</p>
+                )}
+                
+                {/* Add/Edit Reply */}
+                <div className="view-reply-section">
+                  <textarea
+                    className="view-reply-textarea"
+                    placeholder="Type your reply here..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    rows={4}
+                  />
+                  <button 
+                    className="view-send-btn" 
+                    onClick={handleReplyInView} 
+                    disabled={replyLoading}
+                  >
+                    {replyLoading ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Super Admin Actions */}
+              {isSuperAdmin && (
+                <div className="view-actions">
+                  <button className="view-delete-btn" onClick={() => handleDelete(viewingTicket)}>
+                    🗑 Delete Complaint
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reply Modal (Quick Reply) */}
       {showReplyModal && selectedTicket && (
         <div className="c-modal-overlay" onClick={() => setShowReplyModal(false)}>
           <div className="c-modal" onClick={e => e.stopPropagation()}>
             <div className="c-modal-head">
-              <span className="c-modal-title">💬 Reply to Complaint</span>
+              <span className="c-modal-title">💬 Quick Reply</span>
               <button className="c-modal-close" onClick={() => setShowReplyModal(false)}>✕</button>
             </div>
             <div className="c-modal-body">
